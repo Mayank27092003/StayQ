@@ -566,24 +566,31 @@ class AppProvider extends ChangeNotifier {
       );
 
       await _auth!.signInWithCredential(credential);
-      // PostgreSQL Backend Sync via NestJS API
+      // PostgreSQL Backend Sync via NestJS API — non-blocking
       if (_auth!.currentUser != null) {
-        final token = await _auth!.currentUser!.getIdToken();
-        if (token != null) {
-          final response = await http.put(
-            Uri.parse('$_apiUrl/api/v1/auth/sync-profile'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: json.encode({
-              'phone': _auth!.currentUser!.phoneNumber,
-            }),
-          );
+        try {
+          // Force-refresh the token to avoid stale/unverified token issues
+          final token = await _auth!.currentUser!.getIdToken(true);
+          if (token != null) {
+            final response = await http.put(
+              Uri.parse('$_apiUrl/api/v1/auth/sync-profile'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+              body: json.encode({
+                'phone': _auth!.currentUser!.phoneNumber,
+              }),
+            );
 
-          if (response.statusCode != 200 && response.statusCode != 201) {
-            throw Exception('Backend sync failed: ${response.statusCode}');
+            if (response.statusCode != 200 && response.statusCode != 201) {
+              debugPrint('Backend sync returned ${response.statusCode}: ${response.body}');
+              // Don't block login — sync will happen on next app launch
+            }
           }
+        } catch (syncError) {
+          // Log but don't fail auth — the user is already authenticated with Firebase
+          debugPrint('Backend sync error (non-fatal): $syncError');
         }
       }
       
