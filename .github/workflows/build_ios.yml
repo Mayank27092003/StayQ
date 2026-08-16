@@ -33,7 +33,7 @@ jobs:
 
       - name: Build iOS App (.ipa / Runner.app)
         run: |
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign --verbose
 
       - name: Package Payload as .ipa
         run: |
