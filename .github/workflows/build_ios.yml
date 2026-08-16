@@ -34,7 +34,13 @@ jobs:
       - name: Build iOS App (.ipa / Runner.app)
         run: |
           mkdir -p build/ios/iphoneos
-          flutter build ios --release --no-codesign --verbose > build_ios.log 2>&1 || { echo "=== BUILD FAILED! LAST 200 LINES ==="; tail -n 200 build_ios.log; exit 1; }
+          flutter build ios --release --no-codesign --verbose > build_ios.log 2>&1 || {
+            echo "### ❌ iOS Build Error Summary" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 150 build_ios.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
 
       - name: Upload Build Log (Always)
         if: always()
