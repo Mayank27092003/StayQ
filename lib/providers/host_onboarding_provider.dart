@@ -151,6 +151,11 @@ class HostOnboardingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateHostPresence(bool val) {
+    isStayingWithHost = val;
+    notifyListeners();
+  }
+
   void updateBasicInfo(String t, String d, int beds, int baths, int guests) {
     title = t;
     description = d;
