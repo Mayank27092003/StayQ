@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import '../providers/host_onboarding_provider.dart';
 import '../navigation/app_router.dart';
 import 'splash/logo_path_painter.dart';
+import 'host/onboarding/host_onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -72,25 +73,47 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             final provider = context.read<AppProvider>();
             final hostProvider = context.read<HostOnboardingProvider>();
             
-            // 1. Check for persistent KYC Lock
             try {
               final prefs = await SharedPreferences.getInstance();
+              
+              // 1. Check for persistent KYC Lock
               final kycStatus = prefs.getString('kyc_status');
               if (kycStatus == 'pending_review' && mounted) {
                 hostProvider.jumpToVerification();
                 Navigator.pushReplacementNamed(context, AppRoutes.addListing);
                 return;
               }
+
+              // 2. Strict Authentication Check: No unauthenticated/guest bypass allowed
+              if (!provider.isLoggedIn && mounted) {
+                if (!provider.hasSeenWalkthrough) {
+                  Navigator.pushReplacementNamed(context, AppRoutes.walkthrough);
+                } else {
+                  Navigator.pushReplacementNamed(context, AppRoutes.login);
+                }
+                return;
+              }
+
+              // 3. Check for in-progress Host Onboarding
+              final hostOnboardingInProgress = prefs.getBool('host_onboarding_in_progress') ?? false;
+              if (hostOnboardingInProgress && mounted) {
+                await hostProvider.restoreDraftFromPrefs();
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const HostOnboardingScreen()),
+                );
+                return;
+              }
+
+              // 4. Default Authenticated Flow
+              if (mounted) {
+                Navigator.pushReplacementNamed(context, AppRoutes.mainShell);
+              }
             } catch (e) {
               debugPrint('Error reading SharedPreferences: $e');
-            }
-
-            if (!provider.hasSeenWalkthrough && mounted) {
-              Navigator.pushReplacementNamed(context, AppRoutes.walkthrough);
-            } else if (provider.isLoggedIn && mounted) {
-              Navigator.pushReplacementNamed(context, AppRoutes.mainShell);
-            } else if (mounted) {
-              Navigator.pushReplacementNamed(context, AppRoutes.login);
+              if (mounted) {
+                Navigator.pushReplacementNamed(context, AppRoutes.login);
+              }
             }
           }
         });

@@ -72,11 +72,12 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> _initPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    _isLoggedIn = _auth?.currentUser != null;
+    _isHostMode = prefs.getBool('isHostMode') ?? false;
     _hasSeenWalkthrough = prefs.getBool('hasSeenWalkthrough') ?? false;
-    _userId = prefs.getString('userId');
-    _userName = prefs.getString('userName') ?? '';
-    _userEmail = prefs.getString('userEmail') ?? '';
+    _userId = _auth?.currentUser?.uid ?? prefs.getString('userId');
+    _userName = _auth?.currentUser?.displayName ?? prefs.getString('userName') ?? '';
+    _userEmail = _auth?.currentUser?.email ?? prefs.getString('userEmail') ?? '';
     notifyListeners();
   }
 
@@ -368,9 +369,15 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleHostMode() {
+  void toggleHostMode() async {
     _isHostMode = !_isHostMode;
     notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isHostMode', _isHostMode);
+    } catch (e) {
+      debugPrint('Error saving isHostMode: $e');
+    }
   }
 
   Future<bool> signInWithGoogle() async {
@@ -611,26 +618,15 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  // Legacy mock login
   Future<void> login(String email, String password) async {
     if (_auth == null) {
-      // Mock login success
-      _isLoggedIn = true;
-      _userId = 'mock_user_1';
-      _userName = 'Mock Guest';
-      
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('userId', _userId!);
-      await prefs.setString('userName', _userName);
-      
-      notifyListeners();
-      return;
+      throw Exception('Authentication service unavailable. Please check your network connection.');
     }
     try {
       await _auth!.signInWithEmailAndPassword(email: email, password: password);
     } catch (e) {
       debugPrint('Login Error: $e');
+      rethrow;
     }
   }
 
@@ -660,6 +656,7 @@ class AppProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('SignUp Error: $e');
+      rethrow;
     }
   }
 
@@ -672,11 +669,19 @@ class AppProvider extends ChangeNotifier {
     _isLoggedIn = false;
     _userId = null;
     _userName = '';
+    _userEmail = '';
+    _userAvatar = '';
+    _isHostMode = false;
     
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', false);
     await prefs.remove('userId');
     await prefs.remove('userName');
+    await prefs.remove('userEmail');
+    await prefs.remove('isHostMode');
+    await prefs.remove('host_onboarding_in_progress');
+    await prefs.remove('host_onboarding_step');
+    await prefs.remove('host_onboarding_draft');
     
     notifyListeners();
   }

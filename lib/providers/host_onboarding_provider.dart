@@ -5,11 +5,16 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart';
 
 const String _apiUrl = 'https://stayq-api-608570851336.asia-south1.run.app';
 
 class HostOnboardingProvider extends ChangeNotifier {
   int currentPage = 0;
+
+  HostOnboardingProvider() {
+    restoreDraftFromPrefs();
+  }
   
   // ─── Account Setup ───
   String firstName = '';
@@ -122,6 +127,7 @@ class HostOnboardingProvider extends ChangeNotifier {
 
   void setPage(int page) {
     currentPage = page;
+    saveDraftToPrefs();
     notifyListeners();
   }
 
@@ -129,6 +135,7 @@ class HostOnboardingProvider extends ChangeNotifier {
     final index = onboardingSteps.indexOf('Verification');
     if (index != -1) {
       currentPage = index;
+      saveDraftToPrefs();
       notifyListeners();
     }
   }
@@ -138,6 +145,7 @@ class HostOnboardingProvider extends ChangeNotifier {
     lastName = lName;
     email = em;
     phone = ph;
+    saveDraftToPrefs();
     notifyListeners();
   }
 
@@ -411,6 +419,8 @@ class HostOnboardingProvider extends ChangeNotifier {
           },
           body: jsonEncode({}),
         );
+        // Clear draft upon successful submission
+        await clearDraftPrefs();
         return true;
       }
       return false;
@@ -420,6 +430,164 @@ class HostOnboardingProvider extends ChangeNotifier {
     } finally {
       isUploading = false;
       notifyListeners();
+    }
+  }
+
+  // ─── Draft Persistence (Auto-Save & Resume) ───
+
+  Future<void> saveDraftToPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('host_onboarding_in_progress', true);
+      await prefs.setInt('host_onboarding_step', currentPage);
+
+      final draftData = {
+        'currentPage': currentPage,
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+        'phone': phone,
+        'propertyType': propertyType,
+        'isStayingWithHost': isStayingWithHost,
+        'title': title,
+        'description': description,
+        'bedrooms': bedrooms,
+        'bathrooms': bathrooms,
+        'maxGuests': maxGuests,
+        'address': address,
+        'city': city,
+        'state': state,
+        'latitude': latitude,
+        'longitude': longitude,
+        'amenities': amenities,
+        'tags': tags,
+        'localPhotoPaths': localPhotoPaths,
+        'photoUrls': photoUrls,
+        'pricePerNight': pricePerNight,
+        'weekendPrice': weekendPrice,
+        'weeklyDiscountPercent': weeklyDiscountPercent,
+        'monthlyDiscountPercent': monthlyDiscountPercent,
+        'numberOfRooms': numberOfRooms,
+        'bedsPerRoom': bedsPerRoom,
+        'bedTypes': bedTypes,
+        'instantBook': instantBook,
+        'checkInTime': checkInTime,
+        'checkOutTime': checkOutTime,
+        'minStay': minStay,
+        'maxStay': maxStay,
+        'houseRules': houseRules,
+        'cancellationPolicy': cancellationPolicy,
+        'petsAllowed': petsAllowed,
+        'smokingAllowed': smokingAllowed,
+        'partiesAllowed': partiesAllowed,
+        'accountHolderName': accountHolderName,
+        'accountNumber': accountNumber,
+        'ifscCode': ifscCode,
+        'bankName': bankName,
+        'upiId': upiId,
+        'pickupLocation': pickupLocation,
+        'dropLocation': dropLocation,
+        'vehicleType': vehicleType,
+        'rvFacilities': rvFacilities,
+        'terrainType': terrainType,
+        'tentCapacity': tentCapacity,
+        'hasCampfire': hasCampfire,
+        'bedCount': bedCount,
+        'dormType': dormType,
+        'hasLocker': hasLocker,
+        'longTermAvailable': longTermAvailable,
+        'monthlyRent': monthlyRent,
+        'securityDeposit': securityDeposit,
+        'leaseDurationMonths': leaseDurationMonths,
+      };
+
+      await prefs.setString('host_onboarding_draft', jsonEncode(draftData));
+    } catch (e) {
+      debugPrint('Error saving host onboarding draft: $e');
+    }
+  }
+
+  Future<void> restoreDraftFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final inProgress = prefs.getBool('host_onboarding_in_progress') ?? false;
+      if (!inProgress) return;
+
+      final draftJson = prefs.getString('host_onboarding_draft');
+      if (draftJson == null || draftJson.isEmpty) return;
+
+      final data = jsonDecode(draftJson) as Map<String, dynamic>;
+      currentPage = data['currentPage'] ?? 0;
+      firstName = data['firstName'] ?? '';
+      lastName = data['lastName'] ?? '';
+      email = data['email'] ?? '';
+      phone = data['phone'] ?? '';
+      propertyType = data['propertyType'] ?? 'HOTEL';
+      isStayingWithHost = data['isStayingWithHost'] ?? false;
+      title = data['title'] ?? '';
+      description = data['description'] ?? '';
+      bedrooms = data['bedrooms'] ?? 1;
+      bathrooms = data['bathrooms'] ?? 1;
+      maxGuests = data['maxGuests'] ?? 2;
+      address = data['address'] ?? '';
+      city = data['city'] ?? '';
+      state = data['state'] ?? '';
+      latitude = (data['latitude'] as num?)?.toDouble();
+      longitude = (data['longitude'] as num?)?.toDouble();
+      if (data['amenities'] != null) amenities = List<String>.from(data['amenities']);
+      if (data['tags'] != null) tags = List<String>.from(data['tags']);
+      if (data['localPhotoPaths'] != null) localPhotoPaths = List<String>.from(data['localPhotoPaths']);
+      if (data['photoUrls'] != null) photoUrls = List<String>.from(data['photoUrls']);
+      pricePerNight = (data['pricePerNight'] as num?)?.toDouble() ?? 1000.0;
+      weekendPrice = (data['weekendPrice'] as num?)?.toDouble();
+      weeklyDiscountPercent = (data['weeklyDiscountPercent'] as num?)?.toDouble();
+      monthlyDiscountPercent = (data['monthlyDiscountPercent'] as num?)?.toDouble();
+      numberOfRooms = data['numberOfRooms'] ?? 1;
+      bedsPerRoom = data['bedsPerRoom'] ?? 1;
+      if (data['bedTypes'] != null) bedTypes = List<String>.from(data['bedTypes']);
+      instantBook = data['instantBook'] ?? true;
+      checkInTime = data['checkInTime'] ?? '14:00';
+      checkOutTime = data['checkOutTime'] ?? '11:00';
+      minStay = data['minStay'] ?? 1;
+      maxStay = data['maxStay'];
+      houseRules = data['houseRules'] ?? '';
+      cancellationPolicy = data['cancellationPolicy'] ?? 'Flexible';
+      petsAllowed = data['petsAllowed'] ?? false;
+      smokingAllowed = data['smokingAllowed'] ?? false;
+      partiesAllowed = data['partiesAllowed'] ?? false;
+      accountHolderName = data['accountHolderName'] ?? '';
+      accountNumber = data['accountNumber'] ?? '';
+      ifscCode = data['ifscCode'] ?? '';
+      bankName = data['bankName'] ?? '';
+      upiId = data['upiId'] ?? '';
+      pickupLocation = data['pickupLocation'] ?? '';
+      dropLocation = data['dropLocation'] ?? '';
+      vehicleType = data['vehicleType'] ?? 'Campervan';
+      if (data['rvFacilities'] != null) rvFacilities = List<String>.from(data['rvFacilities']);
+      terrainType = data['terrainType'] ?? 'Forest';
+      tentCapacity = data['tentCapacity'] ?? 4;
+      hasCampfire = data['hasCampfire'] ?? false;
+      bedCount = data['bedCount'] ?? 4;
+      dormType = data['dormType'] ?? 'Mixed';
+      hasLocker = data['hasLocker'] ?? false;
+      longTermAvailable = data['longTermAvailable'] ?? true;
+      monthlyRent = (data['monthlyRent'] as num?)?.toDouble();
+      securityDeposit = (data['securityDeposit'] as num?)?.toDouble();
+      leaseDurationMonths = data['leaseDurationMonths'] ?? 11;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error restoring host onboarding draft: $e');
+    }
+  }
+
+  Future<void> clearDraftPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('host_onboarding_in_progress');
+      await prefs.remove('host_onboarding_step');
+      await prefs.remove('host_onboarding_draft');
+    } catch (e) {
+      debugPrint('Error clearing host onboarding draft: $e');
     }
   }
 

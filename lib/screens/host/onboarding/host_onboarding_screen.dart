@@ -87,6 +87,14 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final hostProvider = context.read<HostOnboardingProvider>();
+      if (mounted && hostProvider.currentPage > 0) {
+        setState(() {
+          _currentIndex = hostProvider.currentPage;
+        });
+      }
+    });
   }
 
   @override
@@ -149,28 +157,35 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
     }
 
     if (_currentIndex < currentScreens.length - 1) {
+      final nextIdx = _currentIndex + 1;
       setState(() {
-        _currentIndex++;
+        _currentIndex = nextIdx;
       });
+      provider.setPage(nextIdx);
     } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => HostSuccessPassportScreen(
-            propertyTitle: provider.title.isNotEmpty ? provider.title : 'Luxury Boutique Stay',
-            city: provider.city.isNotEmpty ? provider.city : 'Goa',
-            pricePerNight: provider.pricePerNight > 0 ? provider.pricePerNight : 12500,
+      await provider.clearDraftPrefs();
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => HostSuccessPassportScreen(
+              propertyTitle: provider.title.isNotEmpty ? provider.title : 'Luxury Boutique Stay',
+              city: provider.city.isNotEmpty ? provider.city : 'Goa',
+              pricePerNight: provider.pricePerNight > 0 ? provider.pricePerNight : 12500,
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
   }
 
-  void _previousPage() {
+  void _previousPage(HostOnboardingProvider provider) {
     if (_currentIndex > 0) {
+      final prevIdx = _currentIndex - 1;
       setState(() {
-        _currentIndex--;
+        _currentIndex = prevIdx;
       });
+      provider.setPage(prevIdx);
     }
   }
 
@@ -189,6 +204,50 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
           body: SafeArea(
             child: Column(
               children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.home_work_rounded, color: AppColors.primary, size: 20),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Step ${_currentIndex + 1} of ${currentScreens.length}',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                      TextButton.icon(
+                        onPressed: () async {
+                          await provider.saveDraftToPrefs();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Draft saved. You can resume anytime!'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                            Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);
+                          }
+                        },
+                        icon: const Icon(Icons.bookmark_outline_rounded, size: 18, color: AppColors.primary),
+                        label: const Text(
+                          'Save & Exit',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 TweenAnimationBuilder<double>(
                   duration: const Duration(milliseconds: 300),
                   tween: Tween<double>(
@@ -252,7 +311,7 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
                     // Back Button
                     if (_currentIndex > 0 && !isWelcomeScreen)
                       TextButton(
-                        onPressed: _previousPage,
+                        onPressed: () => _previousPage(provider),
                         child: const Text('Back', style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold)),
                       ),
                     
