@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../providers/host_onboarding_provider.dart';
 import '../../../../theme/app_colors.dart';
-import '../widgets/qube_ai_listing_assistant_widget.dart';
 
 class PropertyBasicInfoScreen extends StatefulWidget {
   const PropertyBasicInfoScreen({Key? key}) : super(key: key);
@@ -85,6 +84,7 @@ class _PropertyBasicInfoScreenState extends State<PropertyBasicInfoScreen> {
     final provider = Provider.of<HostOnboardingProvider>(context);
 
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,97 +93,79 @@ class _PropertyBasicInfoScreenState extends State<PropertyBasicInfoScreen> {
             'Basic Info',
             style: TextStyle(
               fontSize: 28,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w900,
               color: AppColors.textPrimary,
+              letterSpacing: -0.5,
             ),
           ).animate().fadeIn().slideX(),
           const SizedBox(height: 6),
           const Text(
-            'Tell us about your space, or let Qube AI craft it for you!',
+            'Give your property a catchy title and clear description for guests.',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
             ),
           ).animate().fadeIn(delay: 100.ms).slideX(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
-          // Qube AI Assistant Widget
-          QubeAiListingAssistantWidget(
-            onApplyMagic: (title, description, amenities, price) {
-              setState(() {
-                _titleController.text = title;
-                _descController.text = description;
-              });
-              provider.updateBasicInfo(
-                title,
-                description,
-                provider.bedrooms,
-                provider.bathrooms,
-                provider.maxGuests,
-              );
-              provider.pricePerNight = price.toDouble();
-              for (final a in amenities) {
-                provider.toggleAmenity(a);
-              }
-            },
-          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1),
-
-          const SizedBox(height: 28),
-          
           const Text(
             'Property Title',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
               color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.borderLight),
             ),
             child: TextField(
               controller: _titleController,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
               decoration: const InputDecoration(
-                hintText: 'E.g., Cozy Beachfront Villa',
+                hintText: 'e.g. Luxury Seaview Villa with Private Infinity Pool',
+                hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
           const Text(
             'Description',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
               color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.borderLight),
             ),
             child: TextField(
               controller: _descController,
-              maxLines: 4,
+              maxLines: 5,
+              style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.textPrimary),
               decoration: const InputDecoration(
-                hintText: 'Describe your place...',
+                hintText: 'Describe your rooms, views, dining options, check-in timings, and house vibe...',
+                hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 28),
 
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: AppColors.cardBg,
-              borderRadius: BorderRadius.circular(16),
+              color: AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(color: AppColors.borderLight),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -217,6 +199,8 @@ class _PropertyBasicInfoScreenState extends State<PropertyBasicInfoScreen> {
               ],
             ),
           ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
+
+          const SizedBox(height: 40),
         ],
       ),
     );
