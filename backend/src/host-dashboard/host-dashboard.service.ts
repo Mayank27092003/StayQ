@@ -6,6 +6,7 @@ import { AvailabilityBlockType } from '@prisma/client';
 export class HostDashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getDashboardData(hostId: string) {
     // 0. Resolve Host User profile
     const hostUser = await this.prisma.user.findFirst({
       where: {
@@ -21,7 +22,7 @@ export class HostDashboardService {
         email: true,
         phone: true,
         isSuperhost: true,
-        hostPayoutAccount: true,
+        payoutAccount: true,
       },
     });
 
@@ -35,12 +36,21 @@ export class HostDashboardService {
           { host: { firebaseUid: hostId } },
         ],
       },
-      select: { id: true, status: true, numberOfRooms: true, type: true },
+      select: {
+        id: true,
+        status: true,
+        bedrooms: true,
+        type: true,
+        roomTypes: { select: { totalRooms: true } },
+      },
     });
 
     const activeListings = properties.filter(p => p.status === 'ACTIVE').length;
     const propertyIds = properties.map(p => p.id);
-    const totalRooms = properties.reduce((sum, p) => sum + (p.numberOfRooms || 1), 0);
+    const totalRooms = properties.reduce(
+      (sum, p) => sum + (p.roomTypes.length > 0 ? p.roomTypes.reduce((rSum, rt) => rSum + rt.totalRooms, 0) : (p.bedrooms || 1)),
+      0,
+    );
 
     // 2. Fetch recent bookings and all historical bookings for chart analytics
     const allBookings = await this.prisma.booking.findMany({
@@ -117,10 +127,10 @@ export class HostDashboardService {
     }
 
     return {
-      hostName: hostUser?.displayName || hostUser?.hostPayoutAccount?.accountHolderName || 'Host',
+      hostName: hostUser?.displayName || hostUser?.payoutAccount?.accountHolderName || 'Host',
       hostAvatar: hostUser?.photoUrl || '',
       isSuperhost: hostUser?.isSuperhost ?? true,
-      isPayoutVerified: !!hostUser?.hostPayoutAccount?.verified,
+      isPayoutVerified: !!hostUser?.payoutAccount?.verified,
       activeListings,
       totalListings: properties.length,
       totalRooms,
