@@ -9,6 +9,74 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const String _apiUrl = 'https://stayq-api-608570851336.asia-south1.run.app';
 
+class RoomCategoryConfig {
+  String id;
+  String categoryName; // "Deluxe King Room", "Executive Suite", "Standard Room", or "Bedroom 1"
+  int quantity; // e.g. 40 rooms for hotel, 1 for villa
+  String bedType; // "King Size Bed", "Queen Bed", "Double / Twin Beds", "Bunk Beds", "Single Bed"
+  int bedCount; // 1, 2
+  int maxGuests; // 2, 3, 4
+  double pricePerNight; // Base price for this specific room
+  double? weekendPrice;
+  bool hasAttachedBathroom;
+  bool hasAc;
+  bool hasBalcony;
+  bool hasTv;
+  bool hasBathtub;
+  bool hasBreakfast;
+
+  RoomCategoryConfig({
+    required this.id,
+    required this.categoryName,
+    this.quantity = 1,
+    this.bedType = 'King Size Bed',
+    this.bedCount = 1,
+    this.maxGuests = 2,
+    this.pricePerNight = 3500.0,
+    this.weekendPrice,
+    this.hasAttachedBathroom = true,
+    this.hasAc = true,
+    this.hasBalcony = false,
+    this.hasTv = true,
+    this.hasBathtub = false,
+    this.hasBreakfast = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'categoryName': categoryName,
+    'quantity': quantity,
+    'bedType': bedType,
+    'bedCount': bedCount,
+    'maxGuests': maxGuests,
+    'pricePerNight': pricePerNight,
+    'weekendPrice': weekendPrice,
+    'hasAttachedBathroom': hasAttachedBathroom,
+    'hasAc': hasAc,
+    'hasBalcony': hasBalcony,
+    'hasTv': hasTv,
+    'hasBathtub': hasBathtub,
+    'hasBreakfast': hasBreakfast,
+  };
+
+  factory RoomCategoryConfig.fromJson(Map<String, dynamic> json) => RoomCategoryConfig(
+    id: json['id'] ?? 'rc_${DateTime.now().millisecondsSinceEpoch}',
+    categoryName: json['categoryName'] ?? 'Deluxe Room',
+    quantity: json['quantity'] ?? 1,
+    bedType: json['bedType'] ?? 'King Size Bed',
+    bedCount: json['bedCount'] ?? 1,
+    maxGuests: json['maxGuests'] ?? 2,
+    pricePerNight: (json['pricePerNight'] as num?)?.toDouble() ?? 3500.0,
+    weekendPrice: (json['weekendPrice'] as num?)?.toDouble(),
+    hasAttachedBathroom: json['hasAttachedBathroom'] ?? true,
+    hasAc: json['hasAc'] ?? true,
+    hasBalcony: json['hasBalcony'] ?? false,
+    hasTv: json['hasTv'] ?? true,
+    hasBathtub: json['hasBathtub'] ?? false,
+    hasBreakfast: json['hasBreakfast'] ?? false,
+  );
+}
+
 class HostOnboardingProvider extends ChangeNotifier {
   int currentPage = 0;
 
@@ -53,14 +121,65 @@ class HostOnboardingProvider extends ChangeNotifier {
   List<String> amenities = [];
   List<String> tags = [];
 
-  // ─── Room Setup & Pricing ───
+  // ─── Room Setup & Multi-Inventory Pricing ───
   double pricePerNight = 1000.0;
   int numberOfRooms = 1;
   int bedsPerRoom = 1;
   List<String> bedTypes = ['King Bed'];
+  List<RoomCategoryConfig> roomCategories = [];
   double? weekendPrice;
   double? weeklyDiscountPercent;
   double? monthlyDiscountPercent;
+
+  bool get isMultiInventoryProperty =>
+      propertyType == 'HOTEL' ||
+      propertyType == 'RESORT' ||
+      propertyType == 'HOSTEL' ||
+      propertyType == 'DORM';
+
+  void addRoomCategory(RoomCategoryConfig category) {
+    roomCategories.add(category);
+    _syncInventoryAggregates();
+    notifyListeners();
+    saveDraftToPrefs();
+  }
+
+  void updateRoomCategory(int index, RoomCategoryConfig updated) {
+    if (index >= 0 && index < roomCategories.length) {
+      roomCategories[index] = updated;
+      _syncInventoryAggregates();
+      notifyListeners();
+      saveDraftToPrefs();
+    }
+  }
+
+  void removeRoomCategory(int index) {
+    if (index >= 0 && index < roomCategories.length) {
+      roomCategories.removeAt(index);
+      _syncInventoryAggregates();
+      notifyListeners();
+      saveDraftToPrefs();
+    }
+  }
+
+  void setRoomCategories(List<RoomCategoryConfig> categories) {
+    roomCategories = List.from(categories);
+    _syncInventoryAggregates();
+    notifyListeners();
+    saveDraftToPrefs();
+  }
+
+  void _syncInventoryAggregates() {
+    if (roomCategories.isNotEmpty) {
+      if (isMultiInventoryProperty) {
+        numberOfRooms = roomCategories.fold(0, (sum, r) => sum + r.quantity);
+        pricePerNight = roomCategories.map((r) => r.pricePerNight).reduce((a, b) => a < b ? a : b);
+      } else {
+        numberOfRooms = roomCategories.length;
+        maxGuests = roomCategories.fold(0, (sum, r) => sum + r.maxGuests);
+      }
+    }
+  }
 
   // ─── Availability ───
   bool instantBook = true;
@@ -356,6 +475,7 @@ class HostOnboardingProvider extends ChangeNotifier {
         'monthlyDiscountPercent': monthlyDiscountPercent,
         'numberOfRooms': numberOfRooms,
         'bedsPerRoom': bedsPerRoom,
+        'roomCategories': roomCategories.map((r) => r.toJson()).toList(),
         'instantBook': instantBook,
         'checkInTime': checkInTime,
         'checkOutTime': checkOutTime,
@@ -470,6 +590,7 @@ class HostOnboardingProvider extends ChangeNotifier {
         'numberOfRooms': numberOfRooms,
         'bedsPerRoom': bedsPerRoom,
         'bedTypes': bedTypes,
+        'roomCategories': roomCategories.map((r) => r.toJson()).toList(),
         'instantBook': instantBook,
         'checkInTime': checkInTime,
         'checkOutTime': checkOutTime,
@@ -545,6 +666,11 @@ class HostOnboardingProvider extends ChangeNotifier {
       numberOfRooms = data['numberOfRooms'] ?? 1;
       bedsPerRoom = data['bedsPerRoom'] ?? 1;
       if (data['bedTypes'] != null) bedTypes = List<String>.from(data['bedTypes']);
+      if (data['roomCategories'] != null) {
+        roomCategories = (data['roomCategories'] as List)
+            .map((c) => RoomCategoryConfig.fromJson(c as Map<String, dynamic>))
+            .toList();
+      }
       instantBook = data['instantBook'] ?? true;
       checkInTime = data['checkInTime'] ?? '14:00';
       checkOutTime = data['checkOutTime'] ?? '11:00';

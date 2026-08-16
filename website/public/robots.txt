@@ -1,0 +1,19 @@
+# Robots.txt for Stay Q (https://stayq.in)
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /checkout/
+
+# Major Search Engine Bots
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /images/
+
+User-agent: Bingbot
+Allow: /
+
+# Sitemap
+Sitemap: https://stayq.in/sitemap.xml

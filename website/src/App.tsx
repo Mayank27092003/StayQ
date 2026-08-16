@@ -47,22 +47,34 @@ function AppContent() {
       setCurrentPath(path);
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
+      // Dynamic SEO Title & Meta Management
       if (path === '#/zero-broker' || path === '/zero-broker') {
+        document.title = 'Zero-Broker 11-Month Rental Homes in India | Stay Q';
         updateFilters({ category: 'ZERO_BROKER', zeroBrokerOnly: true });
-      }
-
-      if (path === '#/rvs' || path === '/rvs') {
+      } else if (path === '#/rvs' || path === '/rvs') {
+        document.title = 'Rent Luxury RVs, Campervans & Motorhomes in India | Stay Q';
         updateFilters({ category: 'RV' });
-      }
-
-      if (path === '#/camping' || path === '/camping') {
+      } else if (path === '#/camping' || path === '/camping') {
+        document.title = 'Camping, Glamping & Tents in India | Stay Q Camping Sites';
         updateFilters({ category: 'CAMPING_SITE' });
-      }
-
-      if (path === '#/support' || path === '/support') {
+      } else if (path === '#/experiences' || path === '/experiences') {
+        document.title = 'Handpicked Local Tours & Experiences in India | Stay Q';
+      } else if (path === '#/host-invite' || path === '/host-invite' || path === '#/invite' || path === '/invite') {
+        document.title = 'List Your Property & Earn with Zero Commission | Host on Stay Q';
+      } else if (path === '#/about' || path === '/about') {
+        document.title = 'About Stay Q — India\'s Premier Homestay & Zero-Broker Platform';
+      } else if (path === '#/contact' || path === '/contact') {
+        document.title = 'Contact & 24/7 Concierge Support | Stay Q';
+      } else if (path === '#/stays' || path === '/stays') {
+        document.title = 'Explore Luxury Homestays, Villas & Cottages in India | Stay Q';
+      } else if (path === '#/support' || path === '/support') {
         setIsSupportOpen(true);
+      } else {
+        document.title = 'Stay Q | Luxury Homestays, Villas, RVs & Zero-Broker Rentals in India';
       }
     };
+
+    handleHashChange(); // Run on initial mount
 
     window.addEventListener('hashchange', handleHashChange);
     window.addEventListener('popstate', handleHashChange);
@@ -71,7 +83,7 @@ function AppContent() {
       window.removeEventListener('hashchange', handleHashChange);
       window.removeEventListener('popstate', handleHashChange);
     };
-  }, [updateFilters]);
+  }, [updateFilters, setIsSupportOpen]);
 
   // Route matches
   const isDisruptivePolicyPage = currentPath === '#/policy/disruptive-events' || currentPath === '/policy/disruptive-events';
