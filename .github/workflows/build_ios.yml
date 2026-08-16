@@ -26,19 +26,16 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Install Dependencies & Pods
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Pod install
+        working-directory: ios
         run: |
-          flutter --version
-          flutter precache --ios
-          flutter pub get
-          cd ios
-          pod repo update || true
-          pod install
-          cd ..
+          pod install --repo-update
 
       - name: Build iOS App (.ipa / Runner.app)
         run: |
-          mkdir -p build/ios/iphoneos
           flutter build ios --release --no-codesign
 
       - name: Package Payload as .ipa
