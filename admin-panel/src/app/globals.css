@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #9D00FF;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #ecd9ff;
+  --color-on-primary-container: #2b0053;
+  --color-primary-fixed: #ecd9ff;
+  --color-primary-fixed-dim: #d3b0ff;
+  --color-on-primary-fixed: #2b0053;
+  --color-on-primary-fixed-variant: #490088;
+
+  --color-secondary: #F40009;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #ffdad5;
+  --color-on-secondary-container: #410001;
+  --color-secondary-fixed: #ffdad5;
+  --color-secondary-fixed-dim: #ffb4a8;
+  --color-on-secondary-fixed: #410001;
+  --color-on-secondary-fixed-variant: #930005;
+
+  --color-tertiary: #F5F5DC;
+  --color-on-tertiary: #3a3928;
+  --color-tertiary-container: #e8e8ce;
+  --color-on-tertiary-container: #474735;
+  --color-tertiary-fixed: #fcfcdc;
+  --color-tertiary-fixed-dim: #e0e0c5;
+  --color-on-tertiary-fixed: #1e1e10;
+  --color-on-tertiary-fixed-variant: #343424;
+
+  --color-background: #fcfcfc;
+  --color-on-background: #1a1c18;
+  --color-surface: #fcfcfc;
+  --color-on-surface: #1a1c18;
+  --color-surface-variant: #e0e4d6;
+  --color-on-surface-variant: #44483d;
+  --color-surface-dim: #dcded8;
+  --color-surface-bright: #fcfcfc;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f6f8f1;
+  --color-surface-container: #f0f2eb;
+  --color-surface-container-high: #eaece6;
+  --color-surface-container-highest: #e4e6e0;
+
+  --color-outline: #74796c;
+  --color-outline-variant: #c4c8ba;
+
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+
+  --spacing-md: 1rem;
+  --spacing-2xl: 3rem;
+  --spacing-sm: 0.75rem;
+  --spacing-xs: 0.5rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-margin: 32px;
+  --spacing-base: 4px;
+  --spacing-gutter: 24px;
+
+  --font-headline-lg: "Rubik", sans-serif;
+  --font-body-lg: "Rubik", sans-serif;
+  --font-headline-lg-mobile: "Rubik", sans-serif;
+  --font-data-mono: "Rubik", monospace;
+  --font-body-md: "Rubik", sans-serif;
+  --font-headline-md: "Rubik", sans-serif;
+  --font-display-lg: "Rubik", sans-serif;
+  --font-label-md: "Rubik", sans-serif;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-on-background);
+  font-family: var(--font-body-md);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}

@@ -1,0 +1,1667 @@
+// ============================================================================
+// Stay Q — Complete Prisma Schema
+// NestJS + PostgreSQL 16 (PostGIS, pg_trgm, btree_gist)
+// ============================================================================
+// NOTE: PostgreSQL extensions (PostGIS, pg_trgm, btree_gist) and the
+// EXCLUDE constraint for double-booking prevention must be enabled via
+// a hand-written migration. See prisma/migrations/README.md
+// ============================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  GUEST
+  HOST
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  OPERATIONS
+  TRUST_SAFETY
+  FINANCE
+  MARKETING
+}
+
+enum PropertyStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  REJECTED
+}
+
+enum PropertyType {
+  EXPERIENCES
+  VILLA
+  APARTMENT
+  CABIN
+  COTTAGE
+  FARMHOUSE
+  PENTHOUSE
+  STUDIO
+  HOSTEL
+  HOMESTAY
+  HOTEL
+  CAMPING_SITE
+  RV
+  DORM
+  LONG_TERM_HOME
+}
+
+enum PropertyCategory {
+  EXPERIENCES
+  VILLA
+  APARTMENT
+  CABIN
+  LAKEFRONT
+  MANSION
+  AMAZING_POOLS
+  BEACHFRONT
+  DESIGN
+  COUNTRYSIDE
+  TROPICAL
+  TREEHOUSE
+  CAMPING
+  SKIING
+  ARCTIC
+}
+
+enum AvailabilityBlockType {
+  BOOKED
+  HOST_BLOCKED
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  PENDING_HOST_APPROVAL
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  CAPTURED
+  REFUNDED
+  RELEASED
+}
+
+enum PayoutStatus {
+  PENDING
+  ELIGIBLE
+  PROCESSING
+  COMPLETED
+  ON_HOLD
+}
+
+enum LeaseStatus {
+  DRAFT
+  PENDING_TENANT_SIGN
+  PENDING_OWNER_SIGN
+  ACTIVE
+  RENEWAL_PENDING
+  EXPIRED
+  TERMINATED
+}
+
+enum ExperienceCategory {
+  ADVENTURE
+  FOOD_AND_DRINK
+  ART_AND_CULTURE
+  NATURE
+  WELLNESS
+  SPORTS
+  NIGHTLIFE
+  SIGHTSEEING
+  WORKSHOPS
+  LOCAL_LIFE
+}
+
+enum PropertyTagType {
+  GUEST_FAVOURITE
+  PET_FRIENDLY
+  SUPERHOST
+  POPULAR_IN_AREA
+  PREMIUM
+  ZERO_BROKER
+  INSTANT_BOOK
+  NEW_LISTING
+  FAMILY_FRIENDLY
+  COUPLE_FRIENDLY
+  WORKCATION
+}
+
+enum CouponType {
+  PERCENTAGE
+  FLAT
+}
+
+enum WalletEntryType {
+  CREDIT
+  DEBIT
+}
+
+enum ReferralStatus {
+  PENDING
+  SIGNED_UP
+  FIRST_BOOKING
+  REWARDED
+}
+
+enum DisputeReason {
+  PROPERTY_NOT_AS_DESCRIBED
+  CLEANLINESS_ISSUE
+  HOST_NO_SHOW
+  GUEST_DAMAGE
+  PAYMENT_ISSUE
+  SAFETY_CONCERN
+  OTHER
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_GUEST_FAVOUR
+  RESOLVED_HOST_FAVOUR
+  ESCALATED
+  CLOSED
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  BOOKING_REQUEST      // For non-instant-book hosts
+  PAYMENT_CAPTURED
+  PAYOUT_RELEASED
+  NEW_MESSAGE
+  NEW_REVIEW
+  REVIEW_REMINDER
+  PRICE_DROP           // Saved search alert
+  PROMOTION
+  SYSTEM
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+// ============================================================================
+// USER & AUTH
+// ============================================================================
+
+model User {
+  id              String    @id @default(uuid())
+  firebaseUid     String    @unique
+  email           String?   @unique
+  phone           String?   @unique
+  displayName     String?
+  photoUrl        String?
+  bio             String?
+  location        String?
+  gender          String?
+  dob             DateTime?
+  roles           UserRole[] @default([GUEST])
+  isAdmin         Boolean   @default(false)  // Never settable via API
+  adminRole       AdminRole?
+  isSuperhost     Boolean   @default(false)
+
+  // Host-specific (populated when role includes HOST)
+  responseRate    Float?    // Percentage
+  responseTime    Int?      // Average minutes
+
+  // Host lifecycle, managed by admins. Null until a host review takes place, so
+  // existing rows are unaffected.
+  hostStatus            HostStatus?
+  hostStatusReason      String?
+  hostStatusUpdatedAt   DateTime?
+  hostStatusUpdatedById String?
+
+  // Referral
+  referralCode    String?   @unique
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  payoutAccount       HostPayoutAccount?
+  properties          Property[]
+  experiences         Experience[]
+  bookingsAsGuest     Booking[]           @relation("GuestBookings")
+  hostEarnings        HostEarning[]
+  reviewsWritten      Review[]
+  wishlist            Wishlist[]
+  savedSearches       SavedSearch[]
+  conversationsAsGuest Conversation[]     @relation("GuestConversations")
+  conversationsAsHost  Conversation[]     @relation("HostConversations")
+  messagesSent        Message[]
+  notifications       Notification[]
+  deviceTokens        DeviceToken[]
+  walletEntries       WalletEntry[]
+  notificationPrefs   NotificationPreference?
+  referralsSent       Referral[]          @relation("ReferrerRelation")
+  referralsReceived   Referral?           @relation("ReferredRelation")
+  disputesRaised      Dispute[]
+  auditLogs           AdminAuditLog[]
+
+  @@index([firebaseUid])
+  @@index([email])
+}
+
+model HostPayoutAccount {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bankName        String
+  accountNumber   String    // Encrypted at application level
+  ifscCode        String
+  accountHolderName String
+  
+  govIdType       String?   // "aadhaar", "pan", "passport"
+  govIdNumber     String?   // Encrypted
+  govIdDocUrl     String?   // GCS URL
+
+  upiId           String?
+  passbookImageUrl String?
+
+  verified        Boolean   @default(false)
+  verifiedAt      DateTime?
+  verifiedBy      String?   // Admin userId
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// ============================================================================
+// PROPERTY
+// ============================================================================
+
+model Property {
+  id              String          @id @default(uuid())
+  hostId          String
+  host            User            @relation(fields: [hostId], references: [id])
+
+  title           String
+  description     String
+  type            PropertyType
+  category        PropertyCategory
+
+  // Location
+  address         String
+  city            String
+  state           String
+  country         String          @default("India")
+  pincode         String?
+  lat             Float?
+  lng             Float?
+
+  // Capacity
+  bedrooms        Int             @default(1)
+  bathrooms       Int             @default(1)
+  beds            Int             @default(1)
+  maxGuests       Int             @default(2)
+
+  // Details
+  amenities       String[]        // ["wifi", "pool", "parking", "ac", ...]
+  houseRules      String?
+  checkInTime     String          @default("14:00")
+  checkOutTime    String          @default("11:00")
+
+  // Pricing
+  pricePerNight   Decimal
+  cleaningFee     Decimal         @default(0)
+  weeklyDiscount  Float?          // Percentage (e.g., 10 = 10%)
+  monthlyDiscount Float?
+
+  // Booking behavior
+  instantBook     Boolean         @default(true)
+  minStay         Int             @default(1)
+  maxStay         Int?
+
+  // Zero Broker - Long-term lease support
+  longTermAvailable Boolean       @default(false)
+  monthlyRent       Decimal?
+  securityDeposit   Decimal?
+  leaseDurationMonths Int?        @default(11)
+
+  // Cancellation
+  cancellationPolicy String      @default("flexible") // flexible, moderate, strict
+
+  status          PropertyStatus  @default(DRAFT)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Host Onboarding extensions
+  yearEstablished Int?
+  starRating      Float?
+  languagesSpoken String[]        @default([])
+  petsAllowed     Boolean         @default(false)
+  smokingAllowed  Boolean         @default(false)
+  partiesAllowed  Boolean         @default(false)
+
+  // RV-specific fields
+  pickupLocation  String?
+  dropLocation    String?
+  vehicleType     String?         // e.g. "Caravan", "Motorhome", "Campervan"
+  rvFacilities    String[]        @default([])
+
+  // Camping-specific fields
+  terrainType     String?         // e.g. "Forest", "Riverside", "Mountain"
+  tentCapacity    Int?
+  hasCampfire     Boolean         @default(false)
+
+  // Hostel/Dorm-specific fields
+  bedCount        Int?
+  dormType        String?         // e.g. "Mixed", "Female-only"
+  hasLocker       Boolean         @default(false)
+
+  // Relations
+  images          PropertyImage[]
+  availabilityBlocks AvailabilityBlock[]
+  bookings        Booking[]
+  reviews         Review[]
+  tags            PropertyTag[]
+  wishlistedBy    Wishlist[]
+  conversations   Conversation[]
+  leaseAgreements LeaseAgreement[]
+  roomTypes       RoomType[]      // Added for multi-unit properties
+  featuredPlacements FeaturedPlacement[]
+
+  @@index([city])
+  @@index([category])
+  @@index([status])
+  @@index([hostId])
+  @@index([pricePerNight])
+}
+
+model RoomType {
+  id              String        @id @default(uuid())
+  propertyId      String
+  property        Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  name            String        // e.g. "Deluxe King Room"
+  totalRooms      Int           @default(1)
+  guestCapacity   Int           @default(2)
+  roomSizeSqft    Int?
+  bedType         String?
+  bathroomType    String?
+  amenities       String[]      // ["ac", "tv", "balcony"]
+
+  // Pricing
+  basePrice       Decimal
+  weekendPrice    Decimal?
+  extraGuestCharge Decimal?      @default(0)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  bookings        Booking[]
+
+  @@index([propertyId])
+}
+
+model PropertyImage {
+  id          String    @id @default(uuid())
+  propertyId  String
+  property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  url         String    // GCS URL
+  order       Int       @default(0)
+  caption     String?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([propertyId])
+}
+
+model PropertyTag {
+  id          String          @id @default(uuid())
+  propertyId  String
+  property    Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  tag         PropertyTagType
+  autoApplied Boolean         @default(false)
+
+  createdAt   DateTime        @default(now())
+
+  @@unique([propertyId, tag])
+}
+
+// ============================================================================
+// AVAILABILITY & BOOKING
+// ============================================================================
+
+// Double-booking prevention:
+// A hand-written migration adds:
+//   ALTER TABLE availability_blocks ADD CONSTRAINT no_overlapping_blocks
+//   EXCLUDE USING gist (
+//     property_id WITH =,
+//     daterange(start_date, end_date, '[)') WITH &&
+//   );
+
+model AvailabilityBlock {
+  id          String                @id @default(uuid())
+  propertyId  String
+  property    Property              @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  bookingId   String?
+  booking     Booking?              @relation(fields: [bookingId], references: [id])
+
+  startDate   DateTime
+  endDate     DateTime
+  type        AvailabilityBlockType
+
+  createdAt   DateTime              @default(now())
+
+  @@index([propertyId])
+  @@index([startDate, endDate])
+}
+
+model Booking {
+  id              String        @id @default(uuid())
+  propertyId      String
+  property        Property      @relation(fields: [propertyId], references: [id])
+  guestId         String
+  guest           User          @relation("GuestBookings", fields: [guestId], references: [id])
+
+  // Dates
+  checkIn         DateTime
+  checkOut        DateTime
+  adults          Int           @default(1)
+  children        Int           @default(0)
+
+  // Snapshot of pricing at booking time
+  nightlyRate     Decimal
+  numberOfNights  Int
+  subtotal        Decimal
+  cleaningFee     Decimal       @default(0)
+  serviceFee      Decimal       @default(0)  // Platform fee
+  taxes           Decimal       @default(0)
+  couponDiscount  Decimal       @default(0)
+  totalAmount     Decimal
+
+  // Status
+  status          BookingStatus @default(PENDING_PAYMENT)
+  confirmationCode String       @unique
+
+  // Coupon used
+  couponCode      String?
+
+  // Cancellation
+  cancellationPolicy String?
+  cancelledAt     DateTime?
+  cancelledBy     String?       // "guest" or "host"
+  cancellationReason String?
+
+  // Idempotency
+  idempotencyKey  String?       @unique
+
+  // Room selection (for multi-unit properties)
+  roomTypeId      String?
+  roomType        RoomType?     @relation(fields: [roomTypeId], references: [id])
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  payment         Payment?
+  review          Review?
+  availabilityBlocks AvailabilityBlock[]
+  hostEarning     HostEarning?
+  leaseAgreement  LeaseAgreement?
+  conversations   Conversation[]
+  dispute         Dispute?
+  statusHistory   BookingStatusHistory[]
+
+  @@index([guestId])
+  @@index([propertyId])
+  @@index([roomTypeId])
+  @@index([status])
+  @@index([confirmationCode])
+}
+
+// ============================================================================
+// LEASE AGREEMENT (Zero Broker / 11-Month)
+// ============================================================================
+
+model LeaseAgreement {
+  id                  String      @id @default(uuid())
+  bookingId           String      @unique
+  booking             Booking     @relation(fields: [bookingId], references: [id])
+  propertyId          String
+  property            Property    @relation(fields: [propertyId], references: [id])
+
+  leaseDurationMonths Int         @default(11)
+  monthlyRent         Decimal
+  securityDeposit     Decimal
+  maintenanceCharge   Decimal     @default(0)
+
+  leaseStartDate      DateTime
+  leaseEndDate        DateTime
+
+  // Zero-broker USP
+  brokerFee           Decimal     @default(0)
+  platformFee         Decimal     // Our revenue
+
+  // Legal
+  agreementDocUrl     String?
+  status              LeaseStatus @default(DRAFT)
+
+  // Tenant verification
+  tenantIdProofUrl    String?
+  tenantAadhaarEncrypted String?
+
+  renewalReminderDate DateTime?
+
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+}
+
+// ============================================================================
+// PAYMENTS & EARNINGS
+// ============================================================================
+
+model Payment {
+  id                  String        @id @default(uuid())
+  bookingId           String        @unique
+  booking             Booking       @relation(fields: [bookingId], references: [id])
+
+  // Razorpay
+  razorpayOrderId     String?       @unique
+  razorpayPaymentId   String?       @unique
+  razorpaySignature   String?
+
+  amount              Decimal
+  currency            String        @default("INR")
+
+  // Commission split
+  platformCommission  Decimal       @default(0)
+  hostPayout          Decimal       @default(0)
+
+  status              PaymentStatus @default(PENDING)
+  capturedAt          DateTime?
+  releasedAt          DateTime?
+
+  // Idempotency
+  idempotencyKey      String?       @unique
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Relations
+  refunds             Refund[]
+
+  @@index([razorpayOrderId])
+}
+
+model Refund {
+  id                  String    @id @default(uuid())
+  paymentId           String
+  payment             Payment   @relation(fields: [paymentId], references: [id])
+
+  amount              Decimal
+  reason              String?
+  razorpayRefundId    String?   @unique
+
+  createdAt           DateTime  @default(now())
+}
+
+model HostEarning {
+  id              String       @id @default(uuid())
+  hostId          String
+  host            User         @relation(fields: [hostId], references: [id])
+  bookingId       String       @unique
+  booking         Booking      @relation(fields: [bookingId], references: [id])
+
+  grossAmount     Decimal
+  platformFee     Decimal
+  taxDeducted     Decimal      @default(0)
+  netPayout       Decimal
+
+  payoutStatus    PayoutStatus @default(PENDING)
+  payoutDate      DateTime?
+  payoutReference String?
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([hostId])
+  @@index([payoutStatus])
+}
+
+// ============================================================================
+// EXPERIENCES
+// ============================================================================
+
+model Experience {
+  id              String              @id @default(uuid())
+  hostId          String
+  host            User                @relation(fields: [hostId], references: [id])
+
+  title           String
+  description     String
+  category        ExperienceCategory
+
+  durationMinutes Int
+  maxGroupSize    Int
+  pricePerPerson  Decimal
+
+  includes        String[]
+  whatToBring     String[]
+
+  // Location
+  location        String
+  meetingPoint    String?
+  lat             Float?
+  lng             Float?
+
+  status          PropertyStatus      @default(DRAFT)
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // Relations
+  images          ExperienceImage[]
+  slots           ExperienceSlot[]
+  reviews         ExperienceReview[]
+
+  @@index([hostId])
+  @@index([category])
+}
+
+model ExperienceImage {
+  id              String      @id @default(uuid())
+  experienceId    String
+  experience      Experience  @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  url             String
+  order           Int         @default(0)
+
+  createdAt       DateTime    @default(now())
+}
+
+model ExperienceSlot {
+  id              String      @id @default(uuid())
+  experienceId    String
+  experience      Experience  @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  date            DateTime
+  startTime       String      // "10:00"
+  spotsTotal      Int
+  spotsTaken      Int         @default(0)
+
+  @@index([experienceId, date])
+}
+
+model ExperienceReview {
+  id              String      @id @default(uuid())
+  experienceId    String
+  experience      Experience  @relation(fields: [experienceId], references: [id])
+  guestId         String
+  
+  rating          Float
+  text            String?
+  photos          String[]
+
+  createdAt       DateTime    @default(now())
+
+  @@unique([experienceId, guestId])
+}
+
+// ============================================================================
+// REVIEWS
+// ============================================================================
+
+model Review {
+  id              String    @id @default(uuid())
+  propertyId      String
+  property        Property  @relation(fields: [propertyId], references: [id])
+  bookingId       String    @unique
+  booking         Booking   @relation(fields: [bookingId], references: [id])
+  guestId         String
+  guest           User      @relation(fields: [guestId], references: [id])
+
+  rating          Float     // 1.0 to 5.0
+  text            String?
+  photos          String[]
+
+  // Host reply
+  hostReply       String?
+  hostRepliedAt   DateTime?
+
+  // Two-way reveal: hidden until both parties submit or 14 days pass
+  visibleAt       DateTime?
+
+  // Moderation
+  reported        Boolean   @default(false)
+  reportReason    String?
+  moderated       Boolean   @default(false)
+
+  // Explicit moderation outcome. `moderated` remains as the legacy "an admin
+  // has looked at this" flag; moderationStatus carries the actual decision.
+  moderationStatus ReviewModerationStatus @default(PENDING)
+  moderatedAt     DateTime?
+  moderatedById   String?
+  moderationNote  String?
+  reportCount     Int       @default(0)
+
+  createdAt       DateTime  @default(now())
+
+  @@index([propertyId])
+  @@index([guestId])
+  @@index([moderationStatus])
+  @@index([reported])
+}
+
+// ============================================================================
+// WISHLIST & SAVED SEARCHES
+// ============================================================================
+
+model Wishlist {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId  String
+  property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, propertyId])
+}
+
+model SavedSearch {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Search criteria stored as JSON
+  city            String?
+  category        PropertyCategory?
+  checkIn         DateTime?
+  checkOut        DateTime?
+  minPrice        Decimal?
+  maxPrice        Decimal?
+  adults          Int?
+  amenities       String[]
+
+  lastMatchedAt   DateTime?
+  active          Boolean   @default(true)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+// ============================================================================
+// MESSAGING
+// ============================================================================
+
+model Conversation {
+  id          String    @id @default(uuid())
+  propertyId  String?
+  property    Property? @relation(fields: [propertyId], references: [id])
+  bookingId   String?
+  booking     Booking?  @relation(fields: [bookingId], references: [id])
+
+  guestId     String
+  guest       User      @relation("GuestConversations", fields: [guestId], references: [id])
+  hostId      String
+  host        User      @relation("HostConversations", fields: [hostId], references: [id])
+
+  lastMessageAt DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  messages    Message[]
+
+  @@index([guestId])
+  @@index([hostId])
+}
+
+model Message {
+  id              String        @id @default(uuid())
+  conversationId  String
+  conversation    Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId        String
+  sender          User          @relation(fields: [senderId], references: [id])
+
+  text            String
+  imageUrl        String?
+
+  readAt          DateTime?
+
+  createdAt       DateTime      @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+model Notification {
+  id          String            @id @default(uuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type        NotificationType
+  title       String
+  body        String
+  data        Json?             // { bookingId, propertyId, etc. }
+
+  readAt      DateTime?
+
+  createdAt   DateTime          @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+model DeviceToken {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token       String    @unique
+  platform    String    // "android", "ios", "web"
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model NotificationPreference {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  pushEnabled     Boolean   @default(true)
+  emailEnabled    Boolean   @default(true)
+  smsEnabled      Boolean   @default(false)
+
+  bookingUpdates  Boolean   @default(true)
+  messages        Boolean   @default(true)
+  promotions      Boolean   @default(false)
+  priceDrops      Boolean   @default(true)
+  reviewReminders Boolean   @default(true)
+
+  updatedAt       DateTime  @updatedAt
+}
+
+// ============================================================================
+// COUPONS & WALLET
+// ============================================================================
+
+model Coupon {
+  id              String      @id @default(uuid())
+  code            String      @unique
+  type            CouponType
+  value           Decimal     // Percentage or flat amount
+  
+  minBookingAmount Decimal?
+  maxDiscount     Decimal?    // Cap for percentage coupons
+  
+  usageLimit      Int?        // null = unlimited
+  usedCount       Int         @default(0)
+  perUserLimit    Int         @default(1)
+  
+  validFrom       DateTime
+  validUntil      DateTime
+  active          Boolean     @default(true)
+
+  // Targeting
+  applicableCategories PropertyCategory[]
+  applicableCities     String[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([code])
+}
+
+model WalletEntry {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
+
+  amount      Decimal
+  type        WalletEntryType
+  reason      String          // "referral_bonus", "goodwill_credit", "booking_payment"
+  referenceId String?         // bookingId, referralId, etc.
+
+  createdAt   DateTime        @default(now())
+
+  @@index([userId])
+}
+
+// ============================================================================
+// REFERRALS
+// ============================================================================
+
+model Referral {
+  id              String          @id @default(uuid())
+  referrerId      String
+  referrer        User            @relation("ReferrerRelation", fields: [referrerId], references: [id])
+
+  referredUserId  String?         @unique
+  referredUser    User?           @relation("ReferredRelation", fields: [referredUserId], references: [id])
+
+  referralCode    String
+  status          ReferralStatus  @default(PENDING)
+
+  referrerReward  Decimal         @default(500)
+  referredReward  Decimal         @default(300)
+  rewardClaimed   Boolean         @default(false)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([referralCode])
+}
+
+// ============================================================================
+// DISPUTES
+// ============================================================================
+
+model Dispute {
+  id          String          @id @default(uuid())
+  bookingId   String          @unique
+  booking     Booking         @relation(fields: [bookingId], references: [id])
+
+  raisedBy    String
+  raiser      User            @relation(fields: [raisedBy], references: [id])
+
+  reason      DisputeReason
+  description String
+  evidence    String[]        // Photo/document URLs
+
+  status      DisputeStatus   @default(OPEN)
+  resolution  String?
+  resolvedBy  String?
+  resolvedAt  DateTime?
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([status])
+}
+
+// ============================================================================
+// CMS & SUPPORT
+// ============================================================================
+
+model CmsPage {
+  id          String    @id @default(uuid())
+  slug        String    @unique  // "about", "faq", "privacy-policy", "terms"
+  title       String
+  content     String    // Rich HTML/Markdown
+  
+  updatedAt   DateTime  @updatedAt
+  updatedBy   String?   // Admin userId
+}
+
+model SupportTicket {
+  id          String                @id @default(uuid())
+  userId      String?
+  name        String
+  email       String
+  subject     String
+  message     String
+
+  status      SupportTicketStatus   @default(OPEN)
+  priority    SupportTicketPriority @default(NORMAL)
+  /// Free-form triage category, e.g. "booking", "payment", "listing".
+  category    String?
+  assignedTo  String?               // Admin userId
+  resolution  String?
+
+  firstRespondedAt DateTime?
+  resolvedAt       DateTime?
+
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  messages    SupportMessage[]
+
+  @@index([status, createdAt])
+  @@index([assignedTo])
+}
+
+// ============================================================================
+// ADMIN
+// ============================================================================
+
+model Broadcast {
+  id              String          @id @default(uuid())
+  adminId         String
+  title           String
+  body            String
+  targetAudience  String          // "all", "guests", "hosts"
+
+  status          BroadcastStatus @default(DRAFT)
+  scheduledFor    DateTime?
+
+  // Real delivery outcome, written after the send is attempted.
+  recipientCount  Int             @default(0)
+  deliveredCount  Int             @default(0)
+  failedCount     Int             @default(0)
+  errorMessage    String?
+
+  sentAt          DateTime?
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model AdminAuditLog {
+  id          String    @id @default(uuid())
+  adminId     String
+  admin       User      @relation(fields: [adminId], references: [id])
+
+  action      String    // "approve_property", "suspend_user", "release_payout", etc.
+  targetType  String    // "user", "property", "booking", "payment"
+  targetId    String
+  details     Json?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([adminId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// AUTHENTICATION
+// ============================================================================
+
+model OtpSession {
+  id        String   @id @default(uuid())
+  phone     String
+  otp       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone, otp])
+}
+
+// ============================================================================
+// ADMIN OPERATIONS
+// ----------------------------------------------------------------------------
+// Everything below backs the admin panel's advanced modules. All additions are
+// additive: new tables, plus nullable or defaulted columns on existing models,
+// so an existing database can adopt them without data loss.
+//
+// Admin actor columns are plain `String?` user ids rather than relations,
+// matching the existing `SupportTicket.assignedTo` and
+// `HostPayoutAccount.verifiedBy` convention. This avoids a dozen back-relations
+// on `User` for what are audit-style references.
+// ============================================================================
+
+enum ReviewModerationStatus {
+  PENDING
+  APPROVED
+  HIDDEN
+  REJECTED
+}
+
+enum ContentReportTargetType {
+  PROPERTY
+  PROPERTY_IMAGE
+  REVIEW
+  MESSAGE
+  USER_PROFILE
+}
+
+enum ContentReportStatus {
+  OPEN
+  UNDER_REVIEW
+  ACTIONED
+  DISMISSED
+}
+
+enum ContentReportReason {
+  SPAM
+  OFFENSIVE_CONTENT
+  MISLEADING_INFORMATION
+  FRAUD_OR_SCAM
+  INAPPROPRIATE_IMAGERY
+  HARASSMENT
+  COPYRIGHT
+  OTHER
+}
+
+enum HostStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+}
+
+enum FeaturedPlacementType {
+  HOME_HERO
+  HOME_CAROUSEL
+  CATEGORY_SPOTLIGHT
+  SEARCH_PROMOTED
+}
+
+enum BannerPlacement {
+  HOME_TOP
+  HOME_MID
+  SEARCH_RESULTS
+  APP_LAUNCH
+}
+
+enum SupportTicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SupportMessageAuthorType {
+  ADMIN
+  REQUESTER
+  SYSTEM
+}
+
+enum BulkOperationType {
+  PROPERTY_STATUS_UPDATE
+  PROPERTY_IMPORT
+  PROPERTY_EXPORT
+  BOOKING_EXPORT
+  USER_EXPORT
+  USER_ROLE_UPDATE
+  REVIEW_MODERATION
+}
+
+enum BulkOperationStatus {
+  PENDING
+  VALIDATING
+  DRY_RUN_COMPLETE
+  RUNNING
+  COMPLETED
+  COMPLETED_WITH_ERRORS
+  FAILED
+  CANCELLED
+}
+
+enum BulkOperationItemStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+}
+
+enum ReportFrequency {
+  ON_DEMAND
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum ReportFormat {
+  CSV
+  JSON
+}
+
+enum ReportRunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum ReportKind {
+  BOOKINGS
+  REVENUE
+  PROPERTIES
+  USERS
+  PROMOTION_REDEMPTIONS
+  SUPPORT_TICKETS
+}
+
+enum BroadcastStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+enum AdminSettingValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+}
+
+// ----------------------------------------------------------------------------
+// Moderation
+// ----------------------------------------------------------------------------
+
+/// Generic report raised against any moderatable entity. Uses targetType +
+/// targetId (like AdminAuditLog) instead of five nullable foreign keys.
+model ContentReport {
+  id            String                  @id @default(uuid())
+
+  targetType    ContentReportTargetType
+  targetId      String
+
+  reason        ContentReportReason
+  description   String?
+
+  /// Reporting user, when the report originated in-app. Null for reports
+  /// created by an admin during a proactive sweep.
+  reportedById  String?
+
+  status        ContentReportStatus     @default(OPEN)
+
+  reviewedById  String?
+  reviewedAt    DateTime?
+  resolutionNote String?
+
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+// ----------------------------------------------------------------------------
+// Featured content
+// ----------------------------------------------------------------------------
+
+/// Time-bounded promotional slot for a property. Distinct from PropertyTag,
+/// which is a permanent attribute rather than a scheduled placement.
+model FeaturedPlacement {
+  id            String                @id @default(uuid())
+  propertyId    String
+  property      Property              @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  placement     FeaturedPlacementType
+  displayOrder  Int                   @default(0)
+
+  startsAt      DateTime
+  endsAt        DateTime?
+  active        Boolean               @default(true)
+
+  createdById   String?
+
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@unique([propertyId, placement])
+  @@index([placement, displayOrder])
+  @@index([active, startsAt, endsAt])
+}
+
+model ContentBanner {
+  id            String          @id @default(uuid())
+
+  title         String
+  subtitle      String?
+  imageUrl      String
+  linkUrl       String?
+
+  placement     BannerPlacement
+  displayOrder  Int             @default(0)
+
+  startsAt      DateTime
+  endsAt        DateTime?
+  active        Boolean         @default(true)
+
+  createdById   String?
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([placement, displayOrder])
+  @@index([active, startsAt, endsAt])
+}
+
+// ----------------------------------------------------------------------------
+// Catalog
+// ----------------------------------------------------------------------------
+
+/// Editable presentation metadata for the PropertyCategory enum. The enum stays
+/// the source of truth for which categories exist; this table controls how each
+/// one is labelled, ordered, and whether it is surfaced.
+model CatalogCategory {
+  id            String            @id @default(uuid())
+  category      PropertyCategory  @unique
+
+  label         String
+  description   String?
+  iconName      String?
+  imageUrl      String?
+
+  displayOrder  Int               @default(0)
+  active        Boolean           @default(true)
+
+  updatedById   String?
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([displayOrder])
+}
+
+/// Canonical amenity definitions. `key` matches the strings stored in
+/// Property.amenities, so this table can be introduced without rewriting
+/// existing property rows.
+model Amenity {
+  id            String    @id @default(uuid())
+  key           String    @unique
+
+  label         String
+  description   String?
+  iconName      String?
+  category      String?
+
+  displayOrder  Int       @default(0)
+  active        Boolean   @default(true)
+
+  updatedById   String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([category, displayOrder])
+}
+
+// ----------------------------------------------------------------------------
+// Support threads
+// ----------------------------------------------------------------------------
+
+model SupportMessage {
+  id            String                    @id @default(uuid())
+  ticketId      String
+  ticket        SupportTicket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  authorType    SupportMessageAuthorType
+  /// Admin or user id when the author is a known account.
+  authorId      String?
+  authorName    String?
+
+  body          String
+  attachments   String[]                  @default([])
+
+  /// Internal notes are visible to admins only and never sent to the requester.
+  internal      Boolean                   @default(false)
+
+  createdAt     DateTime                  @default(now())
+
+  @@index([ticketId, createdAt])
+}
+
+// ----------------------------------------------------------------------------
+// Booking state history
+// ----------------------------------------------------------------------------
+
+/// Append-only record of booking status transitions, including admin-initiated
+/// ones. Gives BookingDetails a real timeline instead of a derived guess.
+model BookingStatusHistory {
+  id              String        @id @default(uuid())
+  bookingId       String
+  booking         Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  fromStatus      BookingStatus?
+  toStatus        BookingStatus
+
+  /// "guest", "host", "admin", or "system".
+  actorType       String
+  actorId         String?
+  reason          String?
+
+  createdAt       DateTime      @default(now())
+
+  @@index([bookingId, createdAt])
+}
+
+// ----------------------------------------------------------------------------
+// Bulk operations
+// ----------------------------------------------------------------------------
+
+/// A durable bulk job. Progress and results are persisted so the admin panel
+/// reports real state across reloads rather than client-side progress.
+model BulkOperation {
+  id              String                @id @default(uuid())
+
+  type            BulkOperationType
+  status          BulkOperationStatus   @default(PENDING)
+
+  createdById     String
+
+  /// Uploaded source metadata for imports.
+  sourceFileName  String?
+  /// Parameters supplied for the run (filters, target status, and similar).
+  parameters      Json?
+
+  /// A dry run validates without committing changes.
+  dryRun          Boolean               @default(true)
+
+  totalItems      Int                   @default(0)
+  processedItems  Int                   @default(0)
+  succeededItems  Int                   @default(0)
+  failedItems     Int                   @default(0)
+  skippedItems    Int                   @default(0)
+
+  /// Generated artefact for export jobs.
+  resultFileName  String?
+  errorMessage    String?
+
+  /// Prevents a retried submission from executing twice.
+  idempotencyKey  String?               @unique
+
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  items           BulkOperationItem[]
+
+  @@index([status, createdAt])
+  @@index([createdById])
+}
+
+model BulkOperationItem {
+  id            String                  @id @default(uuid())
+  operationId   String
+  operation     BulkOperation           @relation(fields: [operationId], references: [id], onDelete: Cascade)
+
+  rowNumber     Int
+  /// Entity the row refers to, once resolved.
+  targetId      String?
+  /// Raw parsed row, retained so a failed import can be corrected and re-run.
+  payload       Json?
+
+  status        BulkOperationItemStatus @default(PENDING)
+  errorMessage  String?
+
+  createdAt     DateTime                @default(now())
+
+  @@index([operationId, status])
+  @@unique([operationId, rowNumber])
+}
+
+// ----------------------------------------------------------------------------
+// Reporting
+// ----------------------------------------------------------------------------
+
+model ReportDefinition {
+  id            String          @id @default(uuid())
+
+  name          String
+  description   String?
+  kind          ReportKind
+  format        ReportFormat    @default(CSV)
+  frequency     ReportFrequency @default(ON_DEMAND)
+
+  /// Saved filter set applied on each run.
+  parameters    Json?
+  /// Email addresses that receive completed runs.
+  recipients    String[]        @default([])
+
+  active        Boolean         @default(true)
+  createdById   String?
+
+  lastRunAt     DateTime?
+  nextRunAt     DateTime?
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  runs          ReportRun[]
+
+  @@index([kind])
+  @@index([active, nextRunAt])
+}
+
+model ReportRun {
+  id            String            @id @default(uuid())
+  definitionId  String
+  definition    ReportDefinition  @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+
+  status        ReportRunStatus   @default(QUEUED)
+
+  /// Window the run covered.
+  periodStart   DateTime?
+  periodEnd     DateTime?
+
+  rowCount      Int?
+  /// Rendered artefact, retained for download.
+  content       String?
+  contentType   String?
+  fileName      String?
+
+  errorMessage  String?
+  triggeredById String?
+
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  createdAt     DateTime          @default(now())
+
+  @@index([definitionId, createdAt])
+  @@index([status])
+}
+
+// ----------------------------------------------------------------------------
+// Qube AI operations
+// ----------------------------------------------------------------------------
+
+/// Persisted Qube planning session. Enables real conversation review and
+/// telemetry in place of fabricated charts.
+model QubeConversation {
+  id            String        @id @default(uuid())
+
+  /// Null for anonymous/unauthenticated planning requests.
+  userId        String?
+  sessionLabel  String?
+
+  messageCount  Int           @default(0)
+  lastMessageAt DateTime?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  messages      QubeMessage[]
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+model QubeMessage {
+  id              String            @id @default(uuid())
+  conversationId  String
+  conversation    QubeConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  /// "user", "assistant", or "system".
+  role            String
+  content         String
+
+  /// Model identifier that produced an assistant message.
+  model           String?
+  latencyMs       Int?
+  /// Property ids the planner returned, for relevance review.
+  suggestedPropertyIds String[]     @default([])
+
+  /// Populated when a reviewer rates the exchange.
+  helpful         Boolean?
+  reviewNote      String?
+
+  createdAt       DateTime          @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+/// Curated guidance injected into Qube prompts. Editable by admins, so the
+/// assistant's behaviour is configurable through real stored records.
+model QubeKnowledgeEntry {
+  id            String    @id @default(uuid())
+
+  topic         String
+  content       String
+  tags          String[]  @default([])
+
+  priority      Int       @default(0)
+  active        Boolean   @default(true)
+
+  createdById   String?
+  updatedById   String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([active, priority])
+  @@index([topic])
+}
+
+// ----------------------------------------------------------------------------
+// Platform settings
+// ----------------------------------------------------------------------------
+
+/// Allow-listed, non-secret runtime configuration. Credentials (payment, mail,
+/// SMS) intentionally stay in environment/secret management and are never
+/// stored here.
+model AdminSetting {
+  id            String                @id @default(uuid())
+  key           String                @unique
+
+  value         String
+  valueType     AdminSettingValueType @default(STRING)
+
+  /// Grouping used by the settings UI, e.g. "booking", "payouts", "features".
+  group         String
+  label         String
+  description   String?
+
+  updatedById   String?
+
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([group])
+}

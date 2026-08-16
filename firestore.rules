@@ -1,0 +1,163 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    function isAdmin() {
+      // Custom claim only — set server-side (Admin SDK). Never a Firestore field.
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+    function unchanged(field) {
+      return !(field in request.resource.data.diff(resource.data).affectedKeys());
+    }
+    function onlyChanged(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    // ---------- users ----------
+    match /users/{uid} {
+      // Public-safe fields only live here (see schema doc) — broad read is fine.
+      allow read: if isSignedIn();
+      allow create: if isOwner(uid);
+      allow update: if (isOwner(uid) && unchanged('roles') && unchanged('status')) || isAdmin();
+      allow delete: if isAdmin();
+
+      match /private/contact {
+        allow read, write: if isOwner(uid) || isAdmin();
+      }
+
+      match /private/payoutDetails {
+        // Owner can submit/update their own KYC info; only admin can flip verificationStatus.
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isOwner(uid);
+        allow update: if isAdmin() || (isOwner(uid) && unchanged('verificationStatus') && unchanged('verifiedBy') && unchanged('verifiedAt'));
+      }
+
+      match /wishlist/{propertyId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /notifications/{notifId} {
+        allow read: if isOwner(uid);
+        allow update: if isOwner(uid) && onlyChanged(['read']); // mark-as-read only
+        allow create, delete: if false; // Cloud Functions (Admin SDK) only
+      }
+    }
+
+    // ---------- properties ----------
+    match /properties/{propertyId} {
+      allow read: if resource.data.status == 'active'
+        || (isSignedIn() && (resource.data.hostId == request.auth.uid || isAdmin()));
+
+      allow create: if isSignedIn()
+        && request.resource.data.hostId == request.auth.uid
+        && request.resource.data.status == 'pending_review'; // host can never self-approve
+
+      allow update: if isAdmin()
+        || (isSignedIn() && resource.data.hostId == request.auth.uid
+            && unchanged('status') && unchanged('rating') && unchanged('reviewCount')
+            && unchanged('rejectionReason') && unchanged('hostId'));
+
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.hostId == request.auth.uid);
+
+      match /availability/{date} {
+        allow read: if true; // needed to render calendars pre-auth (search results)
+        allow write: if false; // Node service / Cloud Functions only, inside a transaction
+      }
+    }
+
+    // ---------- bookings ----------
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn()
+        && (resource.data.guestId == request.auth.uid
+            || resource.data.hostId == request.auth.uid
+            || isAdmin());
+
+      allow create: if (isSignedIn()
+          && request.resource.data.guestId == request.auth.uid
+          && request.resource.data.status == 'pending_payment') // guest self-serve checkout
+        || isAdmin(); // manual booking entry (§5 Booking Management) — may set status:'confirmed' directly, skips Razorpay
+
+      // NOTE: this rule alone doesn't block a double-booking on manual entry — it only guards
+      // the bookings doc. /properties/{id}/availability writes are locked to `false` above for
+      // every caller, so both this path and guest checkout must go through one Cloud Function
+      // that writes bookings + availability together in a transaction. Neither the Guest App nor
+      // the Admin Panel should ever write bookings directly from the client in production —
+      // treat this rule as the backstop, not the intended path.
+
+      // Guest self-service: cancellation only. Confirmation happens server-side on payment webhook.
+      allow update: if isAdmin()
+        || (isSignedIn() && resource.data.guestId == request.auth.uid
+            && onlyChanged(['status', 'cancellationReason', 'cancelledBy', 'cancelledAt', 'updatedAt'])
+            && request.resource.data.status == 'cancelled');
+
+      allow delete: if false;
+    }
+
+    // ---------- payments ----------
+    match /payments/{paymentId} {
+      allow read: if isSignedIn() && (resource.data.guestId == request.auth.uid || isAdmin());
+      allow write: if false; // Node.js service (Admin SDK) only — money never touches client rules
+    }
+
+    // ---------- reviews ----------
+    match /reviews/{reviewId} {
+      allow read: if resource.data.moderationStatus == 'visible' || isAdmin();
+
+      allow create: if isSignedIn() && request.resource.data.guestId == request.auth.uid;
+
+      // guest edits their own text/rating/photos; host may only add a reply; admin moderates.
+      allow update: if isAdmin()
+        || (isSignedIn() && resource.data.guestId == request.auth.uid && unchanged('moderationStatus'))
+        || (isSignedIn()
+            && get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.hostId == request.auth.uid
+            && onlyChanged(['hostReply']));
+
+      allow delete: if isAdmin();
+    }
+
+    // ---------- conversations & messages ----------
+    match /conversations/{conversationId} {
+      allow read, update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if isSignedIn() && request.auth.uid in request.resource.data.participantIds;
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    // ---------- coupons ----------
+    match /coupons/{code} {
+      allow read: if isSignedIn(); // client validates code at checkout
+      allow write: if isAdmin();
+    }
+
+    // ---------- cms_pages ----------
+    match /cms_pages/{slug} {
+      allow read: if true; // public marketing/legal pages
+      allow write: if isAdmin();
+    }
+
+    // ---------- support_tickets ----------
+    match /support_tickets/{ticketId} {
+      allow create: if true; // contact form, may be pre-auth
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ---------- broadcasts ----------
+    match /broadcasts/{broadcastId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

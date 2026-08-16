@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "608570851336",
+    "project_id": "stay-q",
+    "storage_bucket": "stay-q.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:608570851336:android:35b3fa9d098b703e5151bd",
+        "android_client_info": {
+          "package_name": "com.stayq.stay_q"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "608570851336-kkqmc6q236cb48gerrlk91356c87q6l8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.stayq.stay_q",
+            "certificate_hash": "a11801b9b536c94d2e0c9b47f247d0e576ea81c7"
+          }
+        },
+        {
+          "client_id": "608570851336-e8f05mn4vj9gl9ibbs92iuif70rnjt82.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAluufen67WYeGx_GUEG7x476EZcA8_WUo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "608570851336-e8f05mn4vj9gl9ibbs92iuif70rnjt82.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

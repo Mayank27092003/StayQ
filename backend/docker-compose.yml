@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: stayq_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stayq
+      POSTGRES_PASSWORD: stayq_dev_2026
+      POSTGRES_DB: stayq_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - stayq_pgdata:/var/lib/postgresql/data
+      - ./prisma/extensions.sql:/docker-entrypoint-initdb.d/extensions.sql
+
+  redis:
+    image: redis:7-alpine
+    container_name: stayq_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - stayq_redis:/data
+
+volumes:
+  stayq_pgdata:
+  stayq_redis:

@@ -1,0 +1,65 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Node / Next.js / Web
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+dist/
+**/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Secrets & Environment
+.env
+.env*
+*.env
+.agents/
+*firebase-adminsdk*.json
+*service-account*.json
+
+# Android / iOS build artifacts
+*.apk
+*.aab
+*.ipa
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+/ios/Pods/
+/ios/.symlinks/
+/ios/Flutter/Flutter.framework
+/ios/Flutter/Flutter.podspec
+/ios/Flutter/Generated.xcconfig
+/ios/Flutter/app.flx
+/ios/Flutter/app.zip
+/ios/Flutter/flutter_assets/
+/ios/ServiceDefinitions.json
+/ios/Runner/GeneratedPluginRegistrant.*
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws

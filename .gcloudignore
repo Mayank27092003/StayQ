@@ -1,0 +1,13 @@
+.git
+.github
+node_modules/
+**/node_modules/
+.next/
+build/
+.dart_tool/
+android/
+ios/
+windows/
+linux/
+macos/
+*.log

@@ -1,0 +1,13 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - "website/**"
+    - "admin-panel/**"
+    - "admin-panel-old/**"
+    - "backend/**"
+    - "functions/**"
+
+linter:
+  rules:
+    # avoid_print: false

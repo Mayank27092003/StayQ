@@ -1,0 +1,95 @@
+/* ==========================================================================
+   Stay Q — design tokens
+   Colours mirror lib/theme/app_colors.dart so web and app stay in sync.
+   ========================================================================== */
+
+:root {
+  /* Brand */
+  --violet: #5a31f4;
+  --violet-light: #7f56d9;
+  --violet-deep: #3b1e7b;
+
+  /* Violet washes — the backbone of a light premium palette. Tints instead of
+     solid fills keep large areas from feeling heavy. */
+  --violet-02: rgba(90, 49, 244, 0.02);
+  --violet-04: rgba(90, 49, 244, 0.04);
+  --violet-08: rgba(90, 49, 244, 0.08);
+  --violet-12: rgba(90, 49, 244, 0.12);
+  --violet-20: rgba(90, 49, 244, 0.2);
+
+  /* Neutrals */
+  --white: #ffffff;
+  --surface: #f7f7f7;
+  --surface-2: #fbfaff;
+  --border: #eaeaea;
+  --border-soft: rgba(17, 17, 17, 0.06);
+
+  /* Ink */
+  --ink: #111111;
+  --gray-600: #555555;
+  --gray-400: #999999;
+
+  /* Status */
+  --gold: #ffb800;
+  --green: #12b76a;
+  --orange: #f79009;
+  --red: #f04438;
+
+  /* Gradients */
+  --grad-violet: linear-gradient(135deg, #5a31f4 0%, #7f56d9 100%);
+  --grad-violet-deep: linear-gradient(135deg, #3b1e7b 0%, #5a31f4 100%);
+
+  /* Layered shadows. Multiple low-opacity layers read as depth on white;
+     a single hard shadow reads as cheap. */
+  --shadow-sm: 0 1px 2px rgba(17, 17, 17, 0.04), 0 1px 3px rgba(17, 17, 17, 0.03);
+  --shadow-md: 0 2px 4px rgba(17, 17, 17, 0.03), 0 6px 16px rgba(17, 17, 17, 0.05);
+  --shadow-lg: 0 4px 8px rgba(17, 17, 17, 0.03), 0 12px 32px rgba(17, 17, 17, 0.07),
+    0 24px 64px rgba(17, 17, 17, 0.05);
+  --shadow-xl: 0 8px 16px rgba(17, 17, 17, 0.04), 0 24px 56px rgba(17, 17, 17, 0.08),
+    0 48px 112px rgba(17, 17, 17, 0.06);
+  --shadow-violet: 0 8px 24px rgba(90, 49, 244, 0.18), 0 16px 48px rgba(90, 49, 244, 0.12);
+  --shadow-violet-lg: 0 12px 32px rgba(90, 49, 244, 0.24), 0 24px 72px rgba(90, 49, 244, 0.16);
+
+  /* Radii */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
+  --r-xl: 32px;
+  --r-full: 999px;
+
+  /* Type */
+  --font-display: 'Outfit', 'Plus Jakarta Sans', -apple-system, sans-serif;
+  --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Fluid scale — clamp lets the hero go genuinely large on desktop without
+     breaking small screens. */
+  --t-display: clamp(2.75rem, 7.5vw, 6rem);
+  --t-h1: clamp(2.25rem, 5vw, 4rem);
+  --t-h2: clamp(1.75rem, 3.6vw, 3rem);
+  --t-h3: clamp(1.25rem, 2vw, 1.75rem);
+  --t-lead: clamp(1.05rem, 1.5vw, 1.3rem);
+  --t-body: 1rem;
+  --t-sm: 0.9375rem;
+  --t-xs: 0.8125rem;
+
+  /* Rhythm */
+  --section-y: clamp(5rem, 11vw, 10rem);
+  --gutter: clamp(1.25rem, 5vw, 2.5rem);
+  --max-w: 1240px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
