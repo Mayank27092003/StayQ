@@ -230,18 +230,20 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
               ],
             ),
           ),
-          bottomNavigationBar: SafeArea(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  )
-                ],
-              ),
+          bottomNavigationBar: isWelcomeScreen
+              ? null
+              : SafeArea(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, -5),
+                        )
+                      ],
+                    ),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
