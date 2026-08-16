@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-14 # Real Apple Silicon M1/M2 macOS hardware runner
+    runs-on: macos-14 # Real Apple Silicon M1/M2 macOS runner
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -24,10 +24,12 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true
 
       - name: Install Flutter Dependencies
-        run: flutter pub get
+        run: |
+          rm -f pubspec.lock
+          flutter --version
+          flutter pub get
 
       - name: Install CocoaPods
         run: |
