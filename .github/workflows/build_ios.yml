@@ -30,15 +30,7 @@ jobs:
           flutter --version
           flutter pub get
 
-      - name: Install CocoaPods
-        run: |
-          mkdir -p build/ios/SourcePackages
-          mkdir -p build/ios/iphoneos
-          cd ios
-          pod install --repo-update
-          cd ..
-
-      - name: Build iOS App (.ipa)
+      - name: Build iOS App (.ipa / Runner.app)
         run: |
           mkdir -p build/ios/SourcePackages
           mkdir -p build/ios/iphoneos
