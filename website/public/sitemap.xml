@@ -7,19 +7,19 @@
 
   <!-- Home Page -->
   <url>
-    <loc>https://stayq.in/</loc>
+    <loc>https://stayq.space/</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://stayq.in/images/logo_3d.png</image:loc>
+      <image:loc>https://stayq.space/images/logo_3d.png</image:loc>
       <image:title>Stay Q - Luxury Homestays and Beyond</image:title>
     </image:image>
   </url>
 
   <!-- Stays Catalog -->
   <url>
-    <loc>https://stayq.in/stays</loc>
+    <loc>https://stayq.space/stays</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.95</priority>
@@ -27,7 +27,7 @@
 
   <!-- Zero-Broker 11-Month Leases -->
   <url>
-    <loc>https://stayq.in/zero-broker</loc>
+    <loc>https://stayq.space/zero-broker</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.95</priority>
@@ -35,7 +35,7 @@
 
   <!-- RVs & Campervans -->
   <url>
-    <loc>https://stayq.in/rvs</loc>
+    <loc>https://stayq.space/rvs</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.90</priority>
@@ -43,7 +43,7 @@
 
   <!-- Camping & Glamping Sites -->
   <url>
-    <loc>https://stayq.in/camping</loc>
+    <loc>https://stayq.space/camping</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.90</priority>
@@ -51,7 +51,7 @@
 
   <!-- Local Tours & Experiences -->
   <url>
-    <loc>https://stayq.in/experiences</loc>
+    <loc>https://stayq.space/experiences</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.90</priority>
@@ -59,7 +59,7 @@
 
   <!-- Host with Stay Q -->
   <url>
-    <loc>https://stayq.in/host-invite</loc>
+    <loc>https://stayq.space/host-invite</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.90</priority>
@@ -67,7 +67,7 @@
 
   <!-- About Stay Q -->
   <url>
-    <loc>https://stayq.in/about</loc>
+    <loc>https://stayq.space/about</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
@@ -75,7 +75,7 @@
 
   <!-- Contact & 24/7 Concierge -->
   <url>
-    <loc>https://stayq.in/contact</loc>
+    <loc>https://stayq.space/contact</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
@@ -83,7 +83,7 @@
 
   <!-- Guest Rules & Code of Conduct -->
   <url>
-    <loc>https://stayq.in/guest-rules</loc>
+    <loc>https://stayq.space/guest-rules</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
@@ -91,7 +91,7 @@
 
   <!-- Privacy Policy -->
   <url>
-    <loc>https://stayq.in/privacy</loc>
+    <loc>https://stayq.space/privacy</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.60</priority>
@@ -99,7 +99,7 @@
 
   <!-- Terms of Service -->
   <url>
-    <loc>https://stayq.in/terms</loc>
+    <loc>https://stayq.space/terms</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.60</priority>
@@ -107,7 +107,7 @@
 
   <!-- Refund Policy -->
   <url>
-    <loc>https://stayq.in/policy/refunds</loc>
+    <loc>https://stayq.space/policy/refunds</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.60</priority>
@@ -115,7 +115,7 @@
 
   <!-- Host Protection Guarantee -->
   <url>
-    <loc>https://stayq.in/policy/host-protection</loc>
+    <loc>https://stayq.space/policy/host-protection</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.60</priority>
@@ -123,7 +123,7 @@
 
   <!-- Zero-Brokerage Policy -->
   <url>
-    <loc>https://stayq.in/policy/zero-brokerage</loc>
+    <loc>https://stayq.space/policy/zero-brokerage</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.60</priority>
@@ -131,7 +131,7 @@
 
   <!-- Guest Safety Policy -->
   <url>
-    <loc>https://stayq.in/policy/guest-safety</loc>
+    <loc>https://stayq.space/policy/guest-safety</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.60</priority>
