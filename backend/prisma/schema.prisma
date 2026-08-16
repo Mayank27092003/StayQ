@@ -219,6 +219,9 @@ model User {
   isAdmin         Boolean   @default(false)  // Never settable via API
   adminRole       AdminRole?
   isSuperhost     Boolean   @default(false)
+  isStarhost      Boolean   @default(false)
+  isHostVerified  Boolean   @default(false)  // One-time host verification status
+  hostVerifiedAt  DateTime?
 
   // Host-specific (populated when role includes HOST)
   responseRate    Float?    // Percentage
@@ -370,6 +373,17 @@ model Property {
   bedCount        Int?
   dormType        String?         // e.g. "Mixed", "Female-only"
   hasLocker       Boolean         @default(false)
+
+  // Property Legal & Ownership Documents (Ghar ke Kagaj)
+  ownershipType          String?   // "OWNED", "LEASED_SUBLET", "COMMERCIAL_HOTEL"
+  electricityBillDocUrl  String?
+  propertyRegistryDocUrl String?
+  leaseAgreementDocUrl   String?
+  landlordNocDocUrl      String?
+  tradeLicenseDocUrl     String?
+  ownerIdProofDocUrl     String?
+  propertyDocsVerified   Boolean   @default(false)
+  propertyDocsVerifiedAt DateTime?
 
   // Relations
   images          PropertyImage[]

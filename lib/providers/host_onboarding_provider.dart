@@ -195,6 +195,46 @@ class HostOnboardingProvider extends ChangeNotifier {
   bool smokingAllowed = false;
   bool partiesAllowed = false;
 
+  // ─── Property Ownership & Legal Documents ───
+  // Values: 'OWNED', 'LEASED_SUBLET', 'COMMERCIAL_HOTEL'
+  String ownershipType = 'OWNED';
+  String electricityBillDocPath = '';
+  String electricityBillDocUrl = '';
+  String propertyRegistryDocPath = '';
+  String propertyRegistryDocUrl = '';
+  String leaseAgreementDocPath = '';
+  String leaseAgreementDocUrl = '';
+  String landlordNocDocPath = '';
+  String landlordNocDocUrl = '';
+  String tradeLicenseDocPath = '';
+  String tradeLicenseDocUrl = '';
+  String ownerIdProofDocPath = '';
+  String ownerIdProofDocUrl = '';
+  bool isLegalDeclarationAccepted = true;
+  bool isHostIdentityVerified = false; // One-time host verification flag
+
+  void updatePropertyDocuments({
+    String? ownership,
+    String? electricityBill,
+    String? registry,
+    String? leaseAgreement,
+    String? landlordNoc,
+    String? tradeLicense,
+    String? ownerIdProof,
+    bool? declarationAccepted,
+  }) {
+    if (ownership != null) ownershipType = ownership;
+    if (electricityBill != null) electricityBillDocPath = electricityBill;
+    if (registry != null) propertyRegistryDocPath = registry;
+    if (leaseAgreement != null) leaseAgreementDocPath = leaseAgreement;
+    if (landlordNoc != null) landlordNocDocPath = landlordNoc;
+    if (tradeLicense != null) tradeLicenseDocPath = tradeLicense;
+    if (ownerIdProof != null) ownerIdProofDocPath = ownerIdProof;
+    if (declarationAccepted != null) isLegalDeclarationAccepted = declarationAccepted;
+    notifyListeners();
+    saveDraftToPrefs();
+  }
+
   // ─── Verification ───
   String idDocumentUrl = '';
   bool isVerificationApproved = false;
@@ -450,6 +490,26 @@ class HostOnboardingProvider extends ChangeNotifier {
       }));
       videoUrls.addAll(uploadedVideoUrls);
 
+      // 3.5. Upload property legal documents if provided
+      if (electricityBillDocPath.isNotEmpty && !electricityBillDocPath.startsWith('http')) {
+        electricityBillDocUrl = await _uploadDocFile(electricityBillDocPath, 'electricity_bill');
+      }
+      if (propertyRegistryDocPath.isNotEmpty && !propertyRegistryDocPath.startsWith('http')) {
+        propertyRegistryDocUrl = await _uploadDocFile(propertyRegistryDocPath, 'property_registry');
+      }
+      if (leaseAgreementDocPath.isNotEmpty && !leaseAgreementDocPath.startsWith('http')) {
+        leaseAgreementDocUrl = await _uploadDocFile(leaseAgreementDocPath, 'lease_agreement');
+      }
+      if (landlordNocDocPath.isNotEmpty && !landlordNocDocPath.startsWith('http')) {
+        landlordNocDocUrl = await _uploadDocFile(landlordNocDocPath, 'landlord_noc');
+      }
+      if (tradeLicenseDocPath.isNotEmpty && !tradeLicenseDocPath.startsWith('http')) {
+        tradeLicenseDocUrl = await _uploadDocFile(tradeLicenseDocPath, 'trade_license');
+      }
+      if (ownerIdProofDocPath.isNotEmpty && !ownerIdProofDocPath.startsWith('http')) {
+        ownerIdProofDocUrl = await _uploadDocFile(ownerIdProofDocPath, 'owner_id_proof');
+      }
+
       // 4. Build the payload with all category-specific fields
       final draftBody = {
         'hostId': FirebaseAuth.instance.currentUser?.uid,
@@ -487,6 +547,15 @@ class HostOnboardingProvider extends ChangeNotifier {
         'petsAllowed': petsAllowed,
         'smokingAllowed': smokingAllowed,
         'partiesAllowed': partiesAllowed,
+        // Property Legal Ownership Documents
+        'ownershipType': ownershipType,
+        'electricityBillDocUrl': electricityBillDocUrl,
+        'propertyRegistryDocUrl': propertyRegistryDocUrl,
+        'leaseAgreementDocUrl': leaseAgreementDocUrl,
+        'landlordNocDocUrl': landlordNocDocUrl,
+        'tradeLicenseDocUrl': tradeLicenseDocUrl,
+        'ownerIdProofDocUrl': ownerIdProofDocUrl,
+        'isLegalDeclarationAccepted': isLegalDeclarationAccepted,
         // RV-specific
         'pickupLocation': pickupLocation.isNotEmpty ? pickupLocation : null,
         'dropLocation': dropLocation.isNotEmpty ? dropLocation : null,

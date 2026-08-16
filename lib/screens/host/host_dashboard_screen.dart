@@ -238,7 +238,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                 ],
               ),
             ),
-            // Superhost & Verified Pill
+            // StarHost & Verified Pill
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -251,7 +251,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                   Icon(Icons.workspace_premium_rounded, color: Color(0xFFB45309), size: 16),
                   SizedBox(width: 4),
                   Text(
-                    'SUPERHOST',
+                    'STARHOST',
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFFB45309)),
                   ),
                 ],

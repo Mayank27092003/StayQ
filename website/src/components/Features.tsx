@@ -15,8 +15,8 @@ const FEATURES = [
   },
   {
     icon: Users,
-    title: 'Superhosts',
-    body: 'Hosts with consistently strong ratings and response times carry a Superhost badge.',
+    title: 'StarHosts',
+    body: 'Hosts with consistently strong ratings and response times carry a StarHost badge.',
   },
   {
     icon: Wallet,

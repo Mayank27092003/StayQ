@@ -241,7 +241,7 @@ const StayCard: React.FC<StayCardProps> = ({ stay, isSaved, onToggleSave, onClic
             <Sparkles size={13} /> Guest Favorite
           </div>
         ) : stay.isSuperhost ? (
-          <div className="stay-card__badge">Superhost</div>
+          <div className="stay-card__badge">StarHost</div>
         ) : null}
 
         {/* Photo Navigation Arrows */}
