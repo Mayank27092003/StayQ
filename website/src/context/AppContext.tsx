@@ -177,6 +177,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const toggleWishlist = (id: string) => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setWishlistIds((prev) => {
       const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
       saveStoredWishlist(next);

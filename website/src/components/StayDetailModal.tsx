@@ -32,7 +32,17 @@ import { useApp } from '../context/AppContext';
 import { calculateBookingQuote } from '../services/api';
 
 export const StayDetailModal: React.FC = () => {
-  const { selectedStay, setSelectedStay, setCheckoutItem, isWishlisted, toggleWishlist, setIsQubeOpen, filters } = useApp();
+  const {
+    selectedStay,
+    setSelectedStay,
+    setCheckoutItem,
+    isWishlisted,
+    toggleWishlist,
+    setIsQubeOpen,
+    filters,
+    user,
+    setIsAuthModalOpen,
+  } = useApp();
 
   const [activePhoto, setActivePhoto] = useState(0);
   const [checkIn, setCheckIn] = useState(filters.checkIn || getTomorrowDate());
@@ -73,6 +83,10 @@ export const StayDetailModal: React.FC = () => {
   };
 
   const handleProceedToCheckout = () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setCheckoutItem({
       stay: selectedStay,
       checkIn,
@@ -87,6 +101,10 @@ export const StayDetailModal: React.FC = () => {
   };
 
   const handleAskQube = () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setIsQubeOpen(true);
   };
 

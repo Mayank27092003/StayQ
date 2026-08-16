@@ -302,24 +302,24 @@ export default function PropertiesPage() {
     setTitle("");
     setDescription("");
     setCategoryName("Villas");
-    setCity("Goa");
-    setLocality("Candolim Beach Road");
-    setState("Goa");
+    setCity("");
+    setLocality("");
+    setState("");
     setCountry("India");
-    setPincode("403515");
-    setLandmark("Near Fort Aguada");
-    setAddress("Plot 14, Candolim Beach Rd");
+    setPincode("");
+    setLandmark("");
+    setAddress("");
     setLat(15.5182);
     setLng(73.7634);
     setStatus("ACTIVE");
-    setBasePrice(8500);
-    setCleaningFee(1200);
-    setMaxGuests(6);
-    setBedrooms(3);
-    setBeds(3);
-    setBathrooms(3);
-    setAmenities(["High-Speed Wi-Fi", "Private Pool", "Air Conditioning", "Kitchen"]);
-    setImageUrls(["/images/villa_1.jpg"]);
+    setBasePrice(0);
+    setCleaningFee(0);
+    setMaxGuests(2);
+    setBedrooms(1);
+    setBeds(1);
+    setBathrooms(1);
+    setAmenities([]);
+    setImageUrls([]);
     setInstantBook(true);
     setPetsAllowed(false);
     setSmokingAllowed(false);
@@ -327,12 +327,12 @@ export default function PropertiesPage() {
     setCheckInTime("14:00");
     setCheckOutTime("11:00");
     setIsZeroBroker(false);
-    setMonthlyRent(45000);
-    setSecurityDeposit(50000);
+    setMonthlyRent(0);
+    setSecurityDeposit(0);
     setLeaseDurationMonths(11);
-    setHostName("Shayan Mandal");
-    setHostPhone("+91 99999 99999");
-    setHostEmail("shayan@stayq.space");
+    setHostName("");
+    setHostPhone("");
+    setHostEmail("");
     setIsModalOpen(true);
     setSaveSuccess(false);
   };
@@ -872,8 +872,9 @@ export default function PropertiesPage() {
                   <input
                     type="number"
                     required
-                    value={basePrice}
-                    onChange={(e) => setBasePrice(Number(e.target.value))}
+                    placeholder="Enter Nightly Rate (e.g. 8500)"
+                    value={basePrice === 0 ? "" : basePrice}
+                    onChange={(e) => setBasePrice(e.target.value === "" ? 0 : Number(e.target.value))}
                     style={{ width: "100%", padding: "0.65rem 0.85rem", fontSize: "0.88rem", borderRadius: "10px", border: "1px solid #cbd5e1", outline: "none", fontFamily: "monospace", fontWeight: 800 }}
                   />
                 </div>
@@ -882,8 +883,9 @@ export default function PropertiesPage() {
                   <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>Cleaning Fee (₹)</label>
                   <input
                     type="number"
-                    value={cleaningFee}
-                    onChange={(e) => setCleaningFee(Number(e.target.value))}
+                    placeholder="e.g. 500 (Optional)"
+                    value={cleaningFee === 0 ? "" : cleaningFee}
+                    onChange={(e) => setCleaningFee(e.target.value === "" ? 0 : Number(e.target.value))}
                     style={{ width: "100%", padding: "0.65rem 0.85rem", fontSize: "0.88rem", borderRadius: "10px", border: "1px solid #cbd5e1", outline: "none", fontFamily: "monospace" }}
                   />
                 </div>
