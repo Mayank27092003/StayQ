@@ -94,7 +94,6 @@ export class CashfreeVerificationService {
     return {
       'x-client-id': this.clientId,
       'x-client-secret': this.clientSecret,
-      'x-api-version': '2023-08-01',
       'Content-Type': 'application/json',
       'User-Agent': 'StayQ-Backend-Engine',
     };

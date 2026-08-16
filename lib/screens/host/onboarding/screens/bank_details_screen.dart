@@ -254,7 +254,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
     final upi = _upiController.text.trim().toLowerCase();
     if (upi.isEmpty || !_isUpiValid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid UPI ID (e.g. 9876543210@paytm).')),
+        const SnackBar(content: Text('Please enter a valid UPI ID (e.g. 6266601638@axl).')),
       );
       return;
     }
@@ -265,14 +265,19 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
       final verificationApi = VerificationApi(apiClient);
       final res = await verificationApi.verifyUpi(
         vpa: upi,
-        name: _holderController.text.trim().isNotEmpty ? _holderController.text.trim() : null,
+        name: _holderController.text.trim().isNotEmpty ? _holderController.text.trim() : (_verifiedPanHolderName ?? null),
       );
 
-      if (res['vpaStatus'] == 'VALID' || res['status'] == 'SUCCESS' || res['accountExists'] == 'YES') {
+      if (res['vpaStatus'] == 'VALID' || res['status'] == 'SUCCESS' || res['accountExists'] == 'YES' || res['valid'] == true) {
+        final resolvedName = res['nameAtVpa'] ?? res['nameAtBank'] ?? res['name'] ?? res['registeredName'] ?? (_verifiedPanHolderName ?? 'Verified UPI Account');
         setState(() {
           _isUpiVerifiedWithCashfree = true;
-          _verifiedUpiAccountName = res['nameAtBank'] ?? res['name'] ?? 'Active UPI ID';
+          _verifiedUpiAccountName = resolvedName;
+          if (_holderController.text.isEmpty || _holderController.text == 'Mock Guest') {
+            _holderController.text = resolvedName;
+          }
         });
+        _updateProvider();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -280,7 +285,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                 children: [
                   const Icon(Icons.verified_rounded, color: Colors.white, size: 20),
                   const SizedBox(width: 8),
-                  Expanded(child: Text('UPI Verified: ${_verifiedUpiAccountName ?? "Active VPA"}')),
+                  Expanded(child: Text('✓ UPI Verified: ${_verifiedUpiAccountName ?? "Active VPA"}')),
                 ],
               ),
               backgroundColor: const Color(0xFF10B981),
@@ -319,15 +324,20 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
       );
 
       if (res['panStatus'] == 'VALID' || res['status'] == 'SUCCESS' || res['valid'] == true) {
+        final registeredName = res['registeredName'] ?? res['name'] ?? res['registered_name'] ?? res['nameAtBank'];
         setState(() {
           _isPanVerified = true;
-          _verifiedPanHolderName = res['registeredName'] ?? res['name'] ?? 'Verified Taxpayer';
+          _verifiedPanHolderName = registeredName ?? 'Verified Taxpayer';
+          if (_holderController.text.isEmpty || _holderController.text == 'Mock Guest') {
+            _holderController.text = _verifiedPanHolderName!;
+          }
         });
         _updateKycProvider();
+        _updateProvider();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('✓ PAN Verified: ${_verifiedPanHolderName ?? "Valid PAN"}'),
+              content: Text('✓ PAN Verified with NSDL: ${_verifiedPanHolderName ?? "Valid PAN"}'),
               backgroundColor: const Color(0xFF10B981),
             ),
           );
@@ -784,9 +794,17 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
           // TAB 1: UPI ID FORM
           else ...[
             _buildTextField(
+              'Account Holder / Payee Name',
+              _holderController,
+              hint: 'e.g. Mayank Shukla',
+              suffixIcon: _holderController.text.isNotEmpty
+                  ? const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981))
+                  : null,
+            ),
+            _buildTextField(
               'UPI ID (VPA)', 
               _upiController,
-              hint: 'e.g. 9876543210@paytm or host@okhdfcbank',
+              hint: 'e.g. 6266601638@axl or user@okhdfcbank',
               suffixIcon: _isUpiValid && _upiController.text.isNotEmpty
                   ? const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981))
                   : _upiController.text.isNotEmpty
@@ -833,7 +851,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                             ),
                             Text(
                               _isUpiVerifiedWithCashfree
-                                  ? 'Verified: ${_verifiedUpiAccountName ?? "Active VPA"}'
+                                  ? 'Verified: ${_verifiedUpiAccountName ?? _holderController.text}'
                                   : 'Direct NPCI resolution with Cashfree Secure ID',
                               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                             ),
@@ -860,7 +878,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
                             )
                           : Text(
-                              _isUpiVerifiedWithCashfree ? '✓ UPI Verified (${_verifiedUpiAccountName ?? "Active"})' : 'Verify UPI with Secure ID',
+                              _isUpiVerifiedWithCashfree ? '✓ UPI Verified (${_verifiedUpiAccountName ?? _holderController.text})' : 'Verify UPI with Secure ID',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: _isUpiVerifiedWithCashfree ? const Color(0xFF10B981) : AppColors.primary,
@@ -1040,6 +1058,38 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                             ),
                     ),
                   ),
+                  if (_isPanVerified && _verifiedPanHolderName != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.verified_user_rounded, color: Color(0xFF10B981), size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Registered Name (NSDL / Income Tax Dept):',
+                                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                                ),
+                                Text(
+                                  _verifiedPanHolderName!,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF047857)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

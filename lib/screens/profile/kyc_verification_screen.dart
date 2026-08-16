@@ -232,9 +232,13 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         _isVerifyingPan = false;
       });
 
-      if (res['verified'] == true) {
+      if (res['valid'] == true || res['status'] == 'SUCCESS' || res['verified'] == true) {
+        final resolvedName = res['registeredName'] ?? res['name'] ?? res['registered_name'];
+        if (resolvedName != null && resolvedName.isNotEmpty) {
+          _panNameController.text = resolvedName;
+        }
         AppMotion.tapHeavy();
-        _showSnackbar('PAN Verified with NSDL & Income Tax Dept! ✅');
+        _showSnackbar('✓ PAN Verified with NSDL: ${resolvedName ?? "Valid PAN"}');
         _loadStatus();
       } else {
         _showSnackbar(res['message'] ?? 'PAN verification failed', isError: true);
@@ -249,7 +253,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
   Future<void> _verifyUpi() async {
     final vpa = _upiController.text.trim().toLowerCase();
     if (!vpa.contains('@')) {
-      _showSnackbar('Please enter a valid UPI ID (e.g. username@okhdfcbank)', isError: true);
+      _showSnackbar('Please enter a valid UPI ID (e.g. 6266601638@axl)', isError: true);
       return;
     }
 
@@ -269,9 +273,13 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         _isVerifyingUpi = false;
       });
 
-      if (res['verified'] == true) {
+      if (res['valid'] == true || res['status'] == 'SUCCESS' || res['verified'] == true || res['accountExists'] == 'YES') {
+        final resolvedName = res['nameAtVpa'] ?? res['nameAtBank'] ?? res['name'] ?? res['registeredName'];
+        if (resolvedName != null && resolvedName.isNotEmpty) {
+          _upiNameController.text = resolvedName;
+        }
         AppMotion.tapHeavy();
-        _showSnackbar('UPI VPA Verified! Ready for Instant Refunds & Payouts ⚡');
+        _showSnackbar('✓ UPI Verified: ${resolvedName ?? "Active VPA"}');
         _loadStatus();
       } else {
         _showSnackbar(res['message'] ?? 'UPI verification failed', isError: true);
