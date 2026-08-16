@@ -51,6 +51,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  enable-swift-package-manager: false
   assets:
     - assets/images/
     - assets/images/experiences/
