@@ -324,16 +324,6 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _holderController.dispose();
-    _accountController.dispose();
-    _ifscController.dispose();
-    _bankController.dispose();
-    _upiController.dispose();
-    _ifscDebounce?.cancel();
-    super.dispose();
-  }
 
   Widget _buildTextField(
     String label, 
