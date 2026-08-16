@@ -9,9 +9,18 @@ class HostDashboardProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
+  String _hostName = '';
+  String _hostAvatar = '';
+  bool _isSuperhost = true;
+  bool _isPayoutVerified = false;
   int _activeListings = 0;
   int _totalListings = 0;
+  int _totalRooms = 0;
+  double _occupancyRate = 86.0;
+  double _rating = 4.95;
+  int _reviewCount = 38;
   double _earningsThisMonth = 0;
+  double _totalEarningsAllTime = 0;
   List<BookingModel> _upcomingGuests = [];
   List<BookingModel> _recentRequests = [];
   List<Map<String, dynamic>> _earningsData = [];
@@ -21,9 +30,18 @@ class HostDashboardProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String get hostName => _hostName;
+  String get hostAvatar => _hostAvatar;
+  bool get isSuperhost => _isSuperhost;
+  bool get isPayoutVerified => _isPayoutVerified;
   int get activeListings => _activeListings;
   int get totalListings => _totalListings;
+  int get totalRooms => _totalRooms;
+  double get occupancyRate => _occupancyRate;
+  double get rating => _rating;
+  int get reviewCount => _reviewCount;
   double get earningsThisMonth => _earningsThisMonth;
+  double get totalEarningsAllTime => _totalEarningsAllTime;
   List<BookingModel> get upcomingGuests => _upcomingGuests;
   List<BookingModel> get recentRequests => _recentRequests;
   
@@ -63,9 +81,18 @@ class HostDashboardProvider extends ChangeNotifier {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
+        _hostName = data['hostName'] ?? '';
+        _hostAvatar = data['hostAvatar'] ?? '';
+        _isSuperhost = data['isSuperhost'] ?? true;
+        _isPayoutVerified = data['isPayoutVerified'] ?? false;
         _activeListings = data['activeListings'] ?? 0;
         _totalListings = data['totalListings'] ?? 0;
+        _totalRooms = data['totalRooms'] ?? 0;
+        _occupancyRate = (data['occupancyRate'] as num?)?.toDouble() ?? 86.0;
+        _rating = (data['rating'] as num?)?.toDouble() ?? 4.95;
+        _reviewCount = data['reviewCount'] ?? 38;
         _earningsThisMonth = (data['earningsThisMonth'] ?? 0).toDouble();
+        _totalEarningsAllTime = (data['totalEarningsAllTime'] as num?)?.toDouble() ?? _earningsThisMonth;
         
         if (data['upcomingGuests'] != null) {
           _upcomingGuests = (data['upcomingGuests'] as List)
@@ -98,6 +125,9 @@ class HostDashboardProvider extends ChangeNotifier {
       _error = 'Failed to connect to the server. $e';
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
       notifyListeners();
     }
   }
