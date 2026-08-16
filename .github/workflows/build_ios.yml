@@ -33,7 +33,15 @@ jobs:
 
       - name: Build iOS App (.ipa / Runner.app)
         run: |
-          flutter build ios --release --no-codesign --verbose
+          mkdir -p build/ios/iphoneos
+          flutter build ios --release --no-codesign --verbose > build_ios.log 2>&1 || { echo "=== BUILD FAILED! LAST 200 LINES ==="; tail -n 200 build_ios.log; exit 1; }
+
+      - name: Upload Build Log (Always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xcode-Build-Log
+          path: build_ios.log
 
       - name: Package Payload as .ipa
         run: |
