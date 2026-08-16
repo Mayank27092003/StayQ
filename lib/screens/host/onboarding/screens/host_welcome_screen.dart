@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_motion.dart';
-import '../widgets/host_earnings_simulator_widget.dart';
 
 class HostWelcomeScreen extends StatelessWidget {
   final VoidCallback? onGetStarted;
@@ -20,7 +19,7 @@ class HostWelcomeScreen extends StatelessWidget {
           height: constraints.maxHeight,
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -34,58 +33,91 @@ class HostWelcomeScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Text(
-                              'JOIN 2,400+ BOUTIQUE HOSTS',
+                              'JOIN 2,400+ VERIFIED HOSTS',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.primary,
                                 letterSpacing: 0.6,
                               ),
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           const Text(
                             'Host with Stay Q',
                             style: TextStyle(
-                              fontSize: 26,
+                              fontSize: 30,
                               fontWeight: FontWeight.w900,
                               color: AppColors.textPrimary,
                               letterSpacing: -0.5,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           const Text(
-                            'Zero brokerage. Complete host control.',
-                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            '0% Commission. Instant Direct Bank Payouts.',
+                            style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
                           ),
                         ],
                       ),
                     ),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
                       child: Image.asset(
                         'assets/images/human_host.png',
-                        height: 90,
-                        width: 90,
+                        height: 100,
+                        width: 100,
                         fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.star_rounded, size: 60, color: AppColors.primary),
+                        errorBuilder: (_, __, ___) => const Icon(Icons.star_rounded, size: 70, color: AppColors.primary),
                       ),
                     ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
                   ],
                 ),
 
+                const SizedBox(height: 28),
+
+                // Simple 3-Step Process Card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E1C2A) : Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: AppColors.borderLight.withValues(alpha: 0.8)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Listing your space takes under 3 minutes',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildStepItem('1', 'Pick Your Property Category', 'Hotels, Villas, Campsites, RVs, or Homes.', const Color(0xFF6366F1)),
+                      const SizedBox(height: 14),
+                      _buildStepItem('2', 'Add Location & Nightly Rate', 'Interactive Google Maps pinpoint & transparent pricing.', const Color(0xFF10B981)),
+                      const SizedBox(height: 14),
+                      _buildStepItem('3', '1-Click Bank Verification', 'Instant Cashfree Secure ID Penny Drop verification.', const Color(0xFFF59E0B)),
+                    ],
+                  ),
+                ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
+
                 const SizedBox(height: 20),
-
-                // Interactive Simulator Dial Widget
-                const HostEarningsSimulatorWidget().animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
-
-                const SizedBox(height: 24),
 
                 // 3 Value Pillars
                 Container(
@@ -100,8 +132,8 @@ class HostWelcomeScreen extends StatelessWidget {
                       _buildPillarRow(
                         Icons.verified_user_rounded,
                         const Color(0xFF10B981),
-                        'Host Safety & Verified Guests',
-                        'Government ID verification and dedicated host assistance on every booking.',
+                        'Government Verified Guests',
+                        'Automated Aadhaar / PAN validation on all reservations.',
                       ),
                       const Divider(height: 24),
                       _buildPillarRow(
@@ -115,13 +147,13 @@ class HostWelcomeScreen extends StatelessWidget {
                         Icons.support_agent_rounded,
                         AppColors.primary,
                         '24/7 Dedicated Concierge',
-                        'Our ops team assists your guests with check-in and support.',
+                        'Stay Q operations team assists your guests with check-in.',
                       ),
                     ],
                   ),
                 ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 32),
 
                 // Primary Start CTA
                 if (onGetStarted != null)
@@ -142,7 +174,7 @@ class HostWelcomeScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Launch My Listing Wizard',
+                            'Get Started with My Listing',
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                           SizedBox(width: 8),
@@ -150,9 +182,9 @@ class HostWelcomeScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                  ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
+                  ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 40),
               ],
             ),
           ),
@@ -161,17 +193,55 @@ class HostWelcomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPillarRow(IconData icon, Color color, String title, String desc) {
+  Widget _buildStepItem(String number, String title, String subtitle, Color color) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            number,
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPillarRow(IconData icon, Color color, String title, String subtitle) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: Icon(icon, color: color, size: 20),
+          child: Icon(icon, color: color, size: 22),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -180,12 +250,12 @@ class HostWelcomeScreen extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
-                desc,
-                style: const TextStyle(fontSize: 11, height: 1.35, color: AppColors.textSecondary),
+                subtitle,
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
               ),
             ],
           ),

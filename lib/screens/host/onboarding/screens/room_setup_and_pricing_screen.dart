@@ -5,6 +5,7 @@ import '../../../../providers/host_onboarding_provider.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_motion.dart';
 import '../../../../widgets/bouncing_widget.dart';
+import '../widgets/location_search_bottom_sheet.dart';
 
 class RoomSetupAndPricingScreen extends StatefulWidget {
   const RoomSetupAndPricingScreen({Key? key}) : super(key: key);
@@ -55,6 +56,31 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
     final current = int.tryParse(_priceController.text) ?? 8000;
     final updated = (current + delta).clamp(500, 500000);
     _priceController.text = updated.toString();
+  }
+
+  void _openLocationSearchSheet() {
+    AppMotion.tapSelection();
+    LocationSearchBottomSheet.show(
+      context,
+      onLocationSelected: (result) {
+        final provider = Provider.of<HostOnboardingProvider>(context, listen: false);
+        provider.updateLocation(
+          result.title,
+          result.city.isNotEmpty ? result.city : provider.city,
+          result.state.isNotEmpty ? result.state : provider.state,
+          result.lat != 0.0 ? result.lat : 28.6139,
+          result.lng != 0.0 ? result.lng : 77.2090,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('📍 Location updated to ${result.title}, ${result.city}'),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -111,6 +137,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final currentPrice = double.tryParse(_priceController.text) ?? 9500;
     final monthlyPotential = (currentPrice * 18 * 0.85).toInt();
+    final locationLabel = provider.city.isNotEmpty ? '${provider.city}, ${provider.state}' : 'Location Not Set';
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -135,12 +162,61 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
               color: AppColors.textSecondary,
             ),
           ).animate().fadeIn(delay: 100.ms).slideX(),
-          const SizedBox(height: 28),
+          const SizedBox(height: 18),
+
+          // Location Benchmark Quick-Pill Trigger
+          BouncingWidget(
+            onTap: _openLocationSearchSheet,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          locationLabel,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          '${provider.propertyType} benchmark pricing active',
+                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text(
+                      'Edit Map',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ).animate().fadeIn(duration: 350.ms),
+
+          const SizedBox(height: 20),
 
           // Big Interactive Price Dial Card
           Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: isDark
@@ -250,7 +326,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
             ],
           ).animate().fadeIn(delay: 300.ms),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 40),
         ],
       ),
     );
