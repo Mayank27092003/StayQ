@@ -36,8 +36,7 @@ jobs:
 
       - name: Build iOS App (.ipa / Runner.app)
         run: |
-          mkdir -p build/ios/iphoneos
-          flutter build ios --release --no-codesign --no-swift-package-manager || flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign
 
       - name: Package Payload as .ipa
         run: |
