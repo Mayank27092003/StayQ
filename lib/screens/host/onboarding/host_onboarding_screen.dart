@@ -105,7 +105,7 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
       return provider.address.isNotEmpty && provider.city.isNotEmpty && provider.state.isNotEmpty;
     }
     if (currentScreen is BankDetailsScreen) {
-      return provider.accountHolderName.isNotEmpty && provider.accountNumber.isNotEmpty && provider.ifscCode.isNotEmpty && provider.bankName.isNotEmpty;
+      return (provider.accountNumber.isNotEmpty && provider.ifscCode.isNotEmpty) || provider.upiId.isNotEmpty;
     }
     return true;
   }
