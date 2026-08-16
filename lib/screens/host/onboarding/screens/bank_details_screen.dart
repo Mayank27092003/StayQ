@@ -35,10 +35,14 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
   String? _extractedName;
   String? _idType;
 
-  // Cashfree SecureID Bank Verification State
+  // Cashfree SecureID Bank & UPI Verification State
   bool _isVerifyingBank = false;
   bool _isBankPennyDropVerified = false;
   String? _verifiedBeneficiaryName;
+
+  bool _isVerifyingUpi = false;
+  bool _isUpiVerifiedWithCashfree = false;
+  String? _verifiedUpiAccountName;
 
   Timer? _ifscDebounce;
   bool _isLoadingIfsc = false;
@@ -324,6 +328,55 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
     }
   }
 
+  Future<void> _verifyUpiWithCashfree() async {
+    final upi = _upiController.text.trim().toLowerCase();
+    if (upi.isEmpty || !_isUpiValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid UPI ID format (e.g. 9876543210@paytm).')),
+      );
+      return;
+    }
+
+    setState(() => _isVerifyingUpi = true);
+    try {
+      final apiClient = ApiClient(baseUrl: 'https://stayq-api-608570851336.asia-south1.run.app/api/v1');
+      final verificationApi = VerificationApi(apiClient);
+      final res = await verificationApi.verifyUpi(
+        vpa: upi,
+        name: _holderController.text.trim().isNotEmpty ? _holderController.text.trim() : null,
+      );
+
+      if (res['vpaStatus'] == 'VALID' || res['status'] == 'SUCCESS' || res['accountExists'] == 'YES') {
+        setState(() {
+          _isUpiVerifiedWithCashfree = true;
+          _verifiedUpiAccountName = res['nameAtBank'] ?? res['name'] ?? 'Active UPI ID';
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.verified_rounded, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('UPI Verified: ${_verifiedUpiAccountName ?? "Active VPA"}')),
+                ],
+              ),
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('UPI Verification: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isVerifyingUpi = false);
+    }
+  }
+
 
   Widget _buildTextField(
     String label, 
@@ -434,6 +487,47 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                     ? Icon(Icons.error_outline_rounded, color: Colors.red.withOpacity(0.5))
                     : null,
           ),
+          if (_upiController.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: OutlinedButton(
+                onPressed: _isVerifyingUpi ? null : _verifyUpiWithCashfree,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: _isUpiVerifiedWithCashfree ? const Color(0xFF10B981) : AppColors.primary,
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  backgroundColor: _isUpiVerifiedWithCashfree ? const Color(0xFF10B981).withValues(alpha: 0.08) : Colors.white,
+                ),
+                child: _isVerifyingUpi
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _isUpiVerifiedWithCashfree ? Icons.check_circle_rounded : Icons.verified_user_rounded,
+                            color: _isUpiVerifiedWithCashfree ? const Color(0xFF10B981) : AppColors.primary,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _isUpiVerifiedWithCashfree
+                                ? 'UPI Verified: ${_verifiedUpiAccountName ?? "Active VPA"}'
+                                : 'Verify UPI with Cashfree Secure ID',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: _isUpiVerifiedWithCashfree ? const Color(0xFF10B981) : AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
 
           // Cashfree SecureID Verification CTA
           Container(
