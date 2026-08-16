@@ -10,15 +10,15 @@ class PropertyTypeScreen extends StatelessWidget {
   const PropertyTypeScreen({Key? key}) : super(key: key);
 
   final List<Map<String, String>> categories = const [
+    {'title': 'Hotel & Resort', 'icon': '🏨', 'value': 'HOTEL', 'subtitle': 'Rooms, suites & dining'},
     {'title': 'Luxury Villa', 'icon': '🏡', 'value': 'VILLA', 'subtitle': 'Private pool & garden'},
     {'title': 'Penthouse & Apt', 'icon': '🏢', 'value': 'APARTMENT', 'subtitle': 'Skyline & city views'},
-    {'title': 'Alpine Cabin', 'icon': '🪵', 'value': 'CABIN', 'subtitle': 'Himalayan fireplace'},
-    {'title': 'Treehouse Pod', 'icon': '🌳', 'value': 'TREEHOUSE', 'subtitle': 'Rainforest canopy'},
     {'title': 'Glamping Camp', 'icon': '🏕️', 'value': 'CAMPING_SITE', 'subtitle': 'Stargazing tents'},
     {'title': 'Luxury RV Cruiser', 'icon': '🚐', 'value': 'RV', 'subtitle': 'Off-grid campervan'},
+    {'title': 'Alpine Cabin', 'icon': '🪵', 'value': 'CABIN', 'subtitle': 'Himalayan fireplace'},
     {'title': 'Zero-Broker Home', 'icon': '🏠', 'value': 'LONG_TERM_HOME', 'subtitle': '11-month lease'},
+    {'title': 'Treehouse Pod', 'icon': '🌳', 'value': 'TREEHOUSE', 'subtitle': 'Rainforest canopy'},
     {'title': 'Heritage Haveli', 'icon': '🏰', 'value': 'HOMESTAY', 'subtitle': 'Royal hospitality'},
-    {'title': 'Boutique Resort', 'icon': '🏨', 'value': 'HOTEL', 'subtitle': 'Full concierge service'},
   ];
 
   @override

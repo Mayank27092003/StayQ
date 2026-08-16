@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../models/stay_model.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_colors.dart';
@@ -505,44 +508,64 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Approximate Map Bubble Visual Container
-                      Container(
-                        height: 180,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEEF2F6),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.borderLight),
-                        ),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            const Icon(Icons.map_rounded, size: 48, color: Color(0xFFCBD5E1)),
-                            // Translucent Radial Approximate Circle
-                            Container(
-                              width: 110,
-                              height: 110,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppColors.primary.withValues(alpha: 0.15),
-                                border: Border.all(color: AppColors.primary, width: 2, strokeAlign: BorderSide.strokeAlignCenter),
+                      Builder(
+                        builder: (context) {
+                          final double stayLat = (stay.lat != 0.0) ? stay.lat : 28.6139;
+                          final double stayLng = (stay.lng != 0.0) ? stay.lng : 77.2090;
+
+                          return Container(
+                            height: 220,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEEF2F6),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.borderLight),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: GoogleMap(
+                              initialCameraPosition: CameraPosition(
+                                target: LatLng(stayLat, stayLng),
+                                zoom: 14.0,
                               ),
-                              child: Center(
-                                child: Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: AppColors.primary,
-                                    boxShadow: [
-                                      BoxShadow(color: AppColors.primary, blurRadius: 10, spreadRadius: 2),
-                                    ],
+                              circles: {
+                                Circle(
+                                  circleId: const CircleId('stay_approx_area'),
+                                  center: LatLng(stayLat, stayLng),
+                                  radius: 400,
+                                  fillColor: AppColors.primary.withValues(alpha: 0.20),
+                                  strokeColor: AppColors.primary,
+                                  strokeWidth: 2,
+                                ),
+                              },
+                              markers: {
+                                Marker(
+                                  markerId: const MarkerId('stay_pin'),
+                                  position: LatLng(stayLat, stayLng),
+                                  infoWindow: InfoWindow(
+                                    title: stay.title,
+                                    snippet: stay.location,
                                   ),
                                 ),
-                              ),
+                              },
+                              zoomControlsEnabled: false,
+                              myLocationButtonEnabled: false,
+                              mapToolbarEnabled: false,
+                              compassEnabled: false,
+                              gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                                Factory<OneSequenceGestureRecognizer>(
+                                  () => EagerGestureRecognizer(),
+                                ),
+                              },
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 10),
 

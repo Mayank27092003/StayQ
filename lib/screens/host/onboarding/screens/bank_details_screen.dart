@@ -54,6 +54,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
     _accountController = TextEditingController(text: provider.accountNumber);
     _ifscController = TextEditingController(text: provider.ifscCode);
     _bankController = TextEditingController(text: provider.bankName);
+    _upiController = TextEditingController(text: provider.upiId);
     _passbookPath = provider.bankPassbookImagePath;
     _extractedId = provider.idNumber;
     _extractedName = provider.idName;
@@ -73,6 +74,17 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
     // Initial validation if pre-filled
     if (_ifscController.text.isNotEmpty) _onIfscChanged();
     if (_upiController.text.isNotEmpty) _onUpiChanged();
+  }
+
+  @override
+  void dispose() {
+    _ifscDebounce?.cancel();
+    _holderController.dispose();
+    _accountController.dispose();
+    _ifscController.dispose();
+    _bankController.dispose();
+    _upiController.dispose();
+    super.dispose();
   }
 
   void _updateProvider() {
