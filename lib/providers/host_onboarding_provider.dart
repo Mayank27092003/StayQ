@@ -52,6 +52,7 @@ class HostOnboardingProvider extends ChangeNotifier {
   double pricePerNight = 1000.0;
   int numberOfRooms = 1;
   int bedsPerRoom = 1;
+  List<String> bedTypes = ['King Bed'];
   double? weekendPrice;
   double? weeklyDiscountPercent;
   double? monthlyDiscountPercent;
@@ -207,6 +208,17 @@ class HostOnboardingProvider extends ChangeNotifier {
     if (checkOut != null) checkOutTime = checkOut;
     if (min != null) minStay = min;
     maxStay = max;
+    notifyListeners();
+  }
+
+  void toggleBedType(String bedType) {
+    if (bedTypes.contains(bedType)) {
+      if (bedTypes.length > 1) {
+        bedTypes.remove(bedType);
+      }
+    } else {
+      bedTypes.add(bedType);
+    }
     notifyListeners();
   }
 

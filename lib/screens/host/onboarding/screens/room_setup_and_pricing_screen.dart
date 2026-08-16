@@ -22,6 +22,16 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
   late TextEditingController _roomsController;
   late TextEditingController _bedsController;
 
+  final List<Map<String, String>> _availableBedTypes = const [
+    {'title': 'King Size Bed', 'icon': '👑', 'subtitle': '72" × 78" Master suite'},
+    {'title': 'Queen Bed', 'icon': '🛏️', 'subtitle': '60" × 78" Standard double'},
+    {'title': 'Double / Twin Beds', 'icon': '🛌', 'subtitle': 'Two separate single beds'},
+    {'title': 'Single Bed', 'icon': '🛋️', 'subtitle': '36" × 75" Individual sleeper'},
+    {'title': 'Bunk Beds', 'icon': '🪜', 'subtitle': 'Tiered multi-level bunks'},
+    {'title': 'Sofa Cum Bed', 'icon': '🛋️', 'subtitle': 'Pull-out convertible sofa'},
+    {'title': 'Floor Mattress', 'icon': '⛺', 'subtitle': 'Extra rollaway bedding'},
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -146,7 +156,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Smart Pricing',
+            'Rooms & Pricing',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
@@ -156,7 +166,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
           ).animate().fadeIn().slideX(),
           const SizedBox(height: 6),
           const Text(
-            'Set your base nightly rate. You can change this anytime.',
+            'Configure your bed types, room capacity, and nightly rates.',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
@@ -189,7 +199,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          '${provider.propertyType} benchmark pricing active',
+                          '${provider.propertyType.replaceAll('_', ' ')} benchmark pricing active',
                           style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                         ),
                       ],
@@ -301,12 +311,90 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
 
           const SizedBox(height: 28),
 
+          // Bed Type & Sleeping Arrangements
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Bed Types & Sleeping Setup',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Select all bed types available for guests in this listing:',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: _availableBedTypes.map((bed) {
+                  final isSelected = provider.bedTypes.contains(bed['title']);
+                  return BouncingWidget(
+                    onTap: () {
+                      AppMotion.tapSelection();
+                      provider.toggleBedType(bed['title']!);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary.withValues(alpha: 0.12)
+                            : (isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSelected ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight),
+                          width: isSelected ? 1.8 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(bed['icon']!, style: const TextStyle(fontSize: 18)),
+                          const SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                bed['title']!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                bed['subtitle']!,
+                                style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+                              ),
+                            ],
+                          ),
+                          if (isSelected) ...[
+                            const SizedBox(width: 8),
+                            const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 16),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ).animate().fadeIn(delay: 150.ms),
+
+          const SizedBox(height: 24),
+
           // Weekend & Room Capacity Fields
           Row(
             children: [
-              Expanded(child: _buildField('Rooms / Units', _roomsController, hint: '1')),
+              Expanded(child: _buildField('Total Rooms / Units', _roomsController, hint: '1')),
               const SizedBox(width: 14),
-              Expanded(child: _buildField('Beds / Unit', _bedsController, hint: '1')),
+              Expanded(child: _buildField('Total Beds in Space', _bedsController, hint: '1')),
             ],
           ).animate().fadeIn(delay: 200.ms),
 
