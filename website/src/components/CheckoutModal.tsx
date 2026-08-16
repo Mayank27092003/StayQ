@@ -4,14 +4,23 @@ import { useApp } from '../context/AppContext';
 import { calculateBookingQuote, createBookingApi } from '../services/api';
 
 export const CheckoutModal: React.FC = () => {
-  const { checkoutItem, setCheckoutItem, setActiveConfirmation, addBooking, user } = useApp();
+  const { checkoutItem, setCheckoutItem, setActiveConfirmation, addBooking, user, setIsAuthModalOpen } = useApp();
 
-  const [guestName, setGuestName] = useState(user?.name || 'Kabir Verma');
-  const [guestEmail, setGuestEmail] = useState(user?.email || 'kabir@stayq.in');
-  const [guestPhone, setGuestPhone] = useState('+91 98765 43210');
+  const [guestName, setGuestName] = useState(user?.name || '');
+  const [guestEmail, setGuestEmail] = useState(user?.email || '');
+  const [guestPhone, setGuestPhone] = useState(user?.phone || '');
   const [specialRequests, setSpecialRequests] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CARD' | 'NETBANKING' | 'PAY_AT_STAY'>('UPI');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync with user profile if user logs in while modal is open
+  React.useEffect(() => {
+    if (user) {
+      if (!guestName) setGuestName(user.name || '');
+      if (!guestEmail) setGuestEmail(user.email || '');
+      if (!guestPhone) setGuestPhone(user.phone || '');
+    }
+  }, [user]);
 
   if (!checkoutItem) return null;
 
@@ -38,7 +47,13 @@ export const CheckoutModal: React.FC = () => {
 
   const handleConfirmBooking = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!guestName || !guestEmail) return;
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    const finalName = guestName.trim() || user.name || 'Guest';
+    const finalEmail = guestEmail.trim() || user.email || 'guest@stayq.space';
+    const finalPhone = guestPhone.trim() || user.phone || '+91 9999999999';
 
     setIsSubmitting(true);
     try {
@@ -50,9 +65,9 @@ export const CheckoutModal: React.FC = () => {
         itemImage,
         checkInDate: checkIn,
         checkOutDate: checkOut,
-        guestName,
-        guestEmail,
-        guestPhone,
+        guestName: finalName,
+        guestEmail: finalEmail,
+        guestPhone: finalPhone,
         guestsCount: guests,
         totalPrice: quote.totalAmount,
         paymentMethod: paymentMethod === 'UPI' ? 'UPI (Google Pay / PhonePe)' : paymentMethod === 'CARD' ? 'Credit / Debit Card' : paymentMethod === 'PAY_AT_STAY' ? 'Pay at Check-in' : 'Net Banking',

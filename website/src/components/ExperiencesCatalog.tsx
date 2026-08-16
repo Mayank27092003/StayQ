@@ -7,7 +7,7 @@ import { useApp } from '../context/AppContext';
 const EXP_CATEGORIES = ['All', 'Adventure', 'Food & Drink', 'Art & Culture', 'Wellness'];
 
 export const ExperiencesCatalog: React.FC = () => {
-  const { setCheckoutItem } = useApp();
+  const { setCheckoutItem, user, setIsAuthModalOpen } = useApp();
   const [selectedCat, setSelectedCat] = useState('All');
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +38,10 @@ export const ExperiencesCatalog: React.FC = () => {
   };
 
   const handleProceedToSlotCheckout = () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (!activeExp || !selectedSlot) return;
     setCheckoutItem({
       experience: activeExp,
@@ -84,7 +88,7 @@ export const ExperiencesCatalog: React.FC = () => {
           </div>
         ) : (
           <div className="exp-grid">
-            {filtered.map((exp) => (
+            {filtered.map((exp: Experience) => (
               <article key={exp.id} className="exp-card" onClick={() => handleOpenSlotModal(exp)}>
               <div className="exp-card__media">
                 <img src={exp.imageUrls[0]} alt={exp.title} className="exp-card__img" loading="lazy" />
