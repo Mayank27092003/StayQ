@@ -23,18 +23,23 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'master'
+          channel: 'stable'
+          cache: true
 
-      - name: Install Dependencies
+      - name: Install Dependencies & Pods
         run: |
           flutter --version
+          flutter precache --ios
           flutter pub get
+          cd ios
+          pod repo update || true
+          pod install
+          cd ..
 
       - name: Build iOS App (.ipa / Runner.app)
         run: |
-          mkdir -p build/ios/SourcePackages
           mkdir -p build/ios/iphoneos
-          flutter build ios --release --no-codesign --verbose
+          flutter build ios --release --no-codesign
 
       - name: Package Payload as .ipa
         run: |
