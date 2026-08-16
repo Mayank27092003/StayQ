@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../providers/host_onboarding_provider.dart';
 import '../../../theme/app_colors.dart';
+import '../../../navigation/app_router.dart';
 import 'screens/host_welcome_screen.dart';
 import 'screens/host_account_setup_screen.dart';
 import 'screens/property_type_screen.dart';
