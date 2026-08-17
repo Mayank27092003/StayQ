@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
-import 'api/api_client.dart';
-import '../widgets/custom_toast.dart';
 
 // Top-level function for background message handling
 @pragma('vm:entry-point')
