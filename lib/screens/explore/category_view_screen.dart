@@ -24,8 +24,15 @@ class _CategoryViewScreenState extends State<CategoryViewScreen> {
 
     final filteredList = provider.stays.where((stay) {
       bool matchesCategory = true;
+      final cat = widget.categoryTitle.toLowerCase();
       if (widget.categoryTitle == 'Trending') {
         matchesCategory = stay.isGuestFavorite || stay.rating >= 4.9;
+      } else if (cat.contains('zero broker') || cat == 'zero brokerage') {
+        matchesCategory = stay.isZeroBroker;
+      } else if (cat == 'rvs' || cat == 'rv' || cat.contains('campervan')) {
+        matchesCategory = stay.propertyType == 'RV' || stay.category.toLowerCase().contains('rv');
+      } else if (cat == 'camping' || cat == 'glamping' || cat.contains('camp')) {
+        matchesCategory = stay.propertyType == 'CAMPING_SITE' || stay.category.toLowerCase().contains('camp') || stay.category.toLowerCase().contains('glamp');
       } else if (widget.categoryTitle != 'Recommended' && widget.categoryTitle != 'All Stays') {
         matchesCategory = stay.category.toLowerCase() == widget.categoryTitle.toLowerCase();
       }

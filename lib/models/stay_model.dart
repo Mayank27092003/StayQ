@@ -194,13 +194,22 @@ class StayModel {
       status: json['status'] ?? 'ACTIVE',
       city: json['city'] ?? 'City',
       state: json['state'] ?? 'State',
-      propertyType: json['propertyType'] ?? _derivePropertyType(json['category'] ?? ''),
+      propertyType: (json['longTermAvailable'] == true || (json['category'] != null && json['category'].toString().toUpperCase().contains('LONG_TERM')) || (json['category'] != null && json['category'].toString().toUpperCase().contains('ZERO')))
+          ? 'ZERO_BROKER'
+          : (json['propertyType'] ?? _derivePropertyType(json['category'] ?? '')),
       isStayingWithHost: json['isStayingWithHost'] ?? (json['roomType'] == 'PRIVATE_ROOM' || json['roomType'] == 'SHARED_ROOM'),
       hostPresenceType: json['hostPresenceType'] ?? (json['isStayingWithHost'] == true ? 'Host on premises' : null),
       maxSpots: json['maxSpots'] != null ? int.tryParse(json['maxSpots'].toString()) ?? 10 : 10,
       availableSpots: json['availableSpots'] != null ? int.tryParse(json['availableSpots'].toString()) ?? 10 : 10,
     );
   }
+
+  bool get isZeroBroker =>
+      propertyType == 'ZERO_BROKER' ||
+      propertyType == 'LONG_TERM_HOME' ||
+      category.toUpperCase().contains('ZERO') ||
+      category.toUpperCase().contains('LONG_TERM') ||
+      tags.any((t) => t.toUpperCase().contains('ZERO'));
 
   Map<String, dynamic> toMap() {
     return {

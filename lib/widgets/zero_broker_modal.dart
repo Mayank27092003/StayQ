@@ -1,6 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
+import '../screens/explore/category_view_screen.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_motion.dart';
 import 'bouncing_widget.dart';
@@ -128,47 +131,63 @@ class ZeroBrokerModal extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 48),
+                const SizedBox(height: 40),
 
-                // Close / Got it Button
+                // Primary CTA: Explore Zero Broker Button
                 Padding(
                   padding: EdgeInsets.only(
                     left: 24,
                     right: 24,
                     bottom: MediaQuery.of(context).padding.bottom + 24,
                   ),
-                  child: BouncingWidget(
-                    onTap: () {
-                      AppMotion.tapSelection();
-                      Navigator.of(context).pop();
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.3),
-                            blurRadius: 16,
-                            offset: const Offset(0, 8),
+                  child: Column(
+                    children: [
+                      BouncingWidget(
+                        onTap: () {
+                          AppMotion.tapSelection();
+                          Navigator.of(context).pop();
+                          Provider.of<AppProvider>(context, listen: false).setCategory('Zero Broker');
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const CategoryViewScreen(categoryTitle: 'Zero Broker'),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            gradient: AppColors.primaryGradient,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.3),
+                                blurRadius: 16,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'Got it!',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.search_rounded, color: Colors.white, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Explore Zero-Broker Homes',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ),
+                      ).animate().slideY(begin: 0.5, end: 0, delay: 500.ms, curve: AppMotion.bounceCurve).fadeIn(),
+                    ],
                   ),
-                ).animate().slideY(begin: 0.5, end: 0, delay: 500.ms, curve: AppMotion.bounceCurve).fadeIn(),
+                ),
               ],
             ),
           ),

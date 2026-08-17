@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
+import '../screens/explore/category_view_screen.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_motion.dart';
 import 'bouncing_widget.dart';
@@ -14,7 +17,13 @@ class ZeroBrokerBanner extends StatelessWidget {
     return BouncingWidget(
       onTap: () {
         AppMotion.tapSelection();
-        ZeroBrokerModal.show(context);
+        Provider.of<AppProvider>(context, listen: false).setCategory('Zero Broker');
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const CategoryViewScreen(categoryTitle: 'Zero Broker'),
+          ),
+        );
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),

@@ -21,9 +21,12 @@ class CategorySelector extends StatelessWidget {
 
   final List<CategoryItem> categories = [
     CategoryItem(title: 'All Stays', icon: Icons.home_outlined),
+    CategoryItem(title: 'Zero Broker', icon: Icons.handshake_outlined),
     CategoryItem(title: 'Amazing Pools', icon: Icons.pool_rounded),
     CategoryItem(title: 'Beachfront', icon: Icons.beach_access_rounded),
     CategoryItem(title: 'Cabins', icon: Icons.cabin_rounded),
+    CategoryItem(title: 'RVs', icon: Icons.rv_hookup_rounded),
+    CategoryItem(title: 'Camping', icon: Icons.nature_people_rounded),
     CategoryItem(title: 'Design', icon: Icons.architecture_rounded),
     CategoryItem(title: 'Trending', icon: Icons.local_fire_department_rounded),
   ];
