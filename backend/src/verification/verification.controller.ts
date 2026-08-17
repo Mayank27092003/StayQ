@@ -39,14 +39,17 @@ export class VerificationController {
    * Direct Test Bank Account Penny Drop (Admin / Diagnostics)
    */
   @Post('test-bank')
+  @UseGuards(FirebaseAuthGuard)
   async testBankAccount(
+    @CurrentUser() user: User,
     @Body() body: { accountNumber: string; ifsc: string; name?: string; phone?: string },
   ) {
     return this.verificationService.verifyBankAccount({
       accountNumber: body.accountNumber,
       ifsc: body.ifsc,
-      name: body.name,
-      phone: body.phone,
+      name: body.name || user?.displayName || undefined,
+      phone: body.phone || user?.phone || undefined,
+      userId: user?.id,
     });
   }
 

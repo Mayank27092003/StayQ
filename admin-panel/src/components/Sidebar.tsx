@@ -160,6 +160,16 @@ export default function Sidebar() {
               <span>Tax &amp; TDS (194-O)</span>
             </Link>
           </div>
+
+          {/* Security & Access Management */}
+          <div className="space-y-xs">
+            <p className="px-md font-label-md text-label-md text-outline uppercase tracking-wider">Security &amp; RBAC</p>
+            <Link className={getLinkClasses("/access")} href="/access">
+              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/access") ? "'FILL' 1" : "normal" }}>shield_person</span>
+              <span className="flex-1">Staff &amp; Access</span>
+              <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-primary/20 text-primary">Master</span>
+            </Link>
+          </div>
         </nav>
 
         {/* User / Logout */}
@@ -170,7 +180,7 @@ export default function Sidebar() {
             </div>
             <div className="overflow-hidden">
               <p className="text-sm font-semibold text-on-surface truncate">Admin Team</p>
-              <p className="text-xs text-on-surface-variant truncate">admin@stayq.in</p>
+              <p className="text-xs text-on-surface-variant truncate">grievance@stayq.space</p>
             </div>
           </div>
           <button

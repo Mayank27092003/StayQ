@@ -186,8 +186,11 @@ export const QubeDrawer: React.FC = () => {
 };
 
 function formatMessage(text: string): string {
-  // Convert markdown bold to html bold and linebreaks
-  return text
+  const escaped = (text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escaped
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/\n/g, '<br />');

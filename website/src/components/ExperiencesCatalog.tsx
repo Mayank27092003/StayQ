@@ -13,7 +13,9 @@ export const ExperiencesCatalog: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeExp, setActiveExp] = useState<Experience | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<ExperienceSlot | null>(null);
-  const [ticketCount, setTicketCount] = useState(1);
+  const [adultsCount, setAdultsCount] = useState(1);
+  const [kidsCount, setKidsCount] = useState(0);
+  const [infantsCount, setInfantsCount] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -34,7 +36,9 @@ export const ExperiencesCatalog: React.FC = () => {
   const handleOpenSlotModal = (exp: Experience) => {
     setActiveExp(exp);
     setSelectedSlot(exp.slots[0] || null);
-    setTicketCount(1);
+    setAdultsCount(1);
+    setKidsCount(0);
+    setInfantsCount(0);
   };
 
   const handleProceedToSlotCheckout = () => {
@@ -43,10 +47,14 @@ export const ExperiencesCatalog: React.FC = () => {
       return;
     }
     if (!activeExp || !selectedSlot) return;
+    const totalParticipants = adultsCount + kidsCount;
     setCheckoutItem({
       experience: activeExp,
       slotId: `${selectedSlot.date} - ${selectedSlot.time}`,
-      guests: ticketCount,
+      guests: totalParticipants,
+      adults: adultsCount,
+      children: kidsCount,
+      infants: infantsCount,
     });
     setActiveExp(null);
   };
@@ -243,23 +251,103 @@ export const ExperiencesCatalog: React.FC = () => {
                       })}
                     </div>
 
-                    {/* Quantity Picker */}
-                    <div className="booking-picker__guests" style={{ marginTop: '1rem' }}>
-                      <label>NUMBER OF TICKETS</label>
-                      <div className="booking-guests-control">
-                        <span>{ticketCount} {ticketCount === 1 ? 'Person' : 'People'}</span>
-                        <div className="booking-guests-buttons">
+                    {/* Participants & Age Group Pickers */}
+                    <div style={{ marginTop: '1.25rem', padding: '1rem', background: '#F8FAFC', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--gray-500)', display: 'block', marginBottom: '0.6rem' }}>
+                        Select Participants &amp; Age Group
+                      </label>
+
+                      {/* Adults (13+ yrs) */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
+                        <div>
+                          <strong style={{ fontSize: '0.88rem', color: 'var(--ink)', display: 'block' }}>Adults (13+ yrs)</strong>
+                          <span style={{ fontSize: '0.74rem', color: 'var(--gray-500)' }}>
+                            ₹{activeExp.pricePerPerson.toLocaleString('en-IN')} / person
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                           <button
                             type="button"
-                            disabled={ticketCount <= 1}
-                            onClick={() => setTicketCount(Math.max(1, ticketCount - 1))}
+                            disabled={adultsCount <= 1}
+                            onClick={() => setAdultsCount(Math.max(1, adultsCount - 1))}
+                            style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid var(--border)', background: adultsCount <= 1 ? '#f4f4f5' : '#fff', color: adultsCount <= 1 ? '#a1a1aa' : '#18181b', fontWeight: 700, cursor: adultsCount <= 1 ? 'not-allowed' : 'pointer' }}
                           >
                             -
                           </button>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, minWidth: '18px', textAlign: 'center' }}>{adultsCount}</span>
                           <button
                             type="button"
-                            disabled={ticketCount >= (selectedSlot ? selectedSlot.capacity - selectedSlot.bookedCount : 6)}
-                            onClick={() => setTicketCount(ticketCount + 1)}
+                            disabled={(adultsCount + kidsCount) >= (selectedSlot ? selectedSlot.capacity - selectedSlot.bookedCount : 8)}
+                            onClick={() => setAdultsCount(adultsCount + 1)}
+                            style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid var(--border)', background: '#fff', color: '#18181b', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Kids / Children (3–12 yrs) */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <strong style={{ fontSize: '0.88rem', color: 'var(--ink)' }}>Kids (3–12 yrs)</strong>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#059669', background: '#ECFDF5', padding: '2px 6px', borderRadius: '6px' }}>
+                              50% OFF
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.74rem', color: 'var(--gray-500)' }}>
+                            ₹{Math.round(activeExp.pricePerPerson * 0.5).toLocaleString('en-IN')} / kid
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                          <button
+                            type="button"
+                            disabled={kidsCount <= 0}
+                            onClick={() => setKidsCount(Math.max(0, kidsCount - 1))}
+                            style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid var(--border)', background: kidsCount <= 0 ? '#f4f4f5' : '#fff', color: kidsCount <= 0 ? '#a1a1aa' : '#18181b', fontWeight: 700, cursor: kidsCount <= 0 ? 'not-allowed' : 'pointer' }}
+                          >
+                            -
+                          </button>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, minWidth: '18px', textAlign: 'center' }}>{kidsCount}</span>
+                          <button
+                            type="button"
+                            disabled={(adultsCount + kidsCount) >= (selectedSlot ? selectedSlot.capacity - selectedSlot.bookedCount : 8)}
+                            onClick={() => setKidsCount(kidsCount + 1)}
+                            style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid var(--border)', background: '#fff', color: '#18181b', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Infants (Under 3 yrs) */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <strong style={{ fontSize: '0.88rem', color: 'var(--ink)' }}>Infants (Under 3)</strong>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#2563EB', background: '#EFF6FF', padding: '2px 6px', borderRadius: '6px' }}>
+                              FREE
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.74rem', color: 'var(--gray-500)' }}>
+                            No fee required
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                          <button
+                            type="button"
+                            disabled={infantsCount <= 0}
+                            onClick={() => setInfantsCount(Math.max(0, infantsCount - 1))}
+                            style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid var(--border)', background: infantsCount <= 0 ? '#f4f4f5' : '#fff', color: infantsCount <= 0 ? '#a1a1aa' : '#18181b', fontWeight: 700, cursor: infantsCount <= 0 ? 'not-allowed' : 'pointer' }}
+                          >
+                            -
+                          </button>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, minWidth: '18px', textAlign: 'center' }}>{infantsCount}</span>
+                          <button
+                            type="button"
+                            disabled={infantsCount >= 4}
+                            onClick={() => setInfantsCount(Math.min(4, infantsCount + 1))}
+                            style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid var(--border)', background: '#fff', color: '#18181b', fontWeight: 700, cursor: 'pointer' }}
                           >
                             +
                           </button>
@@ -267,21 +355,39 @@ export const ExperiencesCatalog: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="booking-breakdown" style={{ marginTop: '1rem' }}>
-                      <div className="booking-breakdown__row">
-                        <span>₹{activeExp.pricePerPerson.toLocaleString('en-IN')} × {ticketCount} tickets</span>
-                        <span>₹{(activeExp.pricePerPerson * ticketCount).toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="booking-breakdown__row">
-                        <span>Taxes & GST (18%)</span>
-                        <span>₹{Math.round(activeExp.pricePerPerson * ticketCount * 0.18).toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="booking-breakdown__divider" />
-                      <div className="booking-breakdown__total">
-                        <span>Total (INR)</span>
-                        <strong>₹{Math.round(activeExp.pricePerPerson * ticketCount * 1.18).toLocaleString('en-IN')}</strong>
-                      </div>
-                    </div>
+                    {/* Price Breakdown */}
+                    {(() => {
+                      const adultTotal = activeExp.pricePerPerson * adultsCount;
+                      const kidUnitPrice = Math.round(activeExp.pricePerPerson * 0.5);
+                      const kidTotal = kidUnitPrice * kidsCount;
+                      const subtotal = adultTotal + kidTotal;
+                      const gst = Math.round(subtotal * 0.18);
+                      const total = subtotal + gst;
+
+                      return (
+                        <div className="booking-breakdown" style={{ marginTop: '1rem' }}>
+                          <div className="booking-breakdown__row">
+                            <span>₹{activeExp.pricePerPerson.toLocaleString('en-IN')} × {adultsCount} Adult{adultsCount > 1 ? 's' : ''}</span>
+                            <span>₹{adultTotal.toLocaleString('en-IN')}</span>
+                          </div>
+                          {kidsCount > 0 && (
+                            <div className="booking-breakdown__row" style={{ color: '#059669', fontWeight: 600 }}>
+                              <span>₹{kidUnitPrice.toLocaleString('en-IN')} × {kidsCount} Kid{kidsCount > 1 ? 's' : ''} (50% Off)</span>
+                              <span>₹{kidTotal.toLocaleString('en-IN')}</span>
+                            </div>
+                          )}
+                          <div className="booking-breakdown__row">
+                            <span>Taxes &amp; GST (18%)</span>
+                            <span>₹{gst.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="booking-breakdown__divider" />
+                          <div className="booking-breakdown__total">
+                            <span>Total (INR)</span>
+                            <strong>₹{total.toLocaleString('en-IN')}</strong>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <button
                       type="button"
@@ -289,7 +395,7 @@ export const ExperiencesCatalog: React.FC = () => {
                       style={{ marginTop: '1.2rem' }}
                       onClick={handleProceedToSlotCheckout}
                     >
-                      Reserve Slots
+                      Reserve Slots ({(adultsCount + kidsCount)} {(adultsCount + kidsCount) === 1 ? 'Person' : 'People'})
                       <ChevronRight size={18} />
                     </button>
                   </div>

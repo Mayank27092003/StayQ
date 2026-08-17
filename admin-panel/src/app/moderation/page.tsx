@@ -12,22 +12,23 @@ export default function ContentModerationPage() {
   const [toast, setToast] = useState<{message: string, type: 'success'|'error'|'info'} | null>(null);
 
   useEffect(() => {
-    axios.get('/api/v1/admin/moderation')
+    axios.get('/api/v1/admin/moderation/reviews')
       .then(res => setData(res.data))
       .catch(err => {
-        console.error("Error fetching moderation queue:", err);
-        // Fallback for demo just in case route varies
-        axios.get('/api/admin/moderation/reviews').then(r => setData(r.data)).catch(() => {});
+        console.error("Error fetching moderation reviews:", err);
       })
       .finally(() => setLoading(false));
   }, []);
 
-  const queue = data?.queue || data?.data || data?.items || [];
+  const queue = Array.isArray(data) ? data : data?.reviews || data?.items || [];
   const activeItem = queue[activeIndex] || null;
 
   const handleApprove = () => {
     if(!activeItem) return;
-    axios.post('/api/v1/admin/moderation/' + (activeItem.id || activeItem._id || activeItem.modId) + '/approve').then(() => {
+    axios.patch('/api/v1/admin/moderation/reviews/' + (activeItem.id || activeItem._id), {
+      status: 'PUBLISHED',
+      notes: 'Approved by admin moderation',
+    }).then(() => {
         setToast({message: "Approved!", type: 'success'});
         setActiveIndex(i => Math.min(queue.length - 1, i + 1));
     }).catch(err => setToast({message: "Error approving: " + err.message, type: 'error'}));
@@ -35,7 +36,10 @@ export default function ContentModerationPage() {
 
   const handleReject = () => {
     if(!activeItem) return;
-    axios.post('/api/v1/admin/moderation/' + (activeItem.id || activeItem._id || activeItem.modId) + '/reject').then(() => {
+    axios.patch('/api/v1/admin/moderation/reviews/' + (activeItem.id || activeItem._id), {
+      status: 'HIDDEN',
+      notes: 'Hidden by admin moderation',
+    }).then(() => {
         setToast({message: "Rejected!", type: 'success'});
         setActiveIndex(i => Math.min(queue.length - 1, i + 1));
     }).catch(err => setToast({message: "Error rejecting: " + err.message, type: 'error'}));

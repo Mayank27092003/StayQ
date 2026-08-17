@@ -53,7 +53,9 @@ def load_env_vars():
     target_keys = [
         "GROQ_API_KEY", "DATABASE_URL", "MSG91_AUTH_KEY", "MSG91_TEMPLATE_ID",
         "CASHFREE_APP_ID", "CASHFREE_CLIENT_ID", "CASHFREE_SECRET_KEY",
-        "CASHFREE_CLIENT_SECRET", "CASHFREE_ENV", "CASHFREE_BASE_URL", "CASHFREE_PG_BASE_URL"
+        "CASHFREE_CLIENT_SECRET", "CASHFREE_ENV", "CASHFREE_BASE_URL",
+        "CASHFREE_PG_BASE_URL", "CASHFREE_PG_APP_ID", "CASHFREE_PG_SECRET_KEY",
+        "SMTP_HOST", "SMTP_PORT", "SMTP_SECURE", "SMTP_USER", "SMTP_PASS", "SMTP_FROM"
     ]
     parts = []
     for k in target_keys:
@@ -100,92 +102,13 @@ def deploy_website_to_firebase():
     run_cmd("npm run build", cwd=WEBSITE_DIR)
 
     log("FIREBASE", "Step 2: Deploying Website to Firebase Hosting (stayq.space)...")
-    token = get_gcloud_token()
     dist_dir = WEBSITE_DIR / "dist"
 
     if not dist_dir.exists():
         log_error("website/dist does not exist after build.")
         sys.exit(1)
 
-    # 1. Scan files & compute hashes
-    files_to_upload = {}
-    manifest = {}
-
-    for root, _, files in os.walk(dist_dir):
-        for f in files:
-            full_path = Path(root) / f
-            rel_path = "/" + str(full_path.relative_to(dist_dir)).replace("\\", "/")
-            with open(full_path, "rb") as fp:
-                content = fp.read()
-                file_hash = hashlib.sha256(content).hexdigest()
-                manifest[rel_path] = file_hash
-                files_to_upload[file_hash] = full_path
-
-    print(f"   Scanned {len(manifest)} files for upload.")
-
-    # 2. Create version
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
-    req = urllib.request.Request(
-        f"https://firebasehosting.googleapis.com/v1beta1/sites/{PROJECT_ID}/versions",
-        headers=headers,
-        data=json.dumps({"config": {}}).encode("utf-8"),
-        method="POST",
-    )
-    with urllib.request.urlopen(req) as resp:
-        v_data = json.loads(resp.read().decode("utf-8"))
-        version_name = v_data["name"]
-        print(f"   Version created: {version_name}")
-
-    # 3. Populate files
-    pop_req = urllib.request.Request(
-        f"https://firebasehosting.googleapis.com/v1beta1/{version_name}:populateFiles",
-        headers=headers,
-        data=json.dumps({"files": manifest}).encode("utf-8"),
-        method="POST",
-    )
-    with urllib.request.urlopen(pop_req) as resp:
-        pop_data = json.loads(resp.read().decode("utf-8"))
-        upload_url = pop_data.get("uploadUrl")
-        required_hashes = pop_data.get("uploadRequiredHashes", [])
-
-    print(f"   Uploading {len(required_hashes)} changed files...")
-
-    # 4. Upload required hashes
-    for idx, h in enumerate(required_hashes, 1):
-        file_path = files_to_upload[h]
-        with open(file_path, "rb") as fp:
-            file_bytes = fp.read()
-        up_headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/octet-stream",
-        }
-        up_req = urllib.request.Request(f"{upload_url}/{h}", headers=up_headers, data=file_bytes, method="POST")
-        with urllib.request.urlopen(up_req) as up_resp:
-            if up_resp.status != 200:
-                log_error(f"Failed to upload {file_path.name}")
-
-    # 5. Finalize version
-    patch_req = urllib.request.Request(
-        f"https://firebasehosting.googleapis.com/v1beta1/{version_name}?update_mask=status",
-        headers=headers,
-        data=json.dumps({"status": "FINALIZED"}).encode("utf-8"),
-        method="PATCH",
-    )
-    with urllib.request.urlopen(patch_req):
-        pass
-
-    # 6. Release version
-    rel_req = urllib.request.Request(
-        f"https://firebasehosting.googleapis.com/v1beta1/sites/{PROJECT_ID}/releases?versionName={urllib.parse.quote(version_name, safe='')}",
-        headers=headers,
-        method="POST",
-    )
-    with urllib.request.urlopen(rel_req):
-        pass
-
+    run_cmd(f'npx --yes firebase-tools deploy --only hosting --project {PROJECT_ID}', cwd=ROOT_DIR)
     log_success("Customer Website is 100% Live on: https://stayq.space")
 
 

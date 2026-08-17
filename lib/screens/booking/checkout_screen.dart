@@ -7,6 +7,7 @@ import '../../theme/app_motion.dart';
 import '../../widgets/bouncing_widget.dart';
 import '../../widgets/price_breakdown_accordion.dart';
 import '../../widgets/animated_calendar_picker.dart';
+import '../../widgets/cashfree_payment_sheet.dart';
 import 'booking_confirmation_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -181,9 +182,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               PriceBreakdownAccordion(
                 nightRate: stay.pricePerNight,
                 nights: nights > 0 ? nights : 1,
-                cleaningFee: (stay.pricePerNight * 0.05).roundToDouble(),
-                serviceFee: ((stay.pricePerNight * (nights > 0 ? nights : 1)) * 0.10).roundToDouble(),
-                taxes: (((stay.pricePerNight * (nights > 0 ? nights : 1)) * 0.10) * 0.18).roundToDouble(),
+                cleaningFee: 0.0,
+                serviceFee: 0.0,
+                taxes: ((stay.pricePerNight * (nights > 0 ? nights : 1)) * 0.18).roundToDouble(),
               ),
 
               const SizedBox(height: 24),
@@ -307,34 +308,46 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     AppMotion.tapHeavy();
                     final int finalNights = nights > 0 ? nights : 1;
                     final double subtotal = stay.pricePerNight * finalNights;
-                    final double cleaning = (stay.pricePerNight * 0.05).roundToDouble();
-                    final double service = (subtotal * 0.10).roundToDouble();
-                    final double taxes = (service * 0.18).roundToDouble();
+                    final double cleaning = 0.0;
+                    final double service = 0.0;
+                    final double taxes = (subtotal * 0.18).roundToDouble();
                     final double calculatedTotal = subtotal + cleaning + service + taxes;
                     final effectiveGuests = provider.adultsCount + provider.childrenCount;
 
-                    provider.addBooking(
-                      stay,
-                      _tripDates.start,
-                      _tripDates.end,
-                      effectiveGuests > 0 ? effectiveGuests : 2,
-                    );
-                    Navigator.pushReplacement(
+                    final paymentResult = await CashfreePaymentSheet.show(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => BookingConfirmationScreen(
-                          stay: stay,
-                          totalAmount: calculatedTotal,
-                          selectedDates: _tripDates,
-                          guests: effectiveGuests > 0 ? effectiveGuests : 2,
-                          paymentMethod: _selectedPaymentMethod,
-                        ),
-                      ),
+                      bookingId: 'sq_book_${DateTime.now().millisecondsSinceEpoch}',
+                      totalAmount: calculatedTotal,
+                      propertyTitle: stay.title,
+                      customerName: provider.userName.isNotEmpty ? provider.userName : 'Stay Q Guest',
+                      customerEmail: provider.userEmail.isNotEmpty ? provider.userEmail : 'guest@stayq.space',
+                      customerPhone: provider.userPhone.isNotEmpty ? provider.userPhone : '9876543210',
                     );
+
+                    if (paymentResult != null && paymentResult.isSuccess && mounted) {
+                      provider.addBooking(
+                        stay,
+                        _tripDates.start,
+                        _tripDates.end,
+                        effectiveGuests > 0 ? effectiveGuests : 2,
+                      );
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BookingConfirmationScreen(
+                            stay: stay,
+                            totalAmount: calculatedTotal,
+                            selectedDates: _tripDates,
+                            guests: effectiveGuests > 0 ? effectiveGuests : 2,
+                            paymentMethod: paymentResult.paymentMethod,
+                          ),
+                        ),
+                      );
+                    }
                   },
                   child: const Text('Pay & Confirm Booking', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),

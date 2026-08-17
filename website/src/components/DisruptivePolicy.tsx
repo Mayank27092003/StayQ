@@ -510,7 +510,7 @@ export default function DisruptivePolicy() {
                     Stay Q
                   </div>
                   <p><strong>A property booking and hosting platform by Quatalyst Private Limited</strong></p>
-                  <p>Email: <a href="mailto:support@stayq.space">support@stayq.space</a></p>
+                  <p>Email: <a href="mailto:grievance@stayq.space">grievance@stayq.space</a></p>
                   <p>Website: <a href="https://www.stayq.space">www.stayq.space</a></p>
                   <p className="policy-slogan">Stay. Discover. Experience.</p>
                   <p className="policy-copyright">© 2026 Quatalyst Private Limited. All Rights Reserved</p>

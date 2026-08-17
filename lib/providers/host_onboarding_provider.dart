@@ -622,6 +622,20 @@ class HostOnboardingProvider extends ChangeNotifier {
     }
   }
 
+  Future<String> _uploadDocFile(String localPath, String prefix) async {
+    try {
+      final file = File(localPath);
+      final fileName = path.basename(file.path);
+      final destination = 'properties/documents/${DateTime.now().millisecondsSinceEpoch}_${prefix}_$fileName';
+      final ref = FirebaseStorage.instance.ref().child(destination);
+      final snapshot = await ref.putFile(file);
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      debugPrint('Error uploading document file: $e');
+      return localPath;
+    }
+  }
+
   // ─── Draft Persistence (Auto-Save & Resume) ───
 
   Future<void> saveDraftToPrefs() async {

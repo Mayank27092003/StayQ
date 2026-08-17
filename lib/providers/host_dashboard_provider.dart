@@ -128,9 +128,7 @@ class HostDashboardProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-      notifyListeners();
-    }
-  }
+
   Future<void> updateBookingStatus(String bookingId, String newStatus) async {
     // Optimistic UI update
     final index = _recentRequests.indexWhere((b) => b.id == bookingId);

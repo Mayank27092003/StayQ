@@ -14,9 +14,9 @@ class PriceBreakdownAccordion extends StatefulWidget {
     super.key,
     required this.nightRate,
     required this.nights,
-    this.cleaningFee = 85.0,
-    this.serviceFee = 142.0,
-    this.taxes = 118.40,
+    this.cleaningFee = 0.0,
+    this.serviceFee = 0.0,
+    this.taxes = 0.0,
   });
 
   @override
@@ -29,7 +29,8 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
   @override
   Widget build(BuildContext context) {
     final double subtotal = widget.nightRate * widget.nights;
-    final double total = subtotal + widget.cleaningFee + widget.serviceFee + widget.taxes;
+    final double calculatedTaxes = widget.taxes > 0 ? widget.taxes : ((subtotal + widget.cleaningFee) * 0.18);
+    final double total = subtotal + widget.cleaningFee + widget.serviceFee + calculatedTaxes;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -70,12 +71,16 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
               child: Column(
                 children: [
                   _priceRow('₹${widget.nightRate.toStringAsFixed(0)} x ${widget.nights} nights', subtotal),
+                  if (widget.cleaningFee > 0) ...[
+                    const SizedBox(height: 10),
+                    _priceRow('Cleaning & Sanitization', widget.cleaningFee),
+                  ],
+                  if (widget.serviceFee > 0) ...[
+                    const SizedBox(height: 10),
+                    _priceRow('Stay Q service fee', widget.serviceFee),
+                  ],
                   const SizedBox(height: 10),
-                  _priceRow('Cleaning fee', widget.cleaningFee),
-                  const SizedBox(height: 10),
-                  _priceRow('Stay Q service fee', widget.serviceFee),
-                  const SizedBox(height: 10),
-                  _priceRow('Taxes', widget.taxes),
+                  _priceRow('Taxes & GST (18%)', calculatedTaxes),
                 ],
               ),
             ),

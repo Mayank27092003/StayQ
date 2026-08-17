@@ -94,7 +94,7 @@ Guidance:
     const ticket = await this.prisma.supportTicket.create({
       data: {
         name: data.name || 'Guest User',
-        email: data.email || 'support@stayq.in',
+        email: data.email || 'grievance@stayq.space',
         subject: `[${ticketRef}] ${data.subject || 'Customer Support Request'}`,
         message: fullDescription,
         category: data.category || 'General Inquiry',

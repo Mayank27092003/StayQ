@@ -25,6 +25,10 @@ export class BookingsService {
     
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
+    if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime()) || checkOutDate <= checkInDate) {
+      throw new BadRequestException('Check-out date must be strictly after check-in date');
+    }
+
     const msPerDay = 1000 * 60 * 60 * 24;
     const numberOfNights = Math.max(1, Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / msPerDay));
     
@@ -65,6 +69,10 @@ export class BookingsService {
     const { propertyId, guestId, checkIn, checkOut, adults = 1, children = 0 } = createBookingDto;
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
+    if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime()) || checkOutDate <= checkInDate) {
+      throw new BadRequestException('Check-out date must be strictly after check-in date');
+    }
+
     const msPerDay = 1000 * 60 * 60 * 24;
     const numberOfNights = Math.max(1, Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / msPerDay));
 
@@ -139,23 +147,17 @@ export class BookingsService {
     );
 
     if (booking.guest.email) {
-      await this.emailService.sendEmail(
-        booking.guest.email,
-        `Booking Confirmed! 🎉 Your stay at ${booking.property.title}`,
-        `
-        <h1>Booking Confirmed!</h1>
-        <p>Dear ${booking.guest.displayName || 'Guest'},</p>
-        <p>Your booking at <b>${booking.property.title}</b> is confirmed!</p>
-        <p>Check-in: ${checkInDate.toDateString()}</p>
-        <p>Check-out: ${checkOutDate.toDateString()}</p>
-        <p>Confirmation Code: <b>${confirmationCode}</b></p>
-        <p>Total Amount: ₹${totalAmount.toFixed(2)}</p>
-        <br>
-        <p>We look forward to hosting you!</p>
-        <p>- Stay Q Team</p>
-        `,
-        true
-      );
+      await this.emailService.sendBookingConfirmationEmail({
+        to: booking.guest.email,
+        guestName: booking.guest.displayName || 'Guest',
+        propertyTitle: booking.property.title,
+        city: booking.property.city || 'Goa',
+        checkIn: checkInDate.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+        checkOut: checkOutDate.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+        confirmationCode,
+        totalAmount,
+        numberOfNights: Math.max(1, Math.round((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))),
+      });
     }
 
     const scheduledTime = new Date(checkInDate.getTime() - 24 * 60 * 60 * 1000);

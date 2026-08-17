@@ -35,7 +35,7 @@ export function Footer() {
 
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <a
-                href="mailto:support@stayq.space"
+                href="mailto:grievance@stayq.space"
                 style={{
                   width: '36px',
                   height: '36px',
@@ -47,8 +47,8 @@ export function Footer() {
                   color: '#ffffff',
                   textDecoration: 'none',
                 }}
-                aria-label="Email Support"
-                title="Email Support (support@stayq.space)"
+                aria-label="Email Stay Q Official Desk"
+                title="Email Stay Q (grievance@stayq.space)"
               >
                 <Mail size={16} />
               </a>
@@ -199,7 +199,7 @@ export function Footer() {
           </p>
 
           <p style={{ margin: 0 }}>
-            <strong>Support &amp; Inquiries:</strong> For assistance, privacy requests, or grievances, reach out directly to our team at <a href="mailto:support@stayq.space" style={{ color: '#A78BFA', fontWeight: 600 }}>support@stayq.space</a>.
+            <strong>Support &amp; Grievances:</strong> For assistance, bookings, inquiries, or legal grievances, reach out directly to our official desk at <a href="mailto:grievance@stayq.space" style={{ color: '#A78BFA', fontWeight: 600 }}>grievance@stayq.space</a>.
           </p>
 
           <div

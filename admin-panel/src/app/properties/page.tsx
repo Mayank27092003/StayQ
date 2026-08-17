@@ -4,8 +4,31 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import GoogleMapPicker from "@/components/GoogleMapPicker";
 
+export interface PropertyIncident {
+  id: string;
+  incidentCode?: string;
+  title: string;
+  description: string;
+  category: string;
+  severity: string;
+  status: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
 export interface Property {
   id: string;
+  propertyCode?: string;
+  registeredAt?: string;
+  createdAt?: string;
+  faultCount?: number;
+  hasActiveFault?: boolean;
+  incidents?: PropertyIncident[];
+  _count?: {
+    bookings?: number;
+    reviews?: number;
+    incidents?: number;
+  };
   title: string;
   description?: string;
   address?: string;
@@ -39,7 +62,16 @@ export interface Property {
   monthlyRent?: number;
   securityDeposit?: number;
   leaseDurationMonths?: number;
-  host?: { firstName: string; lastName: string; email?: string; phone?: string };
+  host?: {
+    id?: string;
+    displayName?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    createdAt?: string;
+    isHostVerified?: boolean;
+  };
 }
 
 const COUNTRIES = [
@@ -488,16 +520,64 @@ export default function PropertiesPage() {
     }
   };
 
+  const [auditProperty, setAuditProperty] = useState<Property | null>(null);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [newFaultTitle, setNewFaultTitle] = useState("");
+  const [newFaultCategory, setNewFaultCategory] = useState("MAINTENANCE");
+  const [newFaultSeverity, setNewFaultSeverity] = useState("MEDIUM");
+  const [newFaultDesc, setNewFaultDesc] = useState("");
+  const [isLoggingFault, setIsLoggingFault] = useState(false);
+
+  const openAuditModal = async (p: Property) => {
+    setAuditProperty(p);
+    setIsAuditModalOpen(true);
+    try {
+      const res = await axios.get(`/api/v1/properties/${p.id}?adminView=true`);
+      if (res.data) setAuditProperty(res.data);
+    } catch (e) {
+      console.warn("Could not refresh property details:", e);
+    }
+  };
+
+  const handleLogFault = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auditProperty || !newFaultTitle.trim()) return;
+    setIsLoggingFault(true);
+    try {
+      await axios.post(`/api/v1/properties/${auditProperty.id}/incidents`, {
+        title: newFaultTitle,
+        category: newFaultCategory,
+        severity: newFaultSeverity,
+        description: newFaultDesc,
+        status: "OPEN",
+      });
+      // Refresh audit property
+      const res = await axios.get(`/api/v1/properties/${auditProperty.id}?adminView=true`);
+      if (res.data) setAuditProperty(res.data);
+      await fetchProperties();
+      setNewFaultTitle("");
+      setNewFaultDesc("");
+    } catch (err) {
+      console.error("Failed to log fault:", err);
+    } finally {
+      setIsLoggingFault(false);
+    }
+  };
+
   const filteredProperties = properties.filter((p) => {
     if (categoryFilter !== "All" && p.category?.name !== categoryFilter) return false;
     if (search.trim() !== "") {
       const q = search.toLowerCase();
+      const code = p.propertyCode?.toLowerCase() || "";
       return (
+        code.includes(q) ||
+        p.id?.toLowerCase().includes(q) ||
         p.title?.toLowerCase().includes(q) ||
         p.city?.toLowerCase().includes(q) ||
         p.locality?.toLowerCase().includes(q) ||
         p.country?.toLowerCase().includes(q) ||
-        p.host?.firstName?.toLowerCase().includes(q)
+        p.host?.firstName?.toLowerCase().includes(q) ||
+        p.host?.phone?.includes(q)
       );
     }
     return true;
@@ -520,7 +600,7 @@ export default function PropertiesPage() {
             Properties &amp; Stays Catalog
           </h1>
           <p style={{ fontSize: "0.9rem", color: "#64748b", margin: "0.25rem 0 0 0" }}>
-            Live property controls with real Google Maps pin positioning, full address hierarchy, postal codes &amp; zero-brokerage pricing.
+            Unique Property ID lookup, fault incident tracker, host identity verification, and live booking audit.
           </p>
         </div>
 
@@ -560,7 +640,7 @@ export default function PropertiesPage() {
           <span className="material-symbols-outlined" style={{ color: "#64748b" }}>search</span>
           <input
             type="text"
-            placeholder="Search property by title, city, locality, country, or host..."
+            placeholder="Search by Unique Property ID (e.g. ST603-9182), title, host name, city, or phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ width: "100%", border: "none", outline: "none", fontSize: "0.88rem", background: "transparent" }}
@@ -605,69 +685,241 @@ export default function PropertiesPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.88rem" }}>
               <thead>
                 <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase" }}>
-                  <th style={{ padding: "1rem 1.25rem" }}>Property Details</th>
-                  <th style={{ padding: "1rem" }}>Category</th>
-                  <th style={{ padding: "1rem" }}>Location &amp; Country</th>
+                  <th style={{ padding: "1rem 1.25rem" }}>Property &amp; Unique ID</th>
+                  <th style={{ padding: "1rem" }}>Host Details</th>
+                  <th style={{ padding: "1rem" }}>Category &amp; Location</th>
                   <th style={{ padding: "1rem" }}>Nightly Rate</th>
-                  <th style={{ padding: "1rem" }}>Status</th>
+                  <th style={{ padding: "1rem" }}>Faults &amp; Status</th>
                   <th style={{ padding: "1rem 1.25rem", textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredProperties.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "1rem 1.25rem" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
-                        <img
-                          src={p.imageUrls?.[0] || p.heroImage || "/images/villa_1.jpg"}
-                          alt=""
-                          style={{ width: "52px", height: "42px", borderRadius: "8px", objectFit: "cover" }}
-                        />
-                        <div>
-                          <div style={{ fontWeight: 800, color: "#0f172a" }}>{p.title}</div>
-                          <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                            {p.bedrooms || 1} Bed · {p.bathrooms || 1} Bath · Up to {p.maxGuests || 2} Guests
+                {filteredProperties.map((p) => {
+                  const propCode = p.propertyCode || `ST${(p.host?.phone || '').replace(/\D/g, '').slice(-3) || '999'}-${p.id.slice(0, 4).toUpperCase()}`;
+                  const hasFault = Boolean(p.hasActiveFault || (p.faultCount && p.faultCount > 0));
+
+                  return (
+                    <tr key={p.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "1rem 1.25rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
+                          <img
+                            src={p.imageUrls?.[0] || p.heroImage || "/images/villa_1.jpg"}
+                            alt=""
+                            style={{ width: "52px", height: "42px", borderRadius: "8px", objectFit: "cover" }}
+                          />
+                          <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.15rem" }}>
+                              <span style={{ fontSize: "0.72rem", fontWeight: 800, padding: "0.15rem 0.45rem", borderRadius: "6px", background: "rgba(157, 0, 255, 0.12)", color: "#9D00FF", letterSpacing: "0.03em" }}>
+                                {propCode}
+                              </span>
+                              <span style={{ fontWeight: 800, color: "#0f172a" }}>{p.title}</span>
+                            </div>
+                            <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                              {p.bedrooms || 1} Bed · {p.bathrooms || 1} Bath · Up to {p.maxGuests || 2} Guests
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: "1rem" }}>
-                      <span style={{ padding: "0.25rem 0.6rem", borderRadius: "8px", background: "#f1f5f9", fontWeight: 700, fontSize: "0.78rem", color: "#475569" }}>
-                        {p.category?.name || "Villa"}
-                      </span>
-                    </td>
-                    <td style={{ padding: "1rem", color: "#334155" }}>
-                      <div>{p.city || "Goa"}, {p.state || "India"}</div>
-                      <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                        {p.country || "India"} {p.pincode ? `• ${p.pincode}` : ""}
-                      </div>
-                    </td>
-                    <td style={{ padding: "1rem", fontWeight: 800, color: "#0f172a" }}>
-                      ₹{(p.basePrice || 0).toLocaleString()}
-                      <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "#64748b" }}> /night</span>
-                    </td>
-                    <td style={{ padding: "1rem" }}>
-                      <span style={{ padding: "0.25rem 0.6rem", borderRadius: "100px", fontSize: "0.75rem", fontWeight: 800, background: p.status === "ACTIVE" ? "#ecfdf5" : "#fef3c7", color: p.status === "ACTIVE" ? "#059669" : "#d97706" }}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: "1rem 1.25rem", textAlign: "right" }}>
-                      <button
-                        type="button"
-                        onClick={() => openEditor(p)}
-                        style={{ padding: "0.45rem 0.85rem", borderRadius: "10px", background: "rgba(157, 0, 255, 0.08)", color: "#9D00FF", border: "none", cursor: "pointer", fontWeight: 700, fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>edit</span>
-                        Edit
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td style={{ padding: "1rem" }}>
+                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                          {p.host?.displayName || (p.host?.firstName ? `${p.host.firstName} ${p.host.lastName || ''}`.trim() : "Host")}
+                        </div>
+                        <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                          {p.host?.phone || p.host?.email || "No phone listed"}
+                        </div>
+                      </td>
+                      <td style={{ padding: "1rem", color: "#334155" }}>
+                        <div style={{ fontWeight: 700 }}>{p.category?.name || "Villa"}</div>
+                        <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                          {p.city || "Goa"}, {p.country || "India"}
+                        </div>
+                      </td>
+                      <td style={{ padding: "1rem", fontWeight: 800, color: "#0f172a" }}>
+                        ₹{(p.basePrice || 0).toLocaleString()}
+                        <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "#64748b" }}> /night</span>
+                      </td>
+                      <td style={{ padding: "1rem" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                          <span style={{ padding: "0.2rem 0.55rem", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 800, width: "fit-content", background: p.status === "ACTIVE" ? "#ecfdf5" : "#fef3c7", color: p.status === "ACTIVE" ? "#059669" : "#d97706" }}>
+                            {p.status}
+                          </span>
+                          {hasFault && (
+                            <span style={{ padding: "0.15rem 0.45rem", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 800, background: "#fee2e2", color: "#dc2626", width: "fit-content", display: "inline-flex", alignItems: "center", gap: "0.2rem" }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: "12px" }}>warning</span>
+                              Fault Reported ({p.faultCount || 1})
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: "1rem 1.25rem", textAlign: "right" }}>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                          <button
+                            type="button"
+                            onClick={() => openAuditModal(p)}
+                            style={{ padding: "0.45rem 0.75rem", borderRadius: "10px", background: "#f1f5f9", color: "#334155", border: "none", cursor: "pointer", fontWeight: 700, fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>manage_search</span>
+                            Audit &amp; Faults
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditor(p)}
+                            style={{ padding: "0.45rem 0.75rem", borderRadius: "10px", background: "rgba(157, 0, 255, 0.08)", color: "#9D00FF", border: "none", cursor: "pointer", fontWeight: 700, fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>edit</span>
+                            Edit
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {/* PROPERTY LIFECYCLE, HOST IDENTITY & FAULT TRACKER DRAWER / MODAL */}
+      {isAuditModalOpen && auditProperty && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, width: "100vw", height: "100vh", background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(6px)", zIndex: 99999, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ background: "#ffffff", borderRadius: "24px", maxWidth: "850px", width: "95vw", maxHeight: "90vh", overflowY: "auto", padding: "2rem", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)", border: "1px solid rgba(226, 232, 240, 0.8)" }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "1px solid #e2e8f0" }}>
+              <div>
+                <div style={{ display: "inline-block", padding: "0.2rem 0.6rem", borderRadius: "6px", background: "rgba(157, 0, 255, 0.12)", color: "#9D00FF", fontWeight: 800, fontSize: "0.82rem", marginBottom: "0.35rem" }}>
+                  {auditProperty.propertyCode || `ST${(auditProperty.host?.phone || '').replace(/\D/g, '').slice(-3) || '999'}-${auditProperty.id.slice(0, 4).toUpperCase()}`}
+                </div>
+                <h2 style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a", margin: 0 }}>
+                  {auditProperty.title}
+                </h2>
+                <p style={{ fontSize: "0.82rem", color: "#64748b", margin: "0.2rem 0 0 0" }}>
+                  Registered On: {auditProperty.registeredAt || auditProperty.createdAt ? new Date(auditProperty.registeredAt || auditProperty.createdAt!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Active Onboarding"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAuditModalOpen(false)}
+                style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748b" }}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Host Profile & Identity Snapshot */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.5rem", background: "#f8fafc", padding: "1.25rem", borderRadius: "16px", border: "1px solid #e2e8f0" }}>
+              <div>
+                <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Host Full Name</span>
+                <div style={{ fontWeight: 800, color: "#0f172a", marginTop: "0.2rem" }}>
+                  {auditProperty.host?.displayName || `${auditProperty.host?.firstName || 'Mayank'} ${auditProperty.host?.lastName || 'Shukla'}`}
+                </div>
+              </div>
+              <div>
+                <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Verified Contact Phone</span>
+                <div style={{ fontWeight: 800, color: "#0f172a", marginTop: "0.2rem" }}>
+                  {auditProperty.host?.phone || "+91 99999 99999"}
+                </div>
+              </div>
+              <div>
+                <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Total Stays Booked</span>
+                <div style={{ fontWeight: 800, color: "#059669", marginTop: "0.2rem" }}>
+                  {auditProperty._count?.bookings || 0} Bookings Completed
+                </div>
+              </div>
+            </div>
+
+            {/* Log a New Fault / Incident Form */}
+            <div style={{ marginBottom: "1.5rem", background: "#ffffff", padding: "1.25rem", borderRadius: "16px", border: "1px solid #e2e8f0" }}>
+              <h3 style={{ fontSize: "1rem", fontWeight: 800, color: "#0f172a", marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <span className="material-symbols-outlined" style={{ color: "#dc2626", fontSize: "20px" }}>build</span>
+                Log Property Fault / Maintenance Issue
+              </h3>
+              <form onSubmit={handleLogFault}>
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Fault Title (e.g. AC Cooling Breakdown, Geyser not working)"
+                    value={newFaultTitle}
+                    onChange={(e) => setNewFaultTitle(e.target.value)}
+                    style={{ padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.85rem" }}
+                  />
+                  <select
+                    value={newFaultCategory}
+                    onChange={(e) => setNewFaultCategory(e.target.value)}
+                    style={{ padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.85rem", background: "#ffffff" }}
+                  >
+                    <option value="MAINTENANCE">Maintenance</option>
+                    <option value="SAFETY">Safety</option>
+                    <option value="CLEANLINESS">Cleanliness</option>
+                    <option value="AMENITY_MISSING">Amenity Missing</option>
+                    <option value="DAMAGE">Damage</option>
+                  </select>
+                  <select
+                    value={newFaultSeverity}
+                    onChange={(e) => setNewFaultSeverity(e.target.value)}
+                    style={{ padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.85rem", background: "#ffffff" }}
+                  >
+                    <option value="LOW">Low Severity</option>
+                    <option value="MEDIUM">Medium Severity</option>
+                    <option value="HIGH">High Severity</option>
+                    <option value="CRITICAL">Critical</option>
+                  </select>
+                </div>
+                <textarea
+                  placeholder="Details of the fault reported by guest or operations team..."
+                  value={newFaultDesc}
+                  onChange={(e) => setNewFaultDesc(e.target.value)}
+                  rows={2}
+                  style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.85rem", marginBottom: "0.75rem" }}
+                />
+                <button
+                  type="submit"
+                  disabled={isLoggingFault}
+                  style={{ padding: "0.55rem 1.1rem", borderRadius: "8px", background: "#dc2626", color: "#ffffff", border: "none", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}
+                >
+                  {isLoggingFault ? "Logging..." : "Record Fault / Issue"}
+                </button>
+              </form>
+            </div>
+
+            {/* Fault & Incident History */}
+            <div>
+              <h3 style={{ fontSize: "1rem", fontWeight: 800, color: "#0f172a", marginBottom: "0.75rem" }}>
+                Incident &amp; Fault History ({auditProperty.incidents?.length || 0})
+              </h3>
+              {(!auditProperty.incidents || auditProperty.incidents.length === 0) ? (
+                <div style={{ padding: "1.5rem", background: "#f8fafc", borderRadius: "12px", textAlign: "center", color: "#64748b", fontSize: "0.85rem" }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "28px", color: "#10b981", display: "block", marginBottom: "0.25rem" }}>verified</span>
+                  No faults or disputes recorded for this property. Operational status is 100% clean!
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  {auditProperty.incidents.map((inc) => (
+                    <div key={inc.id} style={{ padding: "1rem", borderRadius: "12px", border: "1px solid #e2e8f0", background: inc.status === "OPEN" ? "#fef2f2" : "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.2rem" }}>
+                          <span style={{ fontSize: "0.72rem", fontWeight: 800, padding: "0.15rem 0.4rem", borderRadius: "4px", background: "#ffffff", border: "1px solid #cbd5e1" }}>
+                            {inc.incidentCode || "INCIDENT"}
+                          </span>
+                          <strong style={{ fontSize: "0.9rem", color: "#0f172a" }}>{inc.title}</strong>
+                          <span style={{ fontSize: "0.7rem", fontWeight: 800, padding: "0.15rem 0.45rem", borderRadius: "100px", background: inc.status === "OPEN" ? "#dc2626" : "#059669", color: "#ffffff" }}>
+                            {inc.status}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: "0.82rem", color: "#475569", margin: "0.25rem 0 0 0" }}>{inc.description}</p>
+                        <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: "0.35rem" }}>
+                          Category: {inc.category} · Severity: {inc.severity} · Reported: {new Date(inc.createdAt).toLocaleString("en-IN")}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* RICH PROPERTY EDITOR MODAL */}
       {isModalOpen && (

@@ -61,22 +61,33 @@ export function Nav() {
 
           <nav className="nav__links" aria-label="Main">
             <a
-              className={`nav__link ${currentHash === '#/stays' || currentHash === '#stays' || currentHash === '#/' || currentHash === '#' || currentHash === '' ? 'nav__link--active' : ''}`}
+              className={`nav__link ${currentHash === '#/' || currentHash === '#' || currentHash === '' ? 'nav__link--active' : ''}`}
+              href="#/"
+              onClick={(e) => {
+                e.preventDefault();
+                window.location.hash = '#/';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            >
+              Home
+            </a>
+            <a
+              className={`nav__link ${currentHash === '#/stays' || currentHash === '#stays' ? 'nav__link--active' : ''}`}
               href="#/stays"
             >
               Stays
-            </a>
-            <a
-              className={`nav__link ${currentHash === '#/rvs' || currentHash === '#/camping' || currentHash === '#/adventure' ? 'nav__link--active' : ''}`}
-              href="#/adventure"
-            >
-              RVs &amp; Camping
             </a>
             <a
               className={`nav__link ${currentHash === '#/zero-broker' ? 'nav__link--active' : ''}`}
               href="#/zero-broker"
             >
               Zero Broker
+            </a>
+            <a
+              className={`nav__link ${currentHash === '#/rvs' || currentHash === '#/camping' || currentHash === '#/adventure' ? 'nav__link--active' : ''}`}
+              href="#/adventure"
+            >
+              RVs &amp; Camping
             </a>
             <a
               className={`nav__link ${currentHash === '#/experiences' ? 'nav__link--active' : ''}`}

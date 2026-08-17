@@ -165,6 +165,10 @@ export const StayDetailModal: React.FC = () => {
                   </span>
                 </>
               )}
+              <span className="detail-divider">·</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(157, 0, 255, 0.08)', color: '#9D00FF', padding: '2px 8px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.02em' }}>
+                Property ID: {(selectedStay as any).propertyCode || `ST${(selectedStay.id || '').slice(0, 5).toUpperCase()}`}
+              </span>
             </div>
           </div>
 
@@ -666,35 +670,22 @@ export const StayDetailModal: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Primary Booking Button */}
-                <button
-                  type="button"
-                  className="btn btn--primary btn--block booking-reserve-btn"
-                  onClick={handleProceedToCheckout}
-                >
-                  Reserve Stay
-                  <ChevronRight size={18} />
-                </button>
-                <p className="booking-note">You won't be charged yet</p>
-
                 {/* Price Breakdown */}
-                <div className="booking-breakdown">
+                <div className="booking-breakdown" style={{ marginTop: '1rem' }}>
                   <div className="booking-breakdown__row">
                     <span>
                       ₹{selectedStay.pricePerNight.toLocaleString('en-IN')} × {quote.nights} {quote.nights === 1 ? 'night' : 'nights'}
                     </span>
                     <span>₹{quote.baseTotal.toLocaleString('en-IN')}</span>
                   </div>
+                  {quote.cleaningFee > 0 && (
+                    <div className="booking-breakdown__row">
+                      <span>Cleaning & Sanitization</span>
+                      <span>₹{quote.cleaningFee.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
                   <div className="booking-breakdown__row">
-                    <span>Cleaning & Sanitization</span>
-                    <span>₹{quote.cleaningFee.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="booking-breakdown__row">
-                    <span>Stay Q Service Fee</span>
-                    <span>₹{quote.serviceFee.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="booking-breakdown__row">
-                    <span>Taxes & GST (12%)</span>
+                    <span>Taxes & GST (18%)</span>
                     <span>₹{quote.gstAmount.toLocaleString('en-IN')}</span>
                   </div>
                   {quote.discountAmount > 0 && (
@@ -704,11 +695,51 @@ export const StayDetailModal: React.FC = () => {
                     </div>
                   )}
 
-                  <div className="booking-breakdown__divider" />
+                  <div className="booking-breakdown__divider" style={{ margin: '0.85rem 0' }} />
 
-                  <div className="booking-breakdown__total">
-                    <span>Total (INR)</span>
-                    <strong>₹{quote.totalAmount.toLocaleString('en-IN')}</strong>
+                  {/* Bottom Row: Total on Left, Reserve Stay Button in Right Corner */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '1rem',
+                      marginTop: '0.5rem',
+                    }}
+                  >
+                    <div>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--gray-500)', fontWeight: 600, display: 'block' }}>
+                        Total (INR)
+                      </span>
+                      <strong style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--ink)', display: 'block', letterSpacing: '-0.02em' }}>
+                        ₹{quote.totalAmount.toLocaleString('en-IN')}
+                      </strong>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--gray-400)', display: 'block', marginTop: '1px' }}>
+                        You won't be charged yet
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn btn--primary booking-reserve-btn"
+                      style={{
+                        padding: '0.75rem 1.4rem',
+                        fontSize: '0.95rem',
+                        fontWeight: 800,
+                        borderRadius: '14px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 8px 20px rgba(90, 49, 244, 0.28)',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}
+                      onClick={handleProceedToCheckout}
+                    >
+                      Reserve Stay
+                      <ChevronRight size={17} />
+                    </button>
                   </div>
                 </div>
               </div>

@@ -60,7 +60,7 @@ export function ZeroBroker() {
             </Reveal>
 
             <Reveal delay={0.24}>
-              <a className="btn btn--primary" href="#download">
+              <a className="btn btn--primary" href="#/zero-broker">
                 Browse long-term homes
                 <ArrowRight size={16} aria-hidden="true" />
               </a>

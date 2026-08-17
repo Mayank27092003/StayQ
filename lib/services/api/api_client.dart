@@ -93,7 +93,14 @@ class ApiClient {
       String message = 'Unknown error';
       try {
         final errorData = jsonDecode(response.body);
-        message = errorData['message'] ?? errorData['error'] ?? message;
+        final rawMsg = errorData['message'] ?? errorData['error'];
+        if (rawMsg is List) {
+          message = rawMsg.join(', ');
+        } else if (rawMsg is String) {
+          message = rawMsg;
+        } else if (rawMsg != null) {
+          message = rawMsg.toString();
+        }
       } catch (_) {
         message = response.body;
       }

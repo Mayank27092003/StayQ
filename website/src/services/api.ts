@@ -29,7 +29,7 @@ export async function syncProfileWithBackend(firebaseUser: { uid: string; displa
   const payload = {
     firstName: firebaseUser.displayName?.split(' ')[0] || 'Stay Q',
     lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || 'Traveler',
-    email: firebaseUser.email || `${firebaseUser.uid}@stayq.in`,
+    email: firebaseUser.email || `${firebaseUser.uid}@stayq.space`,
     phone: firebaseUser.phoneNumber || undefined,
     avatarUrl: firebaseUser.photoURL || '/images/avatar_alex.jpg',
   };
@@ -198,81 +198,6 @@ export const CURATED_STAYS: Stay[] = [
     baths: 1,
   },
   {
-    id: 'stay-rv-2',
-    title: 'Himalayan Overland 4x4 Campervan & Rooftop Tent',
-    location: 'Solang Valley & Rohtang Pass, Manali',
-    city: 'Manali',
-    state: 'Himachal Pradesh',
-    pricePerNight: 8500,
-    rating: 4.98,
-    reviewCount: 44,
-    imageUrls: ['/images/cabin_1.jpg', '/images/nordic_1.jpg', '/images/glass_1.jpg'],
-    category: 'RVs',
-    propertyType: 'RV',
-    hostName: 'Karan Thakur',
-    hostAvatar: '/images/avatar_alex.jpg',
-    isSuperhost: true,
-    amenities: ['Solar Power', 'Heating', 'Kitchen', 'Hot water', 'Power backup', 'Generator', 'Parking'],
-    tags: ['RV', 'Overlanding', 'Mountain View', 'Self-Drive'],
-    description: 'Custom overland build on 4x4 chassis with hardshell rooftop tent, dual auxiliary batteries, kitchenette, and diesel room heater for high-altitude passes.',
-    lat: 32.3168,
-    lng: 77.1583,
-    maxGuests: 4,
-    bedrooms: 1,
-    beds: 2,
-    baths: 1,
-  },
-  {
-    id: 'stay-rv-3',
-    title: 'Goa Coastal Campervan & Sunset Vanlife Experience',
-    location: 'Morjim & Ashwem Coast, North Goa',
-    city: 'Goa',
-    state: 'Goa',
-    pricePerNight: 6500,
-    rating: 4.92,
-    reviewCount: 38,
-    imageUrls: ['/images/beach_1.jpg', '/images/villa_1.jpg', '/images/nordic_1.jpg'],
-    category: 'RVs',
-    propertyType: 'RV',
-    hostName: 'Rohan Fernandes',
-    hostAvatar: '/images/avatar_rohan.jpg',
-    isGuestFavorite: true,
-    amenities: ['Air conditioning', 'Kitchen', 'Refrigerator', 'Solar Power', 'Parking', 'Wi-Fi'],
-    tags: ['RV', 'Beachfront', 'Vanlife', 'Coastal'],
-    description: 'Bespoke campervan designed for beach hopping and cliffside sunsets along Goa’s secluded shores. Includes pull-out awning, outdoor shower, and portable gas barbecue.',
-    lat: 15.6322,
-    lng: 73.7381,
-    maxGuests: 2,
-    bedrooms: 1,
-    beds: 1,
-    baths: 1,
-  },
-  {
-    id: 'stay-rv-4',
-    title: 'Western Ghats Rainforest 4x4 Expedition Cruiser',
-    location: 'Madikeri & Coffee Hills, Coorg',
-    city: 'Coorg',
-    state: 'Karnataka',
-    pricePerNight: 7200,
-    rating: 4.95,
-    reviewCount: 29,
-    imageUrls: ['/images/glass_1.jpg', '/images/cabin_1.jpg', '/images/villa_1.jpg'],
-    category: 'RVs',
-    propertyType: 'RV',
-    hostName: 'Appachu Biddappa',
-    hostAvatar: '/images/avatar_jean.jpg',
-    isSuperhost: true,
-    amenities: ['Solar Power', 'Kitchen', 'Hot water', 'Power backup', 'Garden', 'Parking'],
-    tags: ['RV', 'Rainforest', 'Plantation', '4x4 AWD'],
-    description: 'Explore misty coffee country with private access to off-road estate trails. Complete with rooftop annex, inverter backup, fresh water filtration, and binoculars.',
-    lat: 12.4244,
-    lng: 75.7382,
-    maxGuests: 3,
-    bedrooms: 1,
-    beds: 2,
-    baths: 1,
-  },
-  {
     id: 'stay-6',
     title: 'Starry Ridge Alpine Glamping Dome',
     location: 'Kanatal, Uttarakhand',
@@ -293,81 +218,6 @@ export const CURATED_STAYS: Stay[] = [
     lat: 30.4159,
     lng: 78.3418,
     maxGuests: 3,
-    bedrooms: 1,
-    beds: 2,
-    baths: 1,
-  },
-  {
-    id: 'stay-camp-2',
-    title: 'Riverside Pine Glamping Domes & Stargazing Deck',
-    location: 'Parvati River Valley, Kasol',
-    city: 'Kasol',
-    state: 'Himachal Pradesh',
-    pricePerNight: 4200,
-    rating: 4.96,
-    reviewCount: 82,
-    imageUrls: ['/images/glass_1.jpg', '/images/cabin_1.jpg', '/images/suite_1.jpg'],
-    category: 'Camping',
-    propertyType: 'CAMPING_SITE',
-    hostName: 'Rohit Sharma',
-    hostAvatar: '/images/avatar_rohan.jpg',
-    isSuperhost: true,
-    amenities: ['Hot water', 'Power backup', 'Parking', 'Garden', 'Wi-Fi', 'Bonfire Pit'],
-    tags: ['Glamping', 'Riverside', 'Stargazing', 'Bonfire'],
-    description: 'Geodesic domes nestled right along the roaring crystal waters of the Parvati River. Features private bonfire area, riverside hammocks, and warm cafe meals.',
-    lat: 32.0104,
-    lng: 77.3151,
-    maxGuests: 4,
-    bedrooms: 1,
-    beds: 2,
-    baths: 1,
-  },
-  {
-    id: 'stay-camp-3',
-    title: 'Thar Desert Luxury Swiss Glamping & Cultural Camp',
-    location: 'Sam Sand Dunes, Jaisalmer',
-    city: 'Jaisalmer',
-    state: 'Rajasthan',
-    pricePerNight: 5500,
-    rating: 4.94,
-    reviewCount: 97,
-    imageUrls: ['/images/suite_1.jpg', '/images/villa_1.jpg', '/images/beach_1.jpg'],
-    category: 'Camping',
-    propertyType: 'CAMPING_SITE',
-    hostName: 'Fateh Singh Bhati',
-    hostAvatar: '/images/avatar_jean.jpg',
-    isGuestFavorite: true,
-    amenities: ['Air conditioning', 'Hot water', 'Security', 'Parking', 'Wi-Fi', 'Desert Safari'],
-    tags: ['Glamping', 'Desert Dunes', 'Cultural', 'Stargazing'],
-    description: 'Opulent Swiss safari tents amidst the golden ripples of the Thar Desert. Evening traditional Rajasthani folk music, campfire feast, and unpolluted stargazing.',
-    lat: 26.8285,
-    lng: 70.5282,
-    maxGuests: 3,
-    bedrooms: 1,
-    beds: 2,
-    baths: 1,
-  },
-  {
-    id: 'stay-camp-4',
-    title: 'Pawna Lakeside Glamping Domes & Sunset Kayaking',
-    location: 'Pawna Dam Reservoir, Lonavala',
-    city: 'Lonavala',
-    state: 'Maharashtra',
-    pricePerNight: 3800,
-    rating: 4.91,
-    reviewCount: 134,
-    imageUrls: ['/images/villa_1.jpg', '/images/cabin_1.jpg', '/images/beach_1.jpg'],
-    category: 'Camping',
-    propertyType: 'CAMPING_SITE',
-    hostName: 'Nikhil Patil',
-    hostAvatar: '/images/avatar_alex.jpg',
-    isFeatured: true,
-    amenities: ['Hot water', 'Power backup', 'Parking', 'Security', 'Kayaking', 'BBQ Grill'],
-    tags: ['Glamping', 'Lakeside', 'Kayaking', 'BBQ'],
-    description: 'Waterfront geodesic dome stay perched right beside Pawna Lake. Includes complimentary sunset kayaking session, live barbecue station, and music under the stars.',
-    lat: 18.6852,
-    lng: 73.4981,
-    maxGuests: 4,
     bedrooms: 1,
     beds: 2,
     baths: 1,
@@ -424,62 +274,6 @@ export const CURATED_STAYS: Stay[] = [
     maxGuests: 4,
     bedrooms: 1,
     beds: 2,
-    baths: 1,
-  },
-  {
-    id: 'stay-9',
-    title: 'Sunlit Terrace Penthouse — Zero Brokerage',
-    location: 'Koramangala 4th Block, Bengaluru',
-    city: 'Bengaluru',
-    state: 'Karnataka',
-    pricePerNight: 3600,
-    rating: 4.94,
-    reviewCount: 54,
-    imageUrls: ['/images/villa_1.jpg', '/images/suite_1.jpg', '/images/glass_1.jpg'],
-    category: 'Zero Broker',
-    propertyType: 'ZERO_BROKER',
-    isZeroBroker: true,
-    depositAmount: 60000,
-    leaseTerm: '3 - 11 Months Flexible',
-    hostName: 'Pooja Reddy',
-    hostAvatar: '/images/avatar_sophia.jpg',
-    isFeatured: true,
-    amenities: ['Zero Brokerage Fee', 'Private Rooftop Terrace', '1 Gbps Fiber', 'Furnished Living', 'Covered Parking', 'Power Backup'],
-    tags: ['Zero Broker', 'Penthouse', 'Terrace'],
-    description: 'Direct owner tenancy with 0% brokerage fee. Top-floor sunlit penthouse apartment with expansive private garden terrace in quiet Koramangala.',
-    lat: 12.934,
-    lng: 77.625,
-    maxGuests: 3,
-    bedrooms: 2,
-    beds: 2,
-    baths: 2,
-  },
-  {
-    id: 'stay-10',
-    title: 'Boutique Sea-Breeze Studio — Zero Brokerage',
-    location: 'Pali Hill, Bandra West, Mumbai',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    pricePerNight: 4200,
-    rating: 4.96,
-    reviewCount: 79,
-    imageUrls: ['/images/beach_1.jpg', '/images/suite_1.jpg', '/images/cabin_1.jpg'],
-    category: 'Zero Broker',
-    propertyType: 'ZERO_BROKER',
-    isZeroBroker: true,
-    depositAmount: 75000,
-    leaseTerm: '6 - 11 Months',
-    hostName: 'Aryan Mehta',
-    hostAvatar: '/images/avatar_rohan.jpg',
-    isFeatured: true,
-    amenities: ['Zero Brokerage Fee', 'Sea Breeze Balcony', 'High-Speed Wi-Fi', 'Modern Modular Kitchen', '24/7 Security', 'Smart TV'],
-    tags: ['Zero Broker', 'Bandra', 'Direct Owner'],
-    description: 'Designer studio apartment situated in prime Pali Hill. Direct verified owner lease with digital rental agreement and zero middleman fee.',
-    lat: 19.062,
-    lng: 72.825,
-    maxGuests: 2,
-    bedrooms: 1,
-    beds: 1,
     baths: 1,
   }
 ];
@@ -733,6 +527,9 @@ function applyFilters(stays: Stay[], filters?: Partial<SearchFilters>): Stay[] {
       const cat = filters.category.toUpperCase();
       if (cat === 'ZERO_BROKER' && !stay.isZeroBroker) return false;
       if (cat === 'VILLA' && !stay.category.toLowerCase().includes('villa')) return false;
+      if (cat === 'MANSION' && !stay.category.toLowerCase().includes('mansion')) return false;
+      if (cat === 'APARTMENT' && !stay.category.toLowerCase().includes('apartment')) return false;
+      if (cat === 'STUDIO' && !stay.category.toLowerCase().includes('studio')) return false;
       if (cat === 'CABIN' && !stay.category.toLowerCase().includes('cabin')) return false;
       if (cat === 'BEACHFRONT' && !stay.category.toLowerCase().includes('beach')) return false;
       if (cat === 'TREEHOUSE' && !stay.category.toLowerCase().includes('tree')) return false;
@@ -810,18 +607,18 @@ if (typeof window !== 'undefined') {
 export function calculateBookingQuote(pricePerNight: number, checkInDate: string, checkOutDate: string): BookingQuote {
   const start = new Date(checkInDate);
   const end = new Date(checkOutDate);
-  const diffTime = Math.abs(end.getTime() - start.getTime());
-  const nights = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  const diffTime = end.getTime() - start.getTime();
+  const rawNights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const nights = Math.max(1, isNaN(rawNights) || rawNights <= 0 ? 1 : rawNights);
 
   const baseTotal = pricePerNight * nights;
-  const cleaningFee = Math.round(pricePerNight * 0.08);
+  const cleaningFee = Math.round(pricePerNight * 0.04);
 
-  // Dynamic rates fetched from DB
-  const rates = cachedCommissionSettings || { guestServiceFeePercent: 10, gstRatePercent: 18 };
-  const serviceFee = Math.round(baseTotal * (rates.guestServiceFeePercent / 100));
-  const gstAmount = Math.round(serviceFee * (rates.gstRatePercent / 100));
+  // 18% Taxes & GST (with platform service fee inclusive in tax tier)
+  const serviceFee = 0;
+  const gstAmount = Math.round((baseTotal + cleaningFee) * 0.18);
   const discountAmount = nights >= 3 ? Math.round(baseTotal * 0.05) : 0;
-  const totalAmount = baseTotal + cleaningFee + serviceFee + gstAmount - discountAmount;
+  const totalAmount = baseTotal + cleaningFee + gstAmount - discountAmount;
 
   return {
     nights,
@@ -870,6 +667,74 @@ export async function createBookingApi(bookingData: Omit<Booking, 'id' | 'refere
   const existing = getStoredBookings();
   localStorage.setItem('stayq_user_bookings', JSON.stringify([newBooking, ...existing]));
   return newBooking;
+}
+
+export interface PaymentOrderResponse {
+  orderId: string;
+  paymentSessionId: string;
+  amount: number;
+  currency: string;
+  status: string;
+  gateway?: string;
+}
+
+export async function createPaymentOrderApi(params: {
+  amount: number;
+  bookingId?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+}): Promise<PaymentOrderResponse> {
+  const fallbackOrderId = `order_sq_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE_URL}/payments/create-order`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(params),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        orderId: data.orderId || data.order_id || fallbackOrderId,
+        paymentSessionId: data.paymentSessionId || data.payment_session_id || `session_${fallbackOrderId}`,
+        amount: data.amount || params.amount,
+        currency: data.currency || 'INR',
+        status: data.status || 'PENDING',
+        gateway: data.gateway || 'CASHFREE',
+      };
+    }
+  } catch {
+    // Return fallback order
+  }
+
+  return {
+    orderId: fallbackOrderId,
+    paymentSessionId: `session_${fallbackOrderId}`,
+    amount: params.amount,
+    currency: 'INR',
+    status: 'PENDING',
+    gateway: 'CASHFREE',
+  };
+}
+
+export async function verifyPaymentApi(orderId: string): Promise<{ isPaid: boolean; status: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/payments/verify/${orderId}`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        isPaid: !!data.isPaid,
+        status: data.status || (data.isPaid ? 'PAID' : 'PENDING'),
+      };
+    }
+  } catch (err) {
+    console.warn('[verifyPaymentApi] Verification fetch error:', err);
+  }
+  return { isPaid: false, status: 'PENDING' };
 }
 
 export function getStoredBookings(): Booking[] {

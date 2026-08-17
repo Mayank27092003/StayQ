@@ -64,9 +64,21 @@ export class PropertiesService {
     const price = Number(data.pricePerNight ?? data.basePrice ?? 5000);
     const cleaning = Number(data.cleaningFee ?? 0);
 
+    // Generate Unique Property Code: ST + last 3 digits of host phone + unique random suffix (e.g. ST603-9182)
+    let phoneDigits = (data.hostPhone || data.host?.phone || '').replace(/\D/g, '');
+    if (!phoneDigits && hostId) {
+      const hostUser = await this.prisma.user.findUnique({ where: { id: hostId } });
+      phoneDigits = (hostUser?.phone || '').replace(/\D/g, '');
+    }
+    const last3 = phoneDigits.length >= 3 ? phoneDigits.slice(-3) : Math.floor(100 + Math.random() * 900).toString();
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000).toString();
+    const propertyCode = data.propertyCode || `ST${last3}-${randomSuffix}`;
+
     const property = await this.prisma.property.create({
       data: {
         hostId,
+        propertyCode,
+        registeredAt: new Date(),
         title: data.title || 'Untitled Property',
         description: data.description || '',
         category,
@@ -101,6 +113,7 @@ export class PropertiesService {
         images: true,
         host: true,
         tags: true,
+        incidents: true,
       },
     });
 
@@ -164,6 +177,14 @@ export class PropertiesService {
         images: true,
         host: true,
         tags: true,
+        incidents: true,
+        _count: {
+          select: {
+            bookings: true,
+            reviews: true,
+            incidents: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -179,12 +200,97 @@ export class PropertiesService {
         images: true,
         host: true,
         tags: true,
+        incidents: {
+          orderBy: { createdAt: 'desc' },
+        },
+        _count: {
+          select: {
+            bookings: true,
+            reviews: true,
+            incidents: true,
+          },
+        },
       },
     });
 
     if (!property) return null;
     if (adminView) return property;
     return this.maskPublicLocation(property, false) as Property;
+  }
+
+  async lookupByCode(code: string): Promise<any> {
+    const cleanCode = (code || '').trim();
+    if (!cleanCode) return null;
+
+    const property = await this.prisma.property.findFirst({
+      where: {
+        OR: [
+          { propertyCode: { equals: cleanCode, mode: 'insensitive' } },
+          { id: cleanCode },
+        ],
+      },
+      include: {
+        images: true,
+        host: {
+          select: {
+            id: true,
+            displayName: true,
+            photoUrl: true,
+            isSuperhost: true,
+            isStarhost: true,
+          },
+        },
+        tags: true,
+        _count: {
+          select: {
+            reviews: true,
+            incidents: true,
+          },
+        },
+      },
+    });
+
+    return property;
+  }
+
+  async createIncident(propertyId: string, data: any): Promise<any> {
+    const count = await this.prisma.propertyIncident.count();
+    const incidentCode = `ST-INC-${1000 + count + 1}`;
+    const incident = await this.prisma.propertyIncident.create({
+      data: {
+        incidentCode,
+        propertyId,
+        reportedById: data.reportedById || null,
+        title: data.title || 'Reported Fault / Maintenance Issue',
+        description: data.description || '',
+        category: data.category || 'MAINTENANCE',
+        severity: data.severity || 'MEDIUM',
+        status: data.status || 'OPEN',
+      },
+    });
+
+    await this.prisma.property.update({
+      where: { id: propertyId },
+      data: {
+        hasActiveFault: true,
+        faultCount: { increment: 1 },
+      },
+    });
+
+    return incident;
+  }
+
+  async updateIncidentStatus(incidentId: string, status: string, notes?: string): Promise<any> {
+    const updated = await this.prisma.propertyIncident.update({
+      where: { id: incidentId },
+      data: {
+        status,
+        resolutionNotes: notes,
+        resolvedAt: status === 'RESOLVED' || status === 'CLOSED' ? new Date() : undefined,
+      },
+    });
+
+    return updated;
   }
 
   async getExactLocation(id: string, userId?: string): Promise<any> {

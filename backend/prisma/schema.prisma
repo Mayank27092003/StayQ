@@ -237,6 +237,9 @@ model User {
   // Referral
   referralCode    String?   @unique
 
+  // Host Identification Code (e.g. ST-HOST-603)
+  hostCode        String?   @unique
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -260,6 +263,7 @@ model User {
   referralsReceived   Referral?           @relation("ReferredRelation")
   disputesRaised      Dispute[]
   auditLogs           AdminAuditLog[]
+  reportedIncidents   PropertyIncident[]
 
   @@index([firebaseUid])
   @@index([email])
@@ -385,6 +389,12 @@ model Property {
   propertyDocsVerified   Boolean   @default(false)
   propertyDocsVerifiedAt DateTime?
 
+  // Unique Property Identifier Code (e.g. ST603-9182, format: ST + last 3 digits of host mobile + unique suffix)
+  propertyCode           String?   @unique
+  registeredAt           DateTime  @default(now())
+  faultCount             Int       @default(0)
+  hasActiveFault         Boolean   @default(false)
+
   // Relations
   images          PropertyImage[]
   availabilityBlocks AvailabilityBlock[]
@@ -396,12 +406,37 @@ model Property {
   leaseAgreements LeaseAgreement[]
   roomTypes       RoomType[]      // Added for multi-unit properties
   featuredPlacements FeaturedPlacement[]
+  incidents       PropertyIncident[]
 
   @@index([city])
   @@index([category])
   @@index([status])
   @@index([hostId])
   @@index([pricePerNight])
+  @@index([propertyCode])
+}
+
+model PropertyIncident {
+  id              String          @id @default(uuid())
+  incidentCode    String?         @unique // e.g. "ST-INC-9481"
+  propertyId      String
+  property        Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  reportedById    String?
+  reportedBy      User?           @relation(fields: [reportedById], references: [id])
+  title           String          // e.g. "AC Breakdown", "Plumbing Leakage", "Keycard failure"
+  description     String
+  category        String          @default("MAINTENANCE") // "MAINTENANCE", "SAFETY", "CLEANLINESS", "AMENITY_MISSING", "DAMAGE", "HOST_DISPUTE"
+  severity        String          @default("MEDIUM") // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  status          String          @default("OPEN")   // "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"
+  resolutionNotes String?
+  resolvedAt      DateTime?
+  reportedAt      DateTime        @default(now())
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([propertyId])
+  @@index([status])
+  @@index([incidentCode])
 }
 
 model RoomType {
@@ -1679,3 +1714,29 @@ model AdminSetting {
 
   @@index([group])
 }
+
+// ----------------------------------------------------------------------------
+// Master Admin Staff & RBAC Access Model
+// ----------------------------------------------------------------------------
+model AdminStaff {
+  id              String       @id @default(uuid())
+  staffId         String       @unique // e.g. SQ-EMP-101
+  fullName        String
+  email           String       @unique
+  passwordHash    String
+  department      String       // e.g. "Operations", "Finance", "Guest Support", "Audits"
+  role            String       @default("STAFF") // "MASTER_ADMIN" | "STAFF"
+  status          String       @default("ACTIVE") // "ACTIVE" | "SUSPENDED" | "INACTIVE"
+  allowedModules  String[]     // e.g. ["properties", "bookings", "hosts", "support", "reviews", "revenue", "promotions", "experiences", "analytics"]
+  phoneNumber     String?
+  lastLoginAt     DateTime?
+  createdById     String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([staffId])
+  @@index([email])
+  @@index([role])
+  @@index([status])
+}
+

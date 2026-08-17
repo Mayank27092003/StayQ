@@ -181,7 +181,7 @@ export default function VerificationConsolePage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                             <div className="bg-white/80 p-3 rounded-xl border border-amber-200/60">
                                 <span className="text-gray-500 block">Client ID:</span>
-                                <code className="font-mono font-bold text-gray-900 text-sm">CF1369726DA0OVGC6A0HC73A2LTL0</code>
+                                <code className="font-mono font-bold text-gray-900 text-sm">CF1369••••••••HC73A2LTL0</code>
                             </div>
                             <div className="bg-white/80 p-3 rounded-xl border border-amber-200/60 flex items-center justify-between">
                                 <div>

@@ -22,13 +22,14 @@ class MessagingProvider with ChangeNotifier {
   void initializeSocket() async {
     if (_socket != null && _socket!.connected) return;
 
-    final token = await FirebaseAuth.instance.currentUser?.getIdToken();
-    if (token == null) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final token = await user.getIdToken();
 
     _socket = IO.io(_apiUrl, IO.OptionBuilder()
         .setTransports(['websocket'])
         .enableAutoConnect()
-        // Note: The NestJS gateway might just use standard sockets, but we pass token just in case
+        .setQuery({'userId': user.uid})
         .setExtraHeaders({'Authorization': 'Bearer $token'}) 
         .build());
 

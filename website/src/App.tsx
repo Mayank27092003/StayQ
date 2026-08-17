@@ -37,6 +37,12 @@ import { GuestRulesPage } from './components/GuestRulesPage';
 
 import { AdventureExplorePage } from './components/AdventureExplorePage';
 
+function normalizePath(raw: string): string {
+  if (!raw) return '';
+  const noQuery = raw.split('?')[0].split('&')[0];
+  return noQuery.replace(/\/+$/, '') || '/';
+}
+
 function AppContent() {
   const [currentPath, setCurrentPath] = useState(window.location.hash || window.location.pathname);
   const { updateFilters, isSupportOpen, setIsSupportOpen } = useApp();
@@ -47,27 +53,29 @@ function AppContent() {
       setCurrentPath(path);
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
+      const norm = normalizePath(path);
+
       // Dynamic SEO Title & Meta Management
-      if (path === '#/zero-broker' || path === '/zero-broker') {
+      if (norm === '#/zero-broker' || norm === '/zero-broker') {
         document.title = 'Zero-Broker 11-Month Rental Homes in India | Stay Q';
         updateFilters({ category: 'ZERO_BROKER', zeroBrokerOnly: true });
-      } else if (path === '#/rvs' || path === '/rvs') {
+      } else if (norm === '#/rvs' || norm === '/rvs') {
         document.title = 'Rent Luxury RVs, Campervans & Motorhomes in India | Stay Q';
         updateFilters({ category: 'RV' });
-      } else if (path === '#/camping' || path === '/camping') {
+      } else if (norm === '#/camping' || norm === '/camping') {
         document.title = 'Camping, Glamping & Tents in India | Stay Q Camping Sites';
         updateFilters({ category: 'CAMPING_SITE' });
-      } else if (path === '#/experiences' || path === '/experiences') {
+      } else if (norm === '#/experiences' || norm === '/experiences') {
         document.title = 'Handpicked Local Tours & Experiences in India | Stay Q';
-      } else if (path === '#/host-invite' || path === '/host-invite' || path === '#/invite' || path === '/invite') {
+      } else if (norm === '#/host-invite' || norm === '/host-invite' || norm === '#/invite' || norm === '/invite') {
         document.title = 'List Your Property & Earn with Zero Commission | Host on Stay Q';
-      } else if (path === '#/about' || path === '/about') {
+      } else if (norm === '#/about' || norm === '/about') {
         document.title = 'About Stay Q — India\'s Premier Homestay & Zero-Broker Platform';
-      } else if (path === '#/contact' || path === '/contact') {
+      } else if (norm === '#/contact' || norm === '/contact') {
         document.title = 'Contact & 24/7 Concierge Support | Stay Q';
-      } else if (path === '#/stays' || path === '/stays') {
+      } else if (norm === '#/stays' || norm === '/stays') {
         document.title = 'Explore Luxury Homestays, Villas & Cottages in India | Stay Q';
-      } else if (path === '#/support' || path === '/support') {
+      } else if (norm === '#/support' || norm === '/support') {
         setIsSupportOpen(true);
       } else {
         document.title = 'Stay Q | Luxury Homestays, Villas, RVs & Zero-Broker Rentals in India';
@@ -85,34 +93,36 @@ function AppContent() {
     };
   }, [updateFilters, setIsSupportOpen]);
 
-  // Route matches
-  const isDisruptivePolicyPage = currentPath === '#/policy/disruptive-events' || currentPath === '/policy/disruptive-events';
-  const isTermsPage = currentPath === '#/terms' || currentPath === '/terms';
-  const isRefundsPage = currentPath === '#/policy/refunds' || currentPath === '/policy/refunds';
-  const isHostProtectionPage = currentPath === '#/policy/host-protection' || currentPath === '/policy/host-protection';
-  const isZeroBrokerPolicyPage = currentPath === '#/policy/zero-brokerage' || currentPath === '/policy/zero-brokerage';
-  const isGuestSafetyPage = currentPath === '#/policy/guest-safety' || currentPath === '/policy/guest-safety';
-  const isLegalContactPage = currentPath === '#/legal-contact' || currentPath === '/legal-contact';
-  const isGuestRulesPage = currentPath === '#/guest-rules' || currentPath === '/guest-rules' || currentPath === '#/policy/guest-rules' || currentPath === '/policy/guest-rules';
+  const norm = normalizePath(currentPath);
 
-  const isAboutPage = currentPath === '#/about' || currentPath === '/about';
-  const isContactPage = currentPath === '#/contact' || currentPath === '/contact';
-  const isPrivacyPage = currentPath === '#/privacy' || currentPath === '/privacy';
-  const isTripsPage = currentPath === '#/trips' || currentPath === '/trips';
-  const isWishlistPage = currentPath === '#/wishlist' || currentPath === '/wishlist';
-  const isStaysPage = currentPath === '#/stays' || currentPath === '/stays';
-  const isZeroBrokerPage = currentPath === '#/zero-broker' || currentPath === '/zero-broker';
-  const isExperiencesPage = currentPath === '#/experiences' || currentPath === '/experiences';
-  const isRvsPage = currentPath === '#/rvs' || currentPath === '/rvs' || currentPath === '#/category/rvs';
-  const isCampingPage = currentPath === '#/camping' || currentPath === '/camping' || currentPath === '#/category/camping';
-  const isAdventurePage = currentPath === '#/adventure' || currentPath === '/adventure';
+  // Route matches
+  const isDisruptivePolicyPage = norm === '#/policy/disruptive-events' || norm === '/policy/disruptive-events';
+  const isTermsPage = norm === '#/terms' || norm === '/terms';
+  const isRefundsPage = norm === '#/policy/refunds' || norm === '/policy/refunds';
+  const isHostProtectionPage = norm === '#/policy/host-protection' || norm === '/policy/host-protection';
+  const isZeroBrokerPolicyPage = norm === '#/policy/zero-brokerage' || norm === '/policy/zero-brokerage';
+  const isGuestSafetyPage = norm === '#/policy/guest-safety' || norm === '/policy/guest-safety';
+  const isLegalContactPage = norm === '#/legal-contact' || norm === '/legal-contact';
+  const isGuestRulesPage = norm === '#/guest-rules' || norm === '/guest-rules' || norm === '#/policy/guest-rules' || norm === '/policy/guest-rules';
+
+  const isAboutPage = norm === '#/about' || norm === '/about';
+  const isContactPage = norm === '#/contact' || norm === '/contact';
+  const isPrivacyPage = norm === '#/privacy' || norm === '/privacy';
+  const isTripsPage = norm === '#/trips' || norm === '/trips';
+  const isWishlistPage = norm === '#/wishlist' || norm === '/wishlist';
+  const isStaysPage = norm === '#/stays' || norm === '/stays';
+  const isZeroBrokerPage = norm === '#/zero-broker' || norm === '/zero-broker';
+  const isExperiencesPage = norm === '#/experiences' || norm === '/experiences';
+  const isRvsPage = norm === '#/rvs' || norm === '/rvs' || norm === '#/category/rvs';
+  const isCampingPage = norm === '#/camping' || norm === '/camping' || norm === '#/category/camping';
+  const isAdventurePage = norm === '#/adventure' || norm === '/adventure';
   const isHostInvitePage =
-    currentPath === '#/host-invite' ||
-    currentPath === '/host-invite' ||
-    currentPath === '#/invite' ||
-    currentPath === '/invite' ||
-    currentPath === '#/partner' ||
-    currentPath === '/partner';
+    norm === '#/host-invite' ||
+    norm === '/host-invite' ||
+    norm === '#/invite' ||
+    norm === '/invite' ||
+    norm === '#/partner' ||
+    norm === '/partner';
 
   return (
     <>

@@ -51,10 +51,14 @@ import { AdminReportsService } from './reports/admin-reports.service';
 import { AdminQubeController } from './qube/admin-qube.controller';
 import { AdminQubeService } from './qube/admin-qube.service';
 
+import { AdminStaffController } from './staff/admin-staff.controller';
+import { AdminStaffService } from './staff/admin-staff.service';
+
 @Module({
   imports: [PrismaModule, NotificationsModule],
   controllers: [
     AdminController,
+    AdminStaffController,
     AdminPromotionsController,
     AdminSupportController,
     AdminModerationController,
@@ -74,6 +78,7 @@ import { AdminQubeService } from './qube/admin-qube.service';
   ],
   providers: [
     AdminService,
+    AdminStaffService,
     AdminAuditService,
     AdminPromotionsService,
     AdminSupportService,
@@ -91,5 +96,6 @@ import { AdminQubeService } from './qube/admin-qube.service';
     AdminReportsService,
     AdminQubeService,
   ],
+  exports: [AdminStaffService],
 })
 export class AdminModule {}

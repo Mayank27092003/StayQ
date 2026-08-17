@@ -85,7 +85,7 @@ const privacyData = [
           <li><strong>Deletion:</strong> Request deletion of your personal data (subject to legal obligations).</li>
           <li><strong>Data Portability:</strong> Request transfer of your data to another organization.</li>
         </ul>
-        <p>To exercise these rights, please contact us at support@stayq.space.</p>
+        <p>To exercise these rights, please contact us at grievance@stayq.space.</p>
       </>
     )
   },
@@ -152,8 +152,7 @@ const privacyData = [
         <p>If you have questions, comments, or statutory grievances about this notice or personal data handling, reach out to:</p>
         <p>
           <strong>Grievance Officer:</strong> Shayan Mandal<br />
-          <strong>Grievance Email:</strong> <a href="mailto:grivance@stayq.space" style={{ color: 'var(--violet)', fontWeight: 700 }}>grivance@stayq.space</a> (alt: grievance@stayq.space)<br />
-          <strong>General Support:</strong> <a href="mailto:support@stayq.space" style={{ color: 'var(--violet)', fontWeight: 700 }}>support@stayq.space</a><br />
+          <strong>Official Contact &amp; Grievance Email:</strong> <a href="mailto:grievance@stayq.space" style={{ color: 'var(--violet)', fontWeight: 700 }}>grievance@stayq.space</a><br />
           <strong>Entity:</strong> QUATALYST PRIVATE LIMITED (CIN: U62011GA2026PTC018230)
         </p>
       </>

@@ -59,7 +59,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
       vsync: this,
       initialIndex: widget.initialIsHost ? 0 : 0,
     );
-    final apiClient = ApiClient(baseUrl: 'https://stayq-api-608570851336.asia-south1.run.app');
+    final apiClient = ApiClient(baseUrl: 'https://stayq-api-608570851336.asia-south1.run.app/api/v1');
     _verificationApi = VerificationApi(apiClient);
     _loadStatus();
   }

@@ -131,34 +131,27 @@ export class CashfreeVerificationService {
 
       const data: any = await response.json().catch(() => ({}));
 
-      // Case 1: IP Whitelisting required error
+      // Case 1: IP Whitelisting required notice
       if (data?.code === 'ip_validation_failed' || (data?.message && data.message.includes('IP not whitelisted'))) {
         const ipMatch = data.message.match(/ip is ([0-9.]+)/i);
         const detectedIp = ipMatch ? ipMatch[1] : '49.47.9.73';
         this.logger.warn(`Cashfree SecureID: Source IP ${detectedIp} requires whitelisting in Cashfree Merchant Dashboard.`);
 
-        // For dev/test resilience, create a verified simulated account while alerting
-        const simulatedResult: BankAccountVerificationResult = {
+        return {
           accountNumber: cleanAccount,
           ifsc: cleanIfsc,
-          nameAtBank: name || 'Verified Account Holder',
-          accountStatus: 'VALID',
-          accountExists: true,
-          nameMatchScore: 1.0,
-          nameMatchResult: 'DIRECT_MATCH',
-          utr: 'CF_UTR_' + Math.floor(1000000000 + Math.random() * 9000000000),
+          nameAtBank: name || 'Unverified Account Holder',
+          accountStatus: 'INVALID',
+          accountExists: false,
+          nameMatchScore: 0.0,
+          nameMatchResult: 'PENDING_WHITELIST',
+          utr: '',
           referenceId: 'CF_REF_' + Date.now(),
-          status: 'SUCCESS',
+          status: 'FAILED',
           ipWhitelisted: false,
           detectedIp,
-          message: `IP ${detectedIp} needs whitelisting in Cashfree Dashboard (Developers > IP Whitelist). Simulated verification applied.`,
+          message: `IP ${detectedIp} needs whitelisting in Cashfree Dashboard (Developers > IP Whitelist). Verification pending.`,
         };
-
-        if (userId && isHost) {
-          await this.saveVerifiedPayoutAccount(userId, cleanAccount, cleanIfsc, simulatedResult.nameAtBank);
-        }
-
-        return simulatedResult;
       }
 
       // Case 2: Direct API Success from Cashfree Production
@@ -184,64 +177,10 @@ export class CashfreeVerificationService {
         return result;
       }
 
-      // Case 3: Invalid Bank Account or Rejected
-      if (data.account_status === 'INVALID') {
-        return {
-          accountNumber: cleanAccount,
-          ifsc: cleanIfsc,
-          nameAtBank: '',
-          accountStatus: 'INVALID',
-          accountExists: false,
-          nameMatchScore: 0,
-          nameMatchResult: 'NO_MATCH',
-          referenceId: String(data.ref_id || Date.now()),
-          status: 'FAILED',
-          message: data.message || 'Bank account does not exist or details are invalid.',
-        };
-      }
-
-      // Fallback for simulation / staging
-      if (process.env.NODE_ENV !== 'production' || !response.ok) {
-        this.logger.warn(`Cashfree API returned ${response.status}: ${JSON.stringify(data)}`);
-        const fallbackResult: BankAccountVerificationResult = {
-          accountNumber: cleanAccount,
-          ifsc: cleanIfsc,
-          nameAtBank: name || 'Verified Account Holder',
-          accountStatus: 'VALID',
-          accountExists: true,
-          nameMatchScore: 1.0,
-          nameMatchResult: 'DIRECT_MATCH',
-          utr: 'UTR_' + Date.now(),
-          referenceId: 'REF_' + Date.now(),
-          status: 'SUCCESS',
-          message: data.message || 'Verified via fallback adapter',
-        };
-
-        if (userId && isHost) {
-          await this.saveVerifiedPayoutAccount(userId, cleanAccount, cleanIfsc, fallbackResult.nameAtBank);
-        }
-
-        return fallbackResult;
-      }
-
       throw new BadRequestException(data.message || 'Bank Account Verification Failed');
     } catch (error: any) {
       this.logger.error(`Cashfree Bank Verification error: ${error.message}`);
-      if (process.env.NODE_ENV !== 'production') {
-        return {
-          accountNumber: cleanAccount,
-          ifsc: cleanIfsc,
-          nameAtBank: name || 'Verified Account Holder',
-          accountStatus: 'VALID',
-          accountExists: true,
-          nameMatchScore: 1.0,
-          nameMatchResult: 'DIRECT_MATCH',
-          utr: 'CF_UTR_' + Date.now(),
-          referenceId: 'CF_REF_' + Date.now(),
-          status: 'SUCCESS',
-        };
-      }
-      throw new InternalServerErrorException(`Bank verification failed: ${error.message}`);
+      throw new BadRequestException(`Bank verification failed: ${error.message}`);
     }
   }
 

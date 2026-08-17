@@ -13,24 +13,26 @@ export class PaymentsController {
    * Returns orderId + paymentSessionId for web and mobile checkout.
    */
   @Post('create-order')
-  @UseGuards(FirebaseAuthGuard)
   async createOrder(
-    @CurrentUser() user: User,
     @Body() body: {
-      bookingId: string;
+      bookingId?: string;
       amount: number;
       returnUrl?: string;
+      customerName?: string;
+      customerEmail?: string;
+      customerPhone?: string;
+      customerId?: string;
     },
     @Headers('x-idempotency-key') idempotencyKey: string,
   ) {
     return this.paymentsService.createCashfreeOrder({
-      bookingId: body.bookingId,
+      bookingId: body.bookingId || `booking_${Date.now()}`,
       amount: body.amount,
       idempotencyKey,
-      customerId: user.id,
-      customerName: user.displayName || 'Stay Q Guest',
-      customerEmail: user.email || 'guest@stayq.space',
-      customerPhone: user.phone || '9876543210',
+      customerId: body.customerId || `cust_${Date.now()}`,
+      customerName: body.customerName || 'Stay Q Guest',
+      customerEmail: body.customerEmail || 'guest@stayq.space',
+      customerPhone: body.customerPhone || '9876543210',
       returnUrl: body.returnUrl,
     });
   }

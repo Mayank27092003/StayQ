@@ -37,10 +37,10 @@ export const LegalContact: React.FC = () => {
 
             <div>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Official Email</span>
-              <a href="mailto:grivance@stayq.space" style={{ fontSize: '0.95rem', color: 'var(--violet)', display: 'block', fontWeight: 700, textDecoration: 'none', marginTop: '0.2rem' }}>
-                grivance@stayq.space
+              <a href="mailto:grievance@stayq.space" style={{ fontSize: '0.95rem', color: 'var(--violet)', display: 'block', fontWeight: 700, textDecoration: 'none', marginTop: '0.2rem' }}>
+                grievance@stayq.space
               </a>
-              <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>(alt: grievance@stayq.space)</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>Direct Nodal Inbox</span>
             </div>
 
             <div>

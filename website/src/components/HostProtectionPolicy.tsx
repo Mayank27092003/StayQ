@@ -45,7 +45,7 @@ export const HostProtectionPolicy: React.FC = () => {
             3. Dispute Resolution &amp; Support
           </h3>
           <p>
-            In the event of property damage or guest disputes, our Resolution Team acts as an objective mediator to review evidence (pre-stay and post-stay photos/invoices) and facilitate appropriate settlements between parties. Contact our host desk at <a href="mailto:support@stayq.space" style={{ color: 'var(--violet)', fontWeight: 700 }}>support@stayq.space</a>.
+            In the event of property damage or guest disputes, our Resolution Team acts as an objective mediator to review evidence (pre-stay and post-stay photos/invoices) and facilitate appropriate settlements between parties. Contact our host desk at <a href="mailto:grievance@stayq.space" style={{ color: 'var(--violet)', fontWeight: 700 }}>grievance@stayq.space</a>.
           </p>
         </section>
       </div>

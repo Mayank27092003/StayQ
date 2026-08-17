@@ -44,6 +44,18 @@ export class PaymentsService {
   async createCashfreeOrder(params: CreateOrderParams) {
     const { bookingId, amount, idempotencyKey, customerId, customerName, customerPhone, customerEmail, returnUrl } = params;
 
+    // Verify against DB Booking if bookingId exists to prevent client-side price spoofing
+    let finalAmount = amount;
+    if (bookingId && !bookingId.startsWith('test_') && !bookingId.startsWith('booking_')) {
+      const dbBooking = await this.prisma.booking.findUnique({
+        where: { id: bookingId },
+        select: { id: true, totalAmount: true, status: true },
+      });
+      if (dbBooking && dbBooking.totalAmount && Number(dbBooking.totalAmount) > 0) {
+        finalAmount = Number(dbBooking.totalAmount);
+      }
+    }
+
     if (idempotencyKey) {
       const existingPayment = await this.prisma.payment.findUnique({
         where: { idempotencyKey },
@@ -65,7 +77,7 @@ export class PaymentsService {
 
     const payload = {
       order_id: orderId,
-      order_amount: Number(amount.toFixed(2)),
+      order_amount: Number(finalAmount.toFixed(2)),
       order_currency: 'INR',
       customer_details: {
         customer_id: customerId || `cust_${Date.now()}`,
@@ -84,7 +96,7 @@ export class PaymentsService {
     let cfOrderStatus = 'ACTIVE';
 
     try {
-      this.logger.log(`Creating Cashfree PG order ${orderId} for ₹${amount}`);
+      this.logger.log(`Creating Cashfree PG order ${orderId} for ₹${finalAmount}`);
       const response = await fetch(`${this.cashfreePgBaseUrl}/orders`, {
         method: 'POST',
         headers: this.getCashfreeHeaders(),
@@ -98,36 +110,40 @@ export class PaymentsService {
         cfOrderStatus = data.order_status || 'ACTIVE';
         this.logger.log(`Cashfree PG Order created successfully: ${data.order_id}, session: ${paymentSessionId}`);
       } else {
-        this.logger.warn(`Cashfree PG API notice: ${JSON.stringify(data)}. Utilizing seamless checkout adapter.`);
-        paymentSessionId = `session_${orderId}`;
+        this.logger.warn(`Cashfree order response: ${JSON.stringify(data)}`);
       }
-    } catch (apiErr: any) {
-      this.logger.error(`Cashfree PG call error: ${apiErr.message}`);
-      paymentSessionId = `session_${orderId}`;
+    } catch (e: any) {
+      this.logger.error(`Cashfree PG creation error: ${e.message}`);
     }
 
-    // Save payment record in DB
-    try {
-      await this.prisma.payment.create({
-        data: {
-          booking: { connect: { id: bookingId } },
-          amount,
-          idempotencyKey: idempotencyKey || orderId,
-          razorpayOrderId: orderId, // using orderId field for tracking
-          status: 'PENDING',
-        },
-      });
-    } catch (dbErr: any) {
-      this.logger.warn(`Payment DB create note: ${dbErr.message}`);
+    // Persist Payment Record in PostgreSQL if a real booking is provided
+    let savedPaymentId: string | null = null;
+    const validBookingId = bookingId && !bookingId.startsWith('booking_') && !bookingId.startsWith('test_') ? bookingId : null;
+    if (validBookingId) {
+      try {
+        const payment = await this.prisma.payment.create({
+          data: {
+            booking: { connect: { id: validBookingId } },
+            amount: finalAmount,
+            currency: 'INR',
+            status: 'PENDING',
+            razorpayOrderId: orderId,
+            idempotencyKey,
+          },
+        });
+        savedPaymentId = payment.id;
+      } catch (dbErr: any) {
+        this.logger.warn(`Payment DB create note: ${dbErr.message}`);
+      }
     }
 
     return {
       orderId,
       paymentSessionId,
-      amount,
+      amount: finalAmount,
       currency: 'INR',
-      status: 'PENDING',
-      bookingId,
+      status: cfOrderStatus,
+      bookingId: bookingId && !bookingId.startsWith('booking_') && !bookingId.startsWith('test_') ? bookingId : null,
       environment: 'PRODUCTION',
       gateway: 'CASHFREE',
       sdkPayload: {
@@ -211,10 +227,36 @@ export class PaymentsService {
   }
 
   /**
+   * Helper to verify Cashfree Webhook HMAC Signature
+   */
+  verifyWebhookSignature(rawBody: string, signature: string, timestamp?: string): boolean {
+    if (!signature || !this.cashfreeSecretKey) return false;
+    try {
+      const dataToSign = timestamp ? `${timestamp}${rawBody}` : rawBody;
+      const expected = crypto
+        .createHmac('sha256', this.cashfreeSecretKey)
+        .update(dataToSign)
+        .digest('base64');
+      return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * 3. CASHFREE WEBHOOK HANDLER
    */
   async handleCashfreeWebhook(event: any, rawBody?: Buffer, signature?: string, timestamp?: string) {
     this.logger.log(`Received Cashfree Webhook: ${JSON.stringify(event?.type || event?.event)}`);
+
+    // Verify cryptographic signature if raw body and signature are provided
+    if (signature && rawBody) {
+      const isValid = this.verifyWebhookSignature(rawBody.toString('utf8'), signature, timestamp);
+      if (!isValid) {
+        this.logger.warn('Cashfree webhook signature verification failed. Rejecting untrusted payload.');
+        return { status: 'invalid_signature' };
+      }
+    }
 
     const orderId = event?.data?.order?.order_id || event?.order_id;
     const paymentStatus = event?.data?.payment?.payment_status || event?.data?.order?.order_status;

@@ -52,35 +52,41 @@ class BookingModel {
       }
     }
 
+    final propMap = json['property'] is Map<String, dynamic> ? json['property'] as Map<String, dynamic> : null;
+    final propImages = propMap != null && propMap['images'] is List
+        ? (propMap['images'] as List).map((i) => i is Map ? (i['url'] ?? '').toString() : i.toString()).where((s) => s.isNotEmpty).toList()
+        : <String>[];
+    if (propImages.isEmpty && json['propertyImage'] != null && json['propertyImage'].toString().isNotEmpty) {
+      propImages.add(json['propertyImage'].toString());
+    }
+
     return BookingModel(
       id: json['id'] ?? '',
-      // Note: NestJS returns relation property as an object or just its ID.
-      // We assume it's flat here like fromFirestore was, but this may need adjusting based on NestJS payload.
       stay: StayModel(
-        id: json['propertyId'] ?? '',
-        title: json['propertyTitle'] ?? '',
-        location: json['propertyCity'] ?? '',
-        pricePerNight: (json['nightlyRate'] ?? 0).toDouble(),
-        rating: 0,
-        reviewCount: 0,
-        imageUrls: [json['propertyImage'] ?? ''],
-        category: '',
-        hostName: '',
-        hostAvatar: '',
-        amenities: [],
-        description: '',
-        lat: 0,
-        lng: 0,
+        id: propMap?['id'] ?? json['propertyId'] ?? '',
+        title: propMap?['title'] ?? json['propertyTitle'] ?? '',
+        location: propMap?['city'] ?? json['propertyCity'] ?? '',
+        pricePerNight: ((propMap?['basePrice'] ?? json['nightlyRate'] ?? 0) as num).toDouble(),
+        rating: ((propMap?['rating'] ?? 0) as num).toDouble(),
+        reviewCount: propMap?['reviewCount'] ?? 0,
+        imageUrls: propImages,
+        category: propMap?['category'] ?? '',
+        hostName: propMap?['host']?['displayName'] ?? '',
+        hostAvatar: propMap?['host']?['photoUrl'] ?? '',
+        amenities: propMap?['amenities'] != null ? List<String>.from(propMap!['amenities']) : [],
+        description: propMap?['description'] ?? '',
+        lat: ((propMap?['lat'] ?? 0) as num).toDouble(),
+        lng: ((propMap?['lng'] ?? 0) as num).toDouble(),
       ),
       checkIn: json['checkIn'] != null ? DateTime.parse(json['checkIn'].toString()) : DateTime.now(),
       checkOut: json['checkOut'] != null ? DateTime.parse(json['checkOut'].toString()) : DateTime.now(),
       adults: json['adults'] ?? 1,
       children: json['children'] ?? 0,
-      totalAmount: (json['totalAmount'] ?? 0).toDouble(),
+      totalAmount: ((json['totalAmount'] ?? 0) as num).toDouble(),
       confirmationCode: json['confirmationCode'] ?? '',
       status: calculatedStatus,
-      guestName: json['guestName'] ?? '',
-      guestAvatar: json['guestAvatarUrl'] ?? '',
+      guestName: json['guest']?['displayName'] ?? json['guestName'] ?? '',
+      guestAvatar: json['guest']?['photoUrl'] ?? json['guestAvatarUrl'] ?? '',
     );
   }
 }

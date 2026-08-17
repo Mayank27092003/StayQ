@@ -37,6 +37,7 @@ yarn-error.log*
 .env*
 *.env
 .agents/
+.firebase/
 *firebase-adminsdk*.json
 *service-account*.json
 

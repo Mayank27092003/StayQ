@@ -9,6 +9,9 @@ class PaymentsApi {
   Future<Map<String, dynamic>> createPaymentOrder({
     required String bookingId,
     required double amount,
+    String? customerName,
+    String? customerEmail,
+    String? customerPhone,
     String? returnUrl,
   }) async {
     final response = await _client.post(
@@ -16,6 +19,9 @@ class PaymentsApi {
       body: {
         'bookingId': bookingId,
         'amount': amount,
+        if (customerName != null) 'customerName': customerName,
+        if (customerEmail != null) 'customerEmail': customerEmail,
+        if (customerPhone != null) 'customerPhone': customerPhone,
         if (returnUrl != null) 'returnUrl': returnUrl,
       },
     );

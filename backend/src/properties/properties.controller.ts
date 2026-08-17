@@ -57,6 +57,24 @@ export class PropertiesController {
     return this.propertiesService.getExactLocation(id, userId);
   }
 
+  @Get('lookup/code/:code')
+  lookupByCode(@Param('code') code: string) {
+    return this.propertiesService.lookupByCode(code);
+  }
+
+  @Post(':id/incidents')
+  createIncident(@Param('id') id: string, @Body() incidentDto: any) {
+    return this.propertiesService.createIncident(id, incidentDto);
+  }
+
+  @Patch('incidents/:incidentId/status')
+  updateIncidentStatus(
+    @Param('incidentId') incidentId: string,
+    @Body() body: { status: string; notes?: string }
+  ) {
+    return this.propertiesService.updateIncidentStatus(incidentId, body.status, body.notes);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @Query('adminView') adminView?: string) {
     return this.propertiesService.findOne(id, adminView === 'true');

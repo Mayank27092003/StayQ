@@ -16,8 +16,9 @@ export class FirebaseAuthGuard implements CanActivate {
     const authHeader = request.headers['authorization'];
     const adminKey = request.headers['x-admin-key'];
 
-    // Allow Admin Panel / Internal Master operations
-    if (adminKey === 'stayq-admin-secret-2026' || !authHeader) {
+    // Allow Internal Master admin service key if explicitly provided
+    const configuredAdminSecret = process.env.ADMIN_SECRET_KEY || 'stayq-admin-secret-2026';
+    if (adminKey && adminKey === configuredAdminSecret) {
       let adminUser = await this.prisma.user.findFirst({
         where: { OR: [{ email: 'admin@stayq.space' }, { email: 'shayan@stayq.space' }, { isAdmin: true }] },
       });
@@ -29,7 +30,7 @@ export class FirebaseAuthGuard implements CanActivate {
           data: {
             firebaseUid: 'admin-system-uid',
             email: 'admin@stayq.space',
-            displayName: 'Shayan Mandal',
+            displayName: 'Master Administrator',
             isAdmin: true,
           },
         });
@@ -39,7 +40,7 @@ export class FirebaseAuthGuard implements CanActivate {
       return true;
     }
 
-    if (!authHeader.startsWith('Bearer ')) {
+    if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
       throw new UnauthorizedException('Missing or invalid authorization header');
     }
 

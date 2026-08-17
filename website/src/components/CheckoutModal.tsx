@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { X, ShieldCheck, CreditCard, Smartphone, CheckCircle2, Lock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { calculateBookingQuote, createBookingApi } from '../services/api';
+import { calculateBookingQuote, createBookingApi, createPaymentOrderApi, PaymentOrderResponse } from '../services/api';
+import { PaymentGatewayModal } from './PaymentGatewayModal';
 
 export const CheckoutModal: React.FC = () => {
   const { checkoutItem, setCheckoutItem, setActiveConfirmation, addBooking, user, setIsAuthModalOpen } = useApp();
@@ -12,6 +13,10 @@ export const CheckoutModal: React.FC = () => {
   const [specialRequests, setSpecialRequests] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CARD' | 'NETBANKING' | 'PAY_AT_STAY'>('UPI');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Live Gateway State
+  const [activePaymentOrder, setActivePaymentOrder] = useState<PaymentOrderResponse | null>(null);
+  const [isGatewayOpen, setIsGatewayOpen] = useState(false);
 
   // Sync with user profile if user logs in while modal is open
   React.useEffect(() => {
@@ -31,29 +36,29 @@ export const CheckoutModal: React.FC = () => {
   const itemLocation = isStay ? stay!.location : experience!.location;
   const itemImage = isStay ? stay!.imageUrls[0] : experience!.imageUrls[0];
   const price = isStay ? stay!.pricePerNight : experience!.pricePerPerson;
+  const adultCount = checkoutItem.adults || (isStay ? 2 : guests || 1);
+  const kidCount = checkoutItem.children || 0;
+  const expBaseTotal = isStay
+    ? 0
+    : Math.round(price * adultCount + price * 0.5 * kidCount);
 
   const quote = isStay
     ? calculateBookingQuote(price, checkIn, checkOut)
     : {
         nights: 1,
         basePrice: price,
-        baseTotal: price * guests,
+        baseTotal: expBaseTotal,
         cleaningFee: 0,
-        serviceFee: Math.round(price * guests * 0.05),
-        gstAmount: Math.round(price * guests * 0.18),
+        serviceFee: 0,
+        gstAmount: Math.round(expBaseTotal * 0.18),
         discountAmount: 0,
-        totalAmount: Math.round(price * guests * 1.23),
+        totalAmount: Math.round(expBaseTotal * 1.18),
       };
 
-  const handleConfirmBooking = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) {
-      setIsAuthModalOpen(true);
-      return;
-    }
-    const finalName = guestName.trim() || user.name || 'Guest';
-    const finalEmail = guestEmail.trim() || user.email || 'guest@stayq.space';
-    const finalPhone = guestPhone.trim() || user.phone || '+91 9999999999';
+  const handleFinalizeBooking = async (paidMethod: string, _transactionRef?: string) => {
+    const finalName = guestName.trim() || user?.name || 'Guest';
+    const finalEmail = guestEmail.trim() || user?.email || 'guest@stayq.space';
+    const finalPhone = guestPhone.trim() || user?.phone || '+91 9999999999';
 
     setIsSubmitting(true);
     try {
@@ -70,13 +75,52 @@ export const CheckoutModal: React.FC = () => {
         guestPhone: finalPhone,
         guestsCount: guests,
         totalPrice: quote.totalAmount,
-        paymentMethod: paymentMethod === 'UPI' ? 'UPI (Google Pay / PhonePe)' : paymentMethod === 'CARD' ? 'Credit / Debit Card' : paymentMethod === 'PAY_AT_STAY' ? 'Pay at Check-in' : 'Net Banking',
+        paymentMethod: paidMethod,
         slotDetails: slotId ? `Slot: ${slotId}` : undefined,
       });
 
       addBooking(newBooking);
+      setIsGatewayOpen(false);
+      setActivePaymentOrder(null);
       setCheckoutItem(null);
       setActiveConfirmation(newBooking);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    const finalName = guestName.trim() || user.name || 'Guest';
+    const finalEmail = guestEmail.trim() || user.email || 'guest@stayq.space';
+    const finalPhone = guestPhone.trim() || user.phone || '+91 9999999999';
+
+    if (paymentMethod === 'PAY_AT_STAY') {
+      await handleFinalizeBooking('Pay at Check-in (Zero Deposit)');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const order = await createPaymentOrderApi({
+        amount: quote.totalAmount,
+        customerName: finalName,
+        customerEmail: finalEmail,
+        customerPhone: finalPhone,
+      });
+      if (order && order.orderId) {
+        setActivePaymentOrder(order);
+        setIsGatewayOpen(true);
+      } else {
+        alert('Could not initialize payment session. Please try again.');
+      }
+    } catch (err) {
+      console.error('[CheckoutModal] Payment order creation failed:', err);
+      alert('Payment initialization failed. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -260,11 +304,7 @@ export const CheckoutModal: React.FC = () => {
                   </div>
                 )}
                 <div className="checkout-row">
-                  <span>Service fee</span>
-                  <span>₹{quote.serviceFee.toLocaleString('en-IN')}</span>
-                </div>
-                <div className="checkout-row">
-                  <span>Taxes (GST)</span>
+                  <span>Taxes & GST (18%)</span>
                   <span>₹{quote.gstAmount.toLocaleString('en-IN')}</span>
                 </div>
                 {quote.discountAmount > 0 && (
@@ -302,6 +342,20 @@ export const CheckoutModal: React.FC = () => {
             </div>
           </div>
         </form>
+
+        {/* Live Ultra-Real Payment Gateway Terminal */}
+        <PaymentGatewayModal
+          isOpen={isGatewayOpen}
+          onClose={() => setIsGatewayOpen(false)}
+          order={activePaymentOrder}
+          guestName={guestName.trim() || user?.name || 'Guest'}
+          guestEmail={guestEmail.trim() || user?.email || 'guest@stayq.space'}
+          guestPhone={guestPhone.trim() || user?.phone || '+91 9999999999'}
+          itemTitle={itemTitle}
+          onPaymentSuccess={(paymentRef, method) => {
+            handleFinalizeBooking(method, paymentRef);
+          }}
+        />
       </div>
     </div>
   );

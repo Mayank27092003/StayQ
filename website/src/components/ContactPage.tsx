@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Globe, MapPin, ChevronDown, CheckCircle2 } from 'lucide-react';
-import { Nav } from './Nav';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -27,8 +26,7 @@ export function ContactPage() {
   };
 
   return (
-    <div className="contact__page">
-      <Nav />
+    <div className="contact__page" style={{ paddingTop: '80px' }}>
       <main>
         {/* Hero */}
         <section className="contact__hero">
@@ -55,7 +53,7 @@ export function ContactPage() {
             <div className="contact__card">
               <div className="contact__icon-wrap"><Mail size={24} /></div>
               <h3>Email Us</h3>
-              <a href="mailto:support@stayq.space">support@stayq.space</a>
+              <a href="mailto:grievance@stayq.space">grievance@stayq.space</a>
             </div>
             <div className="contact__card">
               <div className="contact__icon-wrap"><Globe size={24} /></div>

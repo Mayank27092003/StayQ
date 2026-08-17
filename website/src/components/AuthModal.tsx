@@ -95,7 +95,7 @@ export const AuthModal: React.FC = () => {
         const userProfile = await syncProfileWithBackend({
           uid: res.user.uid,
           displayName: res.user.displayName || `User ${phone.slice(-4)}`,
-          email: res.user.email || `${res.user.uid}@stayq.in`,
+          email: res.user.email || `${res.user.uid}@stayq.space`,
           phoneNumber: res.user.phoneNumber || phone,
           photoURL: res.user.photoURL,
         });
@@ -105,7 +105,7 @@ export const AuthModal: React.FC = () => {
         setUser({
           id: `usr_${Date.now()}`,
           name: 'Stay Q Traveler',
-          email: `${phone.replace(/\D/g, '')}@stayq.in`,
+          email: `${phone.replace(/\D/g, '')}@stayq.space`,
           phone,
           avatarUrl: '/images/avatar_alex.jpg',
         });
@@ -119,10 +119,17 @@ export const AuthModal: React.FC = () => {
     }
   };
 
+  const handleClose = () => {
+    setIsAuthModalOpen(false);
+    setStep('INPUT');
+    setOtp('');
+    setErrorMsg('');
+  };
+
   return (
-    <div className="auth-modal-backdrop" onClick={() => setIsAuthModalOpen(false)}>
+    <div className="auth-modal-backdrop" onClick={handleClose}>
       <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close-btn" onClick={() => setIsAuthModalOpen(false)}>
+        <button className="modal-close-btn" onClick={handleClose}>
           <X size={20} />
         </button>
 

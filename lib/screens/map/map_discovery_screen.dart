@@ -62,7 +62,7 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen> {
 
   Future<void> _geocodeAndMove(String destination) async {
     try {
-      final url = Uri.parse('https://nominatim.openstreetmap.org/search?q=\${Uri.encodeComponent(destination)}&format=json&limit=1');
+      final url = Uri.parse('https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(destination)}&format=json&limit=1');
       final response = await http.get(url, headers: {'User-Agent': 'StayQ_App'});
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -77,7 +77,7 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Geocoding error: \$e');
+      debugPrint('Geocoding error: $e');
     }
   }
 

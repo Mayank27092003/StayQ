@@ -12,7 +12,6 @@ import '../../theme/app_motion.dart';
 import '../../widgets/bouncing_widget.dart';
 import '../../widgets/stayq_loader.dart';
 import '../../widgets/custom_toast.dart';
-import '../../widgets/custom_toast.dart';
 
 class AddExperienceScreen extends StatefulWidget {
   const AddExperienceScreen({super.key});
