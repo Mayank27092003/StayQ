@@ -9,7 +9,8 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-15
+    runs-on: macos-14
+    timeout-minutes: 60
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -29,16 +30,19 @@ jobs:
       - name: Disable Experimental Swift Package Manager
         run: flutter config --no-enable-swift-package-manager
 
-      - name: Install Dependencies
+      - name: Install Flutter & Pod Dependencies
         run: |
           flutter --version
           flutter pub get
+          cd ios
+          pod install --repo-update
+          cd ..
 
-      - name: Build iOS App (.ipa / Runner.app)
+      - name: Build iOS App (Release Unsigned)
         run: |
           flutter build ios --release --no-codesign
 
-      - name: Package Payload as .ipa
+      - name: Package Payload as IPA
         run: |
           mkdir -p build/ios/iphoneos/Payload
           cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
@@ -51,3 +55,4 @@ jobs:
         with:
           name: StayQ-iOS-Release
           path: build/ios/iphoneos/StayQ-Release.ipa
+          retention-days: 14
