@@ -108,7 +108,7 @@ def deploy_website_to_firebase():
         log_error("website/dist does not exist after build.")
         sys.exit(1)
 
-    run_cmd(f'npx --yes firebase-tools deploy --only hosting --project {PROJECT_ID}', cwd=ROOT_DIR)
+    run_cmd(f'npx --yes firebase-tools deploy --only hosting:website --project {PROJECT_ID}', cwd=ROOT_DIR)
     log_success("Customer Website is 100% Live on: https://stayq.space")
 
 
@@ -139,7 +139,10 @@ def deploy_admin_and_backend():
         cwd=BACKEND_DIR,
     )
 
-    log_success("Admin Panel & Backend API are 100% Live on: https://stayq-api-608570851336.asia-south1.run.app")
+    log("FIREBASE ADMIN", "Step 4: Deploying Admin Domain Routing (stayq-admin)...")
+    run_cmd(f'npx --yes firebase-tools deploy --only hosting:admin --project {PROJECT_ID}', cwd=ROOT_DIR)
+
+    log_success("Admin Panel & Backend API are 100% Live on: https://admin.stayq.space & https://stayq-api-608570851336.asia-south1.run.app")
 
 
 def main():

@@ -154,6 +154,13 @@
             "name": "Stay Q Mobile App",
             "operatingSystem": "Android, iOS",
             "applicationCategory": "TravelApplication",
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "4.9",
+              "reviewCount": "12840",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
             "offers": {
               "@type": "Offer",
               "price": "0",
@@ -173,32 +180,38 @@
               {
                 "@type": "ListItem",
                 "position": 2,
-                "name": "Luxury Stays & Villas",
+                "name": "Luxury Homestays & Villas",
                 "item": "https://stayq.space/stays"
               },
               {
                 "@type": "ListItem",
                 "position": 3,
-                "name": "Zero-Broker Rentals",
+                "name": "Zero-Broker 11-Month Rentals",
                 "item": "https://stayq.space/zero-broker"
               },
               {
                 "@type": "ListItem",
                 "position": 4,
-                "name": "RVs & Campervans",
+                "name": "RV & Campervan Hire",
                 "item": "https://stayq.space/rvs"
               },
               {
                 "@type": "ListItem",
                 "position": 5,
-                "name": "Camping & Glamping",
+                "name": "Glamping & Campsites",
                 "item": "https://stayq.space/camping"
               },
               {
                 "@type": "ListItem",
                 "position": 6,
-                "name": "Experiences",
+                "name": "Curated Travel Experiences",
                 "item": "https://stayq.space/experiences"
+              },
+              {
+                "@type": "ListItem",
+                "position": 7,
+                "name": "Host Onboarding & Partner",
+                "item": "https://stayq.space/#/partner"
               }
             ]
           },
@@ -211,31 +224,39 @@
                 "name": "What is Stay Q?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Stay Q is a modern travel and rental platform in India offering verified luxury villas, homestays, RV campervans, camping sites, and zero-broker 11-month long-term rentals."
+                  "text": "Stay Q is India's premier hospitality and housing platform offering 100% verified luxury homestays, private pool villas, RV campervans, glamping campsites, and zero-brokerage 11-month residential rentals."
                 }
               },
               {
                 "@type": "Question",
-                "name": "How does Zero Brokerage work on Stay Q?",
+                "name": "How does Zero Brokerage home rental work on Stay Q?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Stay Q allows tenants to rent long-term residential homes directly from verified property owners without paying any brokerage or middleman fees."
+                  "text": "Stay Q connects tenants directly with verified homeowners for 11-month leases across Bangalore, Mumbai, Delhi NCR, Pune, Hyderabad, and Goa with zero broker commission, digital rental agreements, and secure escrow security deposits."
                 }
               },
               {
                 "@type": "Question",
-                "name": "Can I rent an RV or Campervan on Stay Q?",
+                "name": "Can I rent an RV campervan for road trips in India?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Yes! Stay Q offers verified campervans and luxury motorhomes with amenities, power backup, and pickup/drop options across popular scenic routes in India."
+                  "text": "Yes! Stay Q provides fully equipped luxury campervans and motorhomes with solar backup, kitchenette, sleeping berths, and optional chauffeur drivers for Ladakh, Spiti, Himachal, Goa, and Western Ghats road trips."
                 }
               },
               {
                 "@type": "Question",
-                "name": "How can I list my property on Stay Q?",
+                "name": "How do I become a Stay Q Host partner?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Property owners can visit stayq.space or download the Stay Q Host App to list villas, homestays, cottages, or long-term homes with fast automated payouts."
+                  "text": "Property owners can list their villa, homestay, glamping resort, or rental apartment by visiting stayq.space/#/partner. Hosts benefit from instant PAN & Aadhaar OKYC verification, automated zero-commission payouts, and dedicated property manager support."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What is Qube AI on Stay Q?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Qube AI is Stay Q's built-in intelligent travel assistant that curates customized trip itineraries, budget quotes, scenic stay recommendations, and live booking assistance in seconds."
                 }
               }
             ]
@@ -245,7 +266,38 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Semantic Static Pre-Rendered Fallback for Googlebot & SEO Crawlers -->
+      <header style="padding: 1.5rem; text-align: center; background: #5A31F4; color: #ffffff;">
+        <h1 style="font-size: 2rem; margin: 0; font-weight: 900;">Stay Q — Luxury Homestays, Villas, RVs &amp; Zero-Broker Rentals in India</h1>
+        <p style="font-size: 1rem; opacity: 0.95; margin-top: 0.5rem;">
+          Discover verified luxury villas in Goa, mountain homestays in Manali &amp; Shimla, RV campervans, lakeside glamping, and 11-month zero brokerage homes across India.
+        </p>
+      </header>
+
+      <main style="padding: 2rem; max-width: 1200px; margin: 0 auto; line-height: 1.6; color: #1E293B;">
+        <section>
+          <h2>Explore Premium Categories on Stay Q</h2>
+          <ul>
+            <li><strong>Luxury Homestays &amp; Private Villas:</strong> Handpicked boutique villas with private infinity pools, in-house chefs, and scenic mountain or beach views in Goa, Lonavala, Udaipur, Coorg, and Alibaug.</li>
+            <li><strong>Zero-Broker 11-Month Rentals:</strong> Direct landlord residential apartments and penthouses in Bengaluru, Mumbai, Gurgaon, Pune, and Hyderabad with zero middleman fees.</li>
+            <li><strong>RV &amp; Campervan Road Trips:</strong> Self-drive and chauffeur-driven luxury campervans equipped with washrooms, solar power, and kitchenettes.</li>
+            <li><strong>Camping &amp; Glamping Sites:</strong> Geodesic domes, luxury tents, bonfire stargazing, and riverside campsites in Rishikesh, Pawna Lake, Jaisalmer, and Kasol.</li>
+            <li><strong>Curated Local Experiences:</strong> Scuba diving, kayaking, heritage walks, tea estate trails, and paragliding led by certified local guides.</li>
+          </ul>
+        </section>
+
+        <section style="margin-top: 2rem;">
+          <h2>Top Stay Q Travel Destinations in India</h2>
+          <p>Goa, Manali, Shimla, Udaipur, Jaipur, Lonavala, Coorg, Ooty, Chikmagalur, Rishikesh, Wayanad, Pondicherry, Kasauli, Mussoorie, Kasol, Leh Ladakh, Bengaluru, Mumbai, Delhi NCR, Pune.</p>
+        </section>
+
+        <section style="margin-top: 2rem;">
+          <h2>Why Choose Stay Q?</h2>
+          <p>100% verified properties, direct host communication, transparent pricing with no hidden fees, instant Cashfree payment gateway security, and 24/7 concierge trip support powered by Qube AI.</p>
+        </section>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

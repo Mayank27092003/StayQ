@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "stay-q"
+  },
+  "targets": {
+    "stay-q": {
+      "hosting": {
+        "website": [
+          "stay-q"
+        ],
+        "admin": [
+          "stayq-admin"
+        ]
+      }
+    }
   }
 }
