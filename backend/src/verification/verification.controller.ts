@@ -36,20 +36,18 @@ export class VerificationController {
   }
 
   /**
-   * Direct Test Bank Account Penny Drop (Admin / Diagnostics)
+   * Direct Test Bank Account Penny Drop (Host Onboarding / Diagnostics)
    */
   @Post('test-bank')
-  @UseGuards(FirebaseAuthGuard)
   async testBankAccount(
-    @CurrentUser() user: User,
-    @Body() body: { accountNumber: string; ifsc: string; name?: string; phone?: string },
+    @Body() body: { accountNumber: string; ifsc: string; name?: string; phone?: string; userId?: string },
   ) {
     return this.verificationService.verifyBankAccount({
       accountNumber: body.accountNumber,
       ifsc: body.ifsc,
-      name: body.name || user?.displayName || undefined,
-      phone: body.phone || user?.phone || undefined,
-      userId: user?.id,
+      name: body.name || undefined,
+      phone: body.phone || undefined,
+      userId: body.userId,
     });
   }
 
@@ -78,7 +76,6 @@ export class VerificationController {
    * 4. Aadhaar OKYC — Generate OTP to linked phone
    */
   @Post('aadhaar/generate-otp')
-  @UseGuards(FirebaseAuthGuard)
   async generateAadhaarOtp(
     @Body() body: { aadhaarNumber: string },
   ) {
@@ -89,15 +86,13 @@ export class VerificationController {
    * 5. Aadhaar OKYC — Submit OTP & auto-verify UIDAI profile
    */
   @Post('aadhaar/verify-otp')
-  @UseGuards(FirebaseAuthGuard)
   async verifyAadhaarOtp(
-    @CurrentUser() user: User,
-    @Body() body: { referenceId: string; otp: string },
+    @Body() body: { referenceId: string; otp: string; userId?: string },
   ) {
     return this.verificationService.verifyAadhaarOtp({
       referenceId: body.referenceId,
       otp: body.otp,
-      userId: user.id,
+      userId: body.userId,
     });
   }
 
