@@ -5,6 +5,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 
 @Controller('verification')
+@UseGuards(FirebaseAuthGuard)
 export class VerificationController {
   constructor(private readonly verificationService: CashfreeVerificationService) {}
 
@@ -20,7 +21,6 @@ export class VerificationController {
    * 1. Bank Account Penny Drop Verification (For Host Payout or Guest Refund)
    */
   @Post('bank-account')
-  @UseGuards(FirebaseAuthGuard)
   async verifyBankAccount(
     @CurrentUser() user: User,
     @Body() body: { accountNumber: string; ifsc: string; name?: string; phone?: string; isHost?: boolean },
@@ -28,10 +28,10 @@ export class VerificationController {
     return this.verificationService.verifyBankAccount({
       accountNumber: body.accountNumber,
       ifsc: body.ifsc,
-      name: body.name || user.displayName || undefined,
-      phone: body.phone || user.phone || undefined,
+      name: body.name || undefined,
+      phone: body.phone || undefined,
       userId: user.id,
-      isHost: body.isHost !== undefined ? body.isHost : user.roles.includes('HOST'),
+      isHost: body.isHost !== undefined ? body.isHost : true,
     });
   }
 
@@ -40,14 +40,15 @@ export class VerificationController {
    */
   @Post('test-bank')
   async testBankAccount(
-    @Body() body: { accountNumber: string; ifsc: string; name?: string; phone?: string; userId?: string },
+    @CurrentUser() user: User,
+    @Body() body: { accountNumber: string; ifsc: string; name?: string; phone?: string },
   ) {
     return this.verificationService.verifyBankAccount({
       accountNumber: body.accountNumber,
       ifsc: body.ifsc,
       name: body.name || undefined,
       phone: body.phone || undefined,
-      userId: body.userId,
+      userId: user.id,
     });
   }
 
@@ -87,12 +88,13 @@ export class VerificationController {
    */
   @Post('aadhaar/verify-otp')
   async verifyAadhaarOtp(
-    @Body() body: { referenceId: string; otp: string; userId?: string },
+    @CurrentUser() user: User,
+    @Body() body: { referenceId: string; otp: string },
   ) {
     return this.verificationService.verifyAadhaarOtp({
       referenceId: body.referenceId,
       otp: body.otp,
-      userId: body.userId,
+      userId: user.id,
     });
   }
 
@@ -100,14 +102,13 @@ export class VerificationController {
    * 6. PAN Card Verification
    */
   @Post('pan')
-  @UseGuards(FirebaseAuthGuard)
   async verifyPan(
     @CurrentUser() user: User,
     @Body() body: { pan: string; name?: string },
   ) {
     return this.verificationService.verifyPan({
       pan: body.pan,
-      name: body.name || user.displayName || undefined,
+      name: body.name || undefined,
       userId: user.id,
     });
   }
@@ -117,11 +118,13 @@ export class VerificationController {
    */
   @Post('test-pan')
   async testPan(
+    @CurrentUser() user: User,
     @Body() body: { pan: string; name?: string },
   ) {
     return this.verificationService.verifyPan({
       pan: body.pan,
       name: body.name,
+      userId: user.id,
     });
   }
 
@@ -129,19 +132,48 @@ export class VerificationController {
    * 7. UPI ID Verification
    */
   @Post('upi')
-  @UseGuards(FirebaseAuthGuard)
   async verifyUpi(
-    @CurrentUser() user: User,
     @Body() body: { vpa: string; name?: string },
   ) {
-    return this.verificationService.verifyUpi(body.vpa, body.name || user.displayName || undefined);
+    return this.verificationService.verifyUpi(body.vpa, body.name || undefined);
+  }
+
+  /**
+   * 7.5. Face Match & Live Face Verification
+   */
+  @Post('face-match')
+  async verifyFaceMatch(
+    @CurrentUser() user: User,
+    @Body() body: { selfieImageUrl: string; idCardImageUrl: string; threshold?: number },
+  ) {
+    return this.verificationService.verifyFaceMatch({
+      selfieImageUrl: body.selfieImageUrl,
+      idCardImageUrl: body.idCardImageUrl,
+      threshold: body.threshold,
+      userId: user.id,
+    });
+  }
+
+  /**
+   * 7.6. Cashfree Face Liveness Check (Single-image real human anti-spoofing)
+   */
+  @Post('face-liveness')
+  async verifyFaceLiveness(
+    @CurrentUser() user: User,
+    @Body() body: { imageUrl?: string; imageBase64?: string; verificationId?: string },
+  ) {
+    return this.verificationService.verifyFaceLiveness({
+      imageUrl: body.imageUrl,
+      imageBase64: body.imageBase64,
+      verificationId: body.verificationId,
+      userId: user.id,
+    });
   }
 
   /**
    * 8. Guest Instant Refund Account Verification
    */
   @Post('guest-refund-account')
-  @UseGuards(FirebaseAuthGuard)
   async verifyGuestRefundAccount(
     @CurrentUser() user: User,
     @Body() body: { accountNumber?: string; ifsc?: string; upiId?: string; accountHolderName?: string },
@@ -159,7 +191,6 @@ export class VerificationController {
    * 9. Current User KYC & Verification Badges Status
    */
   @Get('status')
-  @UseGuards(FirebaseAuthGuard)
   async getVerificationStatus(@CurrentUser() user: User) {
     return this.verificationService.getVerificationStatus(user.id);
   }

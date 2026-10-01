@@ -39,9 +39,9 @@ async function bootstrap() {
   // Global validation pipeline
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Strip out properties that do not have decorators
-      forbidNonWhitelisted: true, // Throw error if non-whitelisted properties are present
-      transform: true, // Automatically transform payloads to DTO types
+      whitelist: true,
+      forbidNonWhitelisted: false,
+      transform: true,
     }),
   );
 

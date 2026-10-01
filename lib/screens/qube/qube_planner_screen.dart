@@ -35,7 +35,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> {
     super.initState();
     _messages.add(
       QubeMessage(
-        text: "Hi! I'm Qube, your Stay Q AI travel companion ✨ Where would you like to explore next?",
+        text: "Hi! I'm Qube, your Stay Q AI Travel Planner ✨ Tell me your dream trip (e.g. '3-day Goa roadtrip with scenic homestay' or 'Ladakh RV trail'), and I'll craft your custom itinerary in seconds!",
         isUser: false,
       ),
     );
@@ -140,8 +140,9 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const CircleAvatar(
+              radius: 18,
               backgroundColor: AppColors.primaryLight,
-              child: Icon(Icons.auto_awesome, color: AppColors.primary),
+              backgroundImage: AssetImage('assets/images/qube_real_human.jpg'),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -227,7 +228,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> {
                   ),
                   
                   // Properties List
-                  if (message.planData != null && message.planData!['properties'] != null)
+                  if (message.planData != null && message.planData!['properties'] is List && (message.planData!['properties'] as List).isNotEmpty)
                     Container(
                       height: 320,
                       margin: const EdgeInsets.only(top: 16),
@@ -235,7 +236,8 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> {
                         scrollDirection: Axis.horizontal,
                         itemCount: (message.planData!['properties'] as List).length,
                         itemBuilder: (context, index) {
-                          final propJson = message.planData!['properties'][index];
+                          final propJson = (message.planData!['properties'] as List)[index];
+                          if (propJson is! Map<String, dynamic>) return const SizedBox.shrink();
                           final stay = StayModel.fromJson(propJson);
                           return Padding(
                             padding: const EdgeInsets.only(right: 16),
@@ -270,11 +272,38 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.auto_awesome, color: AppColors.primary),
-            SizedBox(width: 8),
-            Text('Stay Q Planner'),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.primary, width: 1.5),
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/qube_real_human.jpg',
+                  fit: BoxFit.cover,
+                  alignment: const Alignment(0, -0.65),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Qube Travel Concierge',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  'Your Trip Assistant',
+                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
           ],
         ),
         actions: [

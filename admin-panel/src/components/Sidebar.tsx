@@ -2,10 +2,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useAdminAuth } from "@/context/AdminAuthContext";
 
 export default function Sidebar() {
+  const { adminUser, logout, hasModuleAccess } = useAdminAuth();
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const pathname = usePathname();
+
+  const isMasterAdmin = adminUser?.role === "MASTER_ADMIN";
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -14,182 +18,233 @@ export default function Sidebar() {
 
   const getLinkClasses = (href: string) => {
     const active = isActive(href);
-    return `flex items-center gap-sm px-md py-sm rounded-xl transition-all duration-200 ${
+    return `flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold transition-all duration-150 ${
       active
-        ? "text-primary font-bold bg-primary/10 shadow-[0_2px_8px_rgba(157,0,255,0.08)]"
-        : "text-on-surface-variant hover:text-primary hover:bg-surface-container-high hover:translate-x-0.5"
+        ? "text-[#5A31F4] bg-[#5A31F4]/8 font-bold shadow-sm"
+        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
     }`;
   };
 
+  // Module Clearance checks
+  const canSeeAnalytics = hasModuleAccess("analytics");
+  const canSeeReports = hasModuleAccess("analytics") || hasModuleAccess("revenue") || hasModuleAccess("export");
+
+  const canSeeProperties = hasModuleAccess("properties");
+  const canSeeRvs = hasModuleAccess("properties") || hasModuleAccess("experiences");
+  const canSeeCamping = hasModuleAccess("properties") || hasModuleAccess("experiences");
+  const canSeeExperiences = hasModuleAccess("experiences");
+  const canSeeRentals = hasModuleAccess("properties");
+  const showInventoryGroup = canSeeProperties || canSeeRvs || canSeeCamping || canSeeExperiences || canSeeRentals;
+
+  const canSeeBookings = hasModuleAccess("bookings");
+  const canSeeHosts = hasModuleAccess("hosts");
+  const canSeeApplications = hasModuleAccess("hosts");
+  const canSeeLeads = hasModuleAccess("hosts");
+  const canSeeSupport = hasModuleAccess("support");
+  const canSeeReviews = hasModuleAccess("reviews");
+  const showOperationsGroup = canSeeBookings || canSeeHosts || canSeeApplications || canSeeLeads || canSeeSupport || canSeeReviews;
+
+  const canSeeRevenue = hasModuleAccess("revenue");
+  const canSeeTaxes = hasModuleAccess("taxes") || hasModuleAccess("revenue");
+  const canSeeAccess = isMasterAdmin; // Strictly Master Admin only
+  const canSeeExport = hasModuleAccess("export") || hasModuleAccess("revenue");
+  const showFinanceGroup = canSeeRevenue || canSeeTaxes || canSeeAccess || canSeeExport;
+
   return (
     <>
-      <aside className="w-[280px] h-screen sticky top-0 left-0 bg-surface-container-lowest/70 backdrop-blur-2xl border-r border-outline-variant/30 flex flex-col py-lg space-y-md z-50">
+      <aside className="w-[260px] h-screen sticky top-0 left-0 bg-white border-r border-slate-200/80 flex flex-col py-4 z-50 select-none">
         {/* Brand Header */}
-        <div className="px-lg pb-md flex items-center gap-sm">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
-            <span className="material-symbols-outlined text-on-primary" style={{ fontVariationSettings: "'FILL' 1" }}>hotel_class</span>
+        <div className="px-5 pb-4 flex items-center gap-3 border-b border-slate-100">
+          <div className="w-9 h-9 rounded-xl bg-[#5A31F4] flex items-center justify-center shrink-0 shadow-md shadow-purple-500/20">
+            <span className="material-symbols-outlined text-white text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>hotel_class</span>
           </div>
           <div>
-            <h1 className="font-headline-md text-headline-md font-bold text-primary">Stay Q Admin</h1>
-            <p className="font-label-md text-label-md text-on-surface-variant">Enterprise Control</p>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-sm font-bold text-slate-900 tracking-tight">Stay Q</h1>
+              <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-extrabold uppercase ${
+                isMasterAdmin ? "bg-purple-100 text-[#5A31F4]" : "bg-emerald-100 text-emerald-700"
+              }`}>
+                {isMasterAdmin ? "Master" : "Staff"}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 font-medium">Operations Center</p>
           </div>
         </div>
 
         {/* Scrollable Navigation Container */}
-        <nav className="flex-1 overflow-y-auto px-sm flex flex-col gap-lg">
-          {/* Inventory Categories (Separated per type) */}
-          <div className="space-y-xs">
-            <p className="px-md font-label-md text-label-md text-primary font-bold uppercase tracking-wider">Inventory Categories</p>
-            <Link className={getLinkClasses("/properties")} href="/properties">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/properties") ? "'FILL' 1" : "normal" }}>villa</span>
-              <span>Villas &amp; Stays</span>
-            </Link>
-            <Link className={getLinkClasses("/hotels")} href="/hotels">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/hotels") ? "'FILL' 1" : "normal" }}>hotel</span>
-              <span>Hotels &amp; Resorts</span>
-            </Link>
-            <Link className={getLinkClasses("/rvs")} href="/rvs">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/rvs") ? "'FILL' 1" : "normal" }}>rv_hookup</span>
-              <span>RVs &amp; Campervans</span>
-            </Link>
-            <Link className={getLinkClasses("/camping")} href="/camping">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/camping") ? "'FILL' 1" : "normal" }}>camping</span>
-              <span>Camps &amp; Glamping</span>
-            </Link>
-            <Link className={getLinkClasses("/experiences")} href="/experiences">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/experiences") ? "'FILL' 1" : "normal" }}>explore</span>
-              <span>Curated Experiences</span>
-            </Link>
-            <Link className={getLinkClasses("/rentals")} href="/rentals">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/rentals") ? "'FILL' 1" : "normal" }}>key</span>
-              <span>Zero-Broker Rentals</span>
-            </Link>
-          </div>
-
-          {/* Operations */}
-          <div className="space-y-xs">
-            <p className="px-md font-label-md text-label-md text-outline uppercase tracking-wider">Operations</p>
+        <nav className="flex-1 overflow-y-auto px-3 flex flex-col gap-5 py-2">
+          {/* 1. Overview */}
+          <div className="space-y-1">
+            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Overview</p>
             <Link className={getLinkClasses("/")} href="/">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/") ? "'FILL' 1" : "normal" }}>dashboard</span>
+              <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/") ? "'FILL' 1" : "normal" }}>grid_view</span>
               <span>Dashboard</span>
             </Link>
-            <Link className={getLinkClasses("/leads")} href="/leads">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/leads") ? "'FILL' 1" : "normal" }}>group_add</span>
-              <span className="flex-1">Host Leads</span>
-              <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase rounded bg-primary/20 text-primary">New</span>
-            </Link>
-            <Link className={getLinkClasses("/bookings")} href="/bookings">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/bookings") ? "'FILL' 1" : "normal" }}>calendar_month</span>
-              <span>Bookings</span>
-            </Link>
-            <Link className={getLinkClasses("/people")} href="/people">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/people") ? "'FILL' 1" : "normal" }}>group</span>
-              <span>People</span>
-            </Link>
-            <Link className={getLinkClasses("/hosts")} href="/hosts">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/hosts") ? "'FILL' 1" : "normal" }}>home_work</span>
-              <span>Hosts</span>
-            </Link>
-            <Link className={getLinkClasses("/host-applications")} href="/host-applications">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/host-applications") ? "'FILL' 1" : "normal" }}>assignment_ind</span>
-              <span>Host Applications</span>
-            </Link>
+            {canSeeAnalytics && (
+              <Link className={getLinkClasses("/analytics")} href="/analytics">
+                <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/analytics") ? "'FILL' 1" : "normal" }}>trending_up</span>
+                <span>Analytics</span>
+              </Link>
+            )}
+            {canSeeReports && (
+              <Link className={getLinkClasses("/reports")} href="/reports">
+                <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/reports") ? "'FILL' 1" : "normal" }}>description</span>
+                <span>Reports &amp; Logs</span>
+              </Link>
+            )}
           </div>
 
-          {/* Growth */}
-          <div className="space-y-xs">
-            <p className="px-md font-label-md text-label-md text-outline uppercase tracking-wider">Growth</p>
-            <Link className={getLinkClasses("/promotions")} href="/promotions">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/promotions") ? "'FILL' 1" : "normal" }}>campaign</span>
-              <span>Promotions</span>
-            </Link>
-            <Link className={getLinkClasses("/featured-content")} href="/featured-content">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/featured-content") ? "'FILL' 1" : "normal" }}>star</span>
-              <span>Featured Content</span>
-            </Link>
-            <Link className={getLinkClasses("/catalog")} href="/catalog">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/catalog") ? "'FILL' 1" : "normal" }}>inventory_2</span>
-              <span>Catalog</span>
-            </Link>
-          </div>
+          {/* 2. Inventory */}
+          {showInventoryGroup && (
+            <div className="space-y-1">
+              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Inventory</p>
+              {canSeeProperties && (
+                <Link className={getLinkClasses("/properties")} href="/properties">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/properties") ? "'FILL' 1" : "normal" }}>villa</span>
+                  <span>Villas &amp; Stays</span>
+                </Link>
+              )}
+              {canSeeRvs && (
+                <Link className={getLinkClasses("/rvs")} href="/rvs">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/rvs") ? "'FILL' 1" : "normal" }}>rv_hookup</span>
+                  <span>RVs &amp; Caravans</span>
+                </Link>
+              )}
+              {canSeeCamping && (
+                <Link className={getLinkClasses("/camping")} href="/camping">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/camping") ? "'FILL' 1" : "normal" }}>camping</span>
+                  <span>Camps &amp; Glamping</span>
+                </Link>
+              )}
+              {canSeeExperiences && (
+                <Link className={getLinkClasses("/experiences")} href="/experiences">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/experiences") ? "'FILL' 1" : "normal" }}>explore</span>
+                  <span>Experiences</span>
+                </Link>
+              )}
+              {canSeeRentals && (
+                <Link className={getLinkClasses("/rentals")} href="/rentals">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/rentals") ? "'FILL' 1" : "normal" }}>key</span>
+                  <span>Zero-Broker Lofts</span>
+                </Link>
+              )}
+            </div>
+          )}
 
-          {/* Experience */}
-          <div className="space-y-xs">
-            <p className="px-md font-label-md text-label-md text-outline uppercase tracking-wider">Experience</p>
-            <Link className={getLinkClasses("/reviews")} href="/reviews">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/reviews") ? "'FILL' 1" : "normal" }}>reviews</span>
-              <span>Reviews</span>
-            </Link>
-            <Link className={getLinkClasses("/moderation")} href="/moderation">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/moderation") ? "'FILL' 1" : "normal" }}>gavel</span>
-              <span>Moderation</span>
-            </Link>
-            <Link className={getLinkClasses("/support")} href="/support">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/support") ? "'FILL' 1" : "normal" }}>help</span>
-              <span>Support</span>
-            </Link>
-            <Link className={getLinkClasses("/notifications")} href="/notifications">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/notifications") ? "'FILL' 1" : "normal" }}>notifications</span>
-              <span>Notifications</span>
-            </Link>
-          </div>
+          {/* 3. Operations & Hosts */}
+          {showOperationsGroup && (
+            <div className="space-y-1">
+              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Operations</p>
+              {canSeeBookings && (
+                <Link className={getLinkClasses("/bookings")} href="/bookings">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/bookings") ? "'FILL' 1" : "normal" }}>calendar_today</span>
+                  <span>Bookings</span>
+                </Link>
+              )}
+              {canSeeHosts && (
+                <Link className={getLinkClasses("/hosts")} href="/hosts">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/hosts") ? "'FILL' 1" : "normal" }}>home_work</span>
+                  <span>Hosts Directory</span>
+                </Link>
+              )}
+              {canSeeApplications && (
+                <Link className={getLinkClasses("/host-applications")} href="/host-applications">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/host-applications") ? "'FILL' 1" : "normal" }}>how_to_reg</span>
+                  <span className="flex-1">Applications</span>
+                  <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200">Review</span>
+                </Link>
+              )}
+              {canSeeLeads && (
+                <Link className={getLinkClasses("/leads")} href="/leads">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/leads") ? "'FILL' 1" : "normal" }}>person_add</span>
+                  <span className="flex-1">Host Leads</span>
+                  <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-purple-50 text-[#5A31F4] border border-purple-200">New</span>
+                </Link>
+              )}
+              {canSeeSupport && (
+                <>
+                  <Link className={getLinkClasses("/support")} href="/support">
+                    <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/support") ? "'FILL' 1" : "normal" }}>support_agent</span>
+                    <span>Support Desk</span>
+                  </Link>
+                  <Link className={getLinkClasses("/conversations")} href="/conversations">
+                    <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/conversations") ? "'FILL' 1" : "normal" }}>forum</span>
+                    <span className="flex-1">Guest-Host Chats</span>
+                    <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Live</span>
+                  </Link>
+                </>
+              )}
+              {canSeeReviews && (
+                <Link className={getLinkClasses("/reviews")} href="/reviews">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/reviews") ? "'FILL' 1" : "normal" }}>star_outline</span>
+                  <span>Reviews</span>
+                </Link>
+              )}
+            </div>
+          )}
 
-          {/* Insights */}
-          <div className="space-y-xs">
-            <p className="px-md font-label-md text-label-md text-outline uppercase tracking-wider">Insights</p>
-            <Link className={getLinkClasses("/analytics")} href="/analytics">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/analytics") ? "'FILL' 1" : "normal" }}>analytics</span>
-              <span>Analytics</span>
-            </Link>
-            <Link className={getLinkClasses("/reports")} href="/reports">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/reports") ? "'FILL' 1" : "normal" }}>description</span>
-              <span>Reports</span>
-            </Link>
-          </div>
-
-          {/* Financials */}
-          <div className="space-y-xs">
-            <p className="px-md font-label-md text-label-md text-outline uppercase tracking-wider">Financials</p>
-            <Link className={getLinkClasses("/revenue")} href="/revenue">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/revenue") ? "'FILL' 1" : "normal" }}>percent</span>
-              <span className="flex-1">Commission &amp; Revenue</span>
-              <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-primary/20 text-primary">Live</span>
-            </Link>
-            <Link className={getLinkClasses("/taxes")} href="/taxes">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/taxes") ? "'FILL' 1" : "normal" }}>account_balance</span>
-              <span>Tax &amp; TDS (194-O)</span>
-            </Link>
-          </div>
-
-          {/* Security & Access Management */}
-          <div className="space-y-xs">
-            <p className="px-md font-label-md text-label-md text-outline uppercase tracking-wider">Security &amp; RBAC</p>
-            <Link className={getLinkClasses("/access")} href="/access">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive("/access") ? "'FILL' 1" : "normal" }}>shield_person</span>
-              <span className="flex-1">Staff &amp; Access</span>
-              <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-primary/20 text-primary">Master</span>
-            </Link>
-          </div>
+          {/* 4. Finance & Platform */}
+          {showFinanceGroup && (
+            <div className="space-y-1">
+              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Finance &amp; Admin</p>
+              {canSeeRevenue && (
+                <Link className={getLinkClasses("/revenue")} href="/revenue">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/revenue") ? "'FILL' 1" : "normal" }}>payments</span>
+                  <span className="flex-1">Revenue &amp; Payouts</span>
+                </Link>
+              )}
+              {canSeeTaxes && (
+                <Link className={getLinkClasses("/taxes")} href="/taxes">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/taxes") ? "'FILL' 1" : "normal" }}>account_balance</span>
+                  <span>TDS &amp; Compliance</span>
+                </Link>
+              )}
+              {canSeeAccess && (
+                <Link className={getLinkClasses("/access")} href="/access">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/access") ? "'FILL' 1" : "normal" }}>shield</span>
+                  <span className="flex-1">Staff &amp; Access</span>
+                  <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-purple-50 text-[#5A31F4] border border-purple-200">Master</span>
+                </Link>
+              )}
+              {canSeeExport && (
+                <Link className={getLinkClasses("/export")} href="/export">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/export") ? "'FILL' 1" : "normal" }}>cloud_download</span>
+                  <span>Data Export</span>
+                </Link>
+              )}
+            </div>
+          )}
         </nav>
 
         {/* User / Logout */}
-        <div className="px-md pt-sm border-t border-outline-variant/30 flex items-center justify-between">
-          <div className="flex items-center gap-sm">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xs">
-              AD
+        <div className="px-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-[#5A31F4]/10 text-[#5A31F4] flex items-center justify-center font-bold text-xs shrink-0 border border-[#5A31F4]/20">
+              {adminUser?.fullName ? adminUser.fullName.slice(0, 2).toUpperCase() : "AD"}
             </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-semibold text-on-surface truncate">Admin Team</p>
-              <p className="text-xs text-on-surface-variant truncate">grievance@stayq.space</p>
+            <div className="overflow-hidden min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-bold text-slate-800 truncate">{adminUser?.fullName || "Admin Team"}</p>
+              </div>
+              <p className="text-[10px] font-medium text-slate-400 truncate">{adminUser?.staffId || "ADMIN-001"}</p>
             </div>
           </div>
-          <button
-            onClick={() => setIsReportModalOpen(true)}
-            className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
-            title="Download System Report"
-          >
-            <span className="material-symbols-outlined text-[20px]">download</span>
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => setIsReportModalOpen(true)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              title="Download System Report"
+            >
+              <span className="material-symbols-outlined text-[18px]">download</span>
+            </button>
+            <button
+              onClick={() => logout()}
+              className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+              title="Sign Out"
+            >
+              <span className="material-symbols-outlined text-[18px]">logout</span>
+            </button>
+          </div>
         </div>
       </aside>
 

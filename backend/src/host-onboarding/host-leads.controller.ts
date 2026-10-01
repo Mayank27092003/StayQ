@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards } from '@nestjs/common';
 import { HostLeadsService, HostLeadDto } from './host-leads.service';
+import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
+import { AdminGuard } from '../admin/guards/admin.guard';
 
 @Controller('host-leads')
 export class HostLeadsController {
@@ -11,11 +13,13 @@ export class HostLeadsController {
   }
 
   @Get()
+  @UseGuards(FirebaseAuthGuard, AdminGuard)
   getAllLeads() {
     return this.leadsService.getAllLeads();
   }
 
   @Patch(':id/status')
+  @UseGuards(FirebaseAuthGuard, AdminGuard)
   updateStatus(@Param('id') id: string, @Body('status') status: HostLeadDto['status']) {
     return this.leadsService.updateLeadStatus(id, status);
   }

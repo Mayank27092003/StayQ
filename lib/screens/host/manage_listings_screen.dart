@@ -11,6 +11,7 @@ import '../../theme/app_colors.dart';
 import 'onboarding/host_onboarding_screen.dart';
 import 'host_availability_screen.dart';
 import 'host_reservations_screen.dart';
+import 'property_boost_screen.dart';
 
 class ManageListingsScreen extends StatefulWidget {
   const ManageListingsScreen({super.key});
@@ -350,9 +351,81 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                const Divider(height: 1, color: AppColors.borderLight),
+                const SizedBox(height: 12),
+                // Prominent Boost & Rank Banner
+                GestureDetector(
+                  onTap: () async {
+                    final res = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PropertyBoostScreen(property: stay),
+                      ),
+                    );
+                    if (res == true && mounted) {
+                      final hostId = context.read<AppProvider>().userId ?? 'mock_host_id';
+                      context.read<HostListingsProvider>().fetchHostListings(hostId);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: stay.hasActiveBoost
+                            ? (stay.sponsoredTier == 'ULTRA_SPOTLIGHT'
+                                ? [const Color(0xFFFFB800), const Color(0xFF5A31F4)]
+                                : [const Color(0xFF5A31F4), const Color(0xFF9333EA)])
+                            : [const Color(0xFF5A31F4), const Color(0xFF7F56D9)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF5A31F4).withOpacity(0.25),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          stay.hasActiveBoost ? Icons.workspace_premium_rounded : Icons.bolt_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            stay.hasActiveBoost
+                                ? 'Active Boost: ${stay.sponsoredBadgeText}'
+                                : '⚡ Boost Property (Rank #1 in Search)',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            stay.hasActiveBoost ? 'Extend' : 'From ₹299',
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 16),
+                const Divider(height: 1, color: AppColors.borderLight),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     _buildActionButton(Icons.calendar_month_rounded, 'Calendar', () {
@@ -360,6 +433,16 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
                     }),
                     _buildActionButton(Icons.inbox_rounded, 'Reservations', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const HostReservationsScreen()));
+                    }),
+                    _buildActionButton(Icons.bolt_rounded, 'Boost ⚡', () async {
+                      final res = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => PropertyBoostScreen(property: stay)),
+                      );
+                      if (res == true && mounted) {
+                        final hostId = context.read<AppProvider>().userId ?? 'mock_host_id';
+                        context.read<HostListingsProvider>().fetchHostListings(hostId);
+                      }
                     }),
                     _buildActionButton(Icons.edit_rounded, 'Edit', () {
                       _showEditBottomSheet(context, stay);

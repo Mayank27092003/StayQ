@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BookingStatus } from '@prisma/client';
 import { TicketGeneratorService } from '../notifications/ticket-generator.service';
@@ -6,6 +6,7 @@ import { CloudTasksService } from '../notifications/cloud-tasks.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../notifications/email.service';
 import { CommissionService } from '../commission/commission.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 
 @Injectable()
 export class BookingsService {
@@ -16,6 +17,7 @@ export class BookingsService {
     private readonly notificationsService: NotificationsService,
     private readonly emailService: EmailService,
     private readonly commissionService: CommissionService,
+    private readonly loyaltyService: LoyaltyService,
   ) {}
 
   async getQuote(quoteDto: any) {
@@ -90,6 +92,9 @@ export class BookingsService {
     const confirmationCode = Math.random().toString(36).substring(2, 10).toUpperCase();
 
     const booking = await this.prisma.$transaction(async (tx) => {
+      // PESSIMISTIC LOCK: Lock property row in PostgreSQL to serialize concurrent reservations
+      await tx.$executeRaw`SELECT id FROM "Property" WHERE id = ${propertyId} FOR UPDATE`;
+
       const overlapping = await tx.availabilityBlock.findFirst({
         where: {
           propertyId,
@@ -142,7 +147,7 @@ export class BookingsService {
     await this.notificationsService.sendRichPushNotification(
       booking.guest.firebaseUid,
       'Booking Confirmed! 🎉',
-      `Your luxury stay at ${booking.property.title} is confirmed. Tap to view your Cruise Ticket!`,
+      `Your luxury stay at ${booking.property.title} is confirmed. Tap to view your Digital Stay Pass!`,
       ticketBuffer.toString('base64'),
     );
 
@@ -164,24 +169,68 @@ export class BookingsService {
     const webhookUrl = `${process.env.PUBLIC_API_URL || 'http://localhost:3000'}/api/v1/webhooks/reminders/night-before`;
     await this.cloudTasks.scheduleWebhook(webhookUrl, { bookingId: booking.id }, scheduledTime);
 
+    // ─── Stay Q Rewards: Award Booking Points & Check Repeat Stay ───
+    try {
+      await this.loyaltyService.awardBookingPoints(
+        guestId,
+        booking.id,
+        Number(totalAmount),
+      );
+
+      // Check if repeat stay at this property
+      const pastBookingsCount = await this.prisma.booking.count({
+        where: {
+          guestId,
+          propertyId,
+          id: { not: booking.id },
+          status: { in: [BookingStatus.CONFIRMED, BookingStatus.COMPLETED] },
+        },
+      });
+
+      if (pastBookingsCount > 0) {
+        await this.loyaltyService.awardRepeatStayPoints(
+          guestId,
+          booking.id,
+          booking.property?.title || 'this property',
+        );
+      }
+    } catch (e) {
+      // Non-blocking for booking flow
+    }
+
     return booking;
   }
 
-  async cancelBooking(id: string, reason: string) {
+  async cancelBooking(id: string, reason: string, user?: any) {
+    const booking = await this.prisma.booking.findUnique({ where: { id } });
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (user && booking.guestId !== user.id && !user.isAdmin) {
+      throw new ForbiddenException('Only the booking guest or an admin can cancel this booking');
+    }
     return this.prisma.booking.update({
       where: { id },
       data: { status: BookingStatus.CANCELLED, cancellationReason: reason, cancelledAt: new Date() },
     });
   }
 
-  async hostRespond(id: string, accept: boolean) {
+  async hostRespond(id: string, accept: boolean, user?: any) {
+    const booking = await this.prisma.booking.findUnique({ where: { id }, include: { property: true } });
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (user && booking.property?.hostId !== user.id && !user.isAdmin) {
+      throw new ForbiddenException('Only the property host can accept or decline bookings');
+    }
     return this.prisma.booking.update({
       where: { id },
       data: { status: accept ? BookingStatus.CONFIRMED : BookingStatus.CANCELLED },
     });
   }
 
-  async updateStatus(id: string, status: string) {
+  async updateStatus(id: string, status: string, user?: any) {
+    const booking = await this.prisma.booking.findUnique({ where: { id }, include: { property: true } });
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (user && booking.property?.hostId !== user.id && !user.isAdmin) {
+      throw new ForbiddenException('Only the property host or admin can update status');
+    }
     return this.prisma.booking.update({
       where: { id },
       data: { status: status as BookingStatus },
@@ -201,8 +250,8 @@ export class BookingsService {
     });
   }
 
-  async findOne(id: string) {
-    return this.prisma.booking.findUnique({
+  async findOne(id: string, user?: any) {
+    const booking = await this.prisma.booking.findUnique({
       where: { id },
       include: {
         guest: true,
@@ -212,9 +261,14 @@ export class BookingsService {
         payment: true,
       },
     });
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (user && booking.guestId !== user.id && booking.property?.hostId !== user.id && !user.isAdmin) {
+      throw new ForbiddenException('Access denied to booking details');
+    }
+    return booking;
   }
 
-  async getAccessDetails(id: string) {
+  async getAccessDetails(id: string, user?: any) {
     const booking = await this.prisma.booking.findUnique({
       where: { id },
       include: {
@@ -225,6 +279,9 @@ export class BookingsService {
     });
 
     if (!booking) throw new NotFoundException('Booking not found');
+    if (user && booking.guestId !== user.id && booking.property?.hostId !== user.id && !user.isAdmin) {
+      throw new ForbiddenException('Access denied to property access details');
+    }
 
     const property = booking.property;
     const isStayingWithHost = (property as any).isStayingWithHost ?? false;
@@ -250,8 +307,8 @@ export class BookingsService {
     };
   }
 
-  async getTicketPass(id: string) {
-    const booking = await this.findOne(id);
+  async getTicketPass(id: string, user?: any) {
+    const booking = await this.findOne(id, user);
     if (!booking) throw new NotFoundException('Booking not found');
     return this.ticketGenerator.generateTicketImage(booking);
   }

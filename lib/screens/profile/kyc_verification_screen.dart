@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
+import '../../providers/app_provider.dart';
 import '../../services/api/api_client.dart';
 import '../../services/api/verification_api.dart';
 import '../../theme/app_colors.dart';
@@ -125,7 +127,17 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         _isVerifyingBank = false;
       });
 
-      if (res['verified'] == true) {
+      if (res['verified'] == true || res['accountStatus'] == 'VALID' || res['status'] == 'SUCCESS') {
+        final bankName = res['bankName'] ?? ifsc.substring(0, 4);
+        final holderName = res['nameAtBank'] ?? res['name'] ?? _accountHolderController.text.trim();
+        if (mounted) {
+          context.read<AppProvider>().setBankVerified(
+            bankName: bankName,
+            accountNumber: acc,
+            ifsc: ifsc,
+            accountHolderName: holderName.isNotEmpty ? holderName : null,
+          );
+        }
         AppMotion.tapHeavy();
         _showSnackbar('Bank Account Verified via Cashfree Penny Drop! ✅');
         _loadStatus();
@@ -155,7 +167,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
       final res = await _verificationApi.generateAadhaarOtp(aadhaarNumber: cleanAadhaar);
       setState(() {
         _isGeneratingAadhaarOtp = false;
-        _aadhaarRefId = res['referenceId'];
+        _aadhaarRefId = res['referenceId']?.toString() ?? res['refId']?.toString();
       });
 
       if (_aadhaarRefId != null) {
@@ -194,7 +206,21 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         _isVerifyingAadhaarOtp = false;
       });
 
-      if (res['verified'] == true) {
+      if (res['verified'] == true || res['status'] == 'VALID' || res['status'] == 'VERIFIED') {
+        final verifiedName = res['name'] ?? 'Verified Aadhaar Holder';
+        final address = res['address'] ?? 'India';
+        final dob = res['dob']?.toString();
+        final aadhaarNum = _aadhaarController.text.replaceAll(' ', '').trim();
+
+        if (mounted) {
+          context.read<AppProvider>().setAadhaarVerified(
+            name: verifiedName,
+            aadhaarNumber: aadhaarNum,
+            address: address,
+            dob: dob,
+          );
+        }
+
         AppMotion.tapHeavy();
         _showSnackbar('UIDAI Aadhaar Verified Successfully! 🛡️');
         _loadStatus();
@@ -233,13 +259,21 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
       });
 
       if (res['valid'] == true || res['status'] == 'SUCCESS' || res['verified'] == true) {
-        final resolvedName = res['registeredName'] ?? res['name'] ?? res['registered_name'];
-        if (resolvedName != null && resolvedName.isNotEmpty) {
+        final resolvedName = res['registeredName'] ?? res['name'] ?? res['registered_name'] ?? 'Valid PAN';
+        if (resolvedName.isNotEmpty) {
           _panNameController.text = resolvedName;
         }
+        if (mounted) {
+          context.read<AppProvider>().setPanVerified(
+            name: resolvedName,
+            panNumber: pan,
+          );
+        }
         AppMotion.tapHeavy();
-        _showSnackbar('✓ PAN Verified with NSDL: ${resolvedName ?? "Valid PAN"}');
+        _showSnackbar('✓ PAN Verified with NSDL: $resolvedName');
         _loadStatus();
+      } else if (res['status'] == 'IP_WHITELIST_REQUIRED') {
+        _showSnackbar(res['message'] ?? 'Cashfree IP whitelisting required in Merchant Portal.', isError: true);
       } else {
         _showSnackbar(res['message'] ?? 'PAN verification failed', isError: true);
       }
@@ -273,13 +307,16 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         _isVerifyingUpi = false;
       });
 
-      if (res['valid'] == true || res['status'] == 'SUCCESS' || res['verified'] == true || res['accountExists'] == 'YES') {
-        final resolvedName = res['nameAtVpa'] ?? res['nameAtBank'] ?? res['name'] ?? res['registeredName'];
-        if (resolvedName != null && resolvedName.isNotEmpty) {
-          _upiNameController.text = resolvedName;
+      if (res['valid'] == true || res['status'] == 'SUCCESS') {
+        final holderName = res['nameAtVpa'] ?? res['name'] ?? _upiNameController.text.trim();
+        if (mounted) {
+          context.read<AppProvider>().setUpiVerified(
+            upiId: vpa,
+            name: holderName.isNotEmpty ? holderName : null,
+          );
         }
         AppMotion.tapHeavy();
-        _showSnackbar('✓ UPI Verified: ${resolvedName ?? "Active VPA"}');
+        _showSnackbar('✓ UPI ID Verified with Cashfree Secure ID');
         _loadStatus();
       } else {
         _showSnackbar(res['message'] ?? 'UPI verification failed', isError: true);

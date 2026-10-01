@@ -1,5 +1,7 @@
+"use client";
+
 import React, { useState } from 'react';
-import { Star, Heart, SlidersHorizontal, Sparkles, ShieldCheck, MapPin, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, Heart, SlidersHorizontal, Sparkles, ShieldCheck, MapPin, Check, ChevronLeft, ChevronRight, X, Calendar, Users } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Stay } from '../types';
 import { CategoryFilter } from './CategoryFilter';
@@ -64,6 +66,136 @@ export const StaysCatalog: React.FC = () => {
           </div>
 
           <CategoryFilter />
+
+          {/* Active Filter Chips Bar */}
+          {(filters.destination || filters.checkIn || filters.guests > 1 || filters.priceMax < 50000 || filters.amenities.length > 0 || (filters.category && filters.category !== 'ALL')) && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                flexWrap: 'wrap',
+                marginTop: '1rem',
+                paddingTop: '0.75rem',
+                borderTop: '1px solid var(--border)',
+              }}
+            >
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Active Filters:
+              </span>
+              {filters.destination && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'rgba(90, 49, 244, 0.08)',
+                    color: 'var(--violet)',
+                    padding: '3px 10px',
+                    borderRadius: '999px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  <MapPin size={12} /> {filters.destination}
+                  <X size={13} style={{ cursor: 'pointer' }} onClick={() => updateFilters({ destination: '' })} />
+                </span>
+              )}
+              {filters.checkIn && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'rgba(90, 49, 244, 0.08)',
+                    color: 'var(--violet)',
+                    padding: '3px 10px',
+                    borderRadius: '999px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  <Calendar size={12} /> {filters.checkIn} {filters.checkOut ? `– ${filters.checkOut}` : ''}
+                  <X size={13} style={{ cursor: 'pointer' }} onClick={() => updateFilters({ checkIn: '', checkOut: '' })} />
+                </span>
+              )}
+              {filters.guests > 1 && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'rgba(90, 49, 244, 0.08)',
+                    color: 'var(--violet)',
+                    padding: '3px 10px',
+                    borderRadius: '999px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  <Users size={12} /> {filters.guests} Guests
+                  <X size={13} style={{ cursor: 'pointer' }} onClick={() => updateFilters({ guests: 1, adults: 1, children: 0 })} />
+                </span>
+              )}
+              {filters.priceMax < 50000 && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'rgba(90, 49, 244, 0.08)',
+                    color: 'var(--violet)',
+                    padding: '3px 10px',
+                    borderRadius: '999px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  Up to ₹{filters.priceMax.toLocaleString('en-IN')}
+                  <X size={13} style={{ cursor: 'pointer' }} onClick={() => updateFilters({ priceMax: 50000 })} />
+                </span>
+              )}
+              {filters.amenities.map((am) => (
+                <span
+                  key={am}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'rgba(90, 49, 244, 0.08)',
+                    color: 'var(--violet)',
+                    padding: '3px 10px',
+                    borderRadius: '999px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  {am}
+                  <X
+                    size={13}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => updateFilters({ amenities: filters.amenities.filter((a) => a !== am) })}
+                  />
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={resetFilters}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--gray-500)',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  marginLeft: '4px',
+                }}
+              >
+                Clear all
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Stays Grid */}
@@ -108,14 +240,24 @@ export const StaysCatalog: React.FC = () => {
         )}
       </div>
 
-      {/* Advanced Filters Modal */}
+      {/* Advanced Luxury Filters Modal */}
       {showFilterModal && (
         <div className="modal-backdrop" onClick={() => setShowFilterModal(false)}>
           <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="modal-sheet__header">
-              <h3 className="h3">Filter Stays</h3>
-              <button className="modal-close-btn" onClick={() => setShowFilterModal(false)}>
-                &times;
+              <div>
+                <h3 className="h3">Filter Stays</h3>
+                <p style={{ fontSize: '0.84rem', color: 'var(--gray-500)', margin: '4px 0 0' }}>
+                  Fine-tune pricing, amenities, and stay preferences
+                </p>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowFilterModal(false)}
+                aria-label="Close modal"
+              >
+                <X size={18} />
               </button>
             </div>
 
@@ -123,8 +265,8 @@ export const StaysCatalog: React.FC = () => {
               {/* Price Range */}
               <div className="filter-group">
                 <div className="filter-group__label">
-                  <span>Max Price per Night</span>
-                  <strong className="text-violet">₹{tempPriceMax.toLocaleString('en-IN')}</strong>
+                  <span>Nightly Price Range</span>
+                  <strong>Up to ₹{tempPriceMax.toLocaleString('en-IN')}</strong>
                 </div>
                 <input
                   type="range"
@@ -136,15 +278,15 @@ export const StaysCatalog: React.FC = () => {
                   className="filter-slider"
                 />
                 <div className="filter-slider__bounds">
-                  <span>₹2,000</span>
-                  <span>₹50,000+</span>
+                  <span>₹2,000 / night</span>
+                  <span>₹50,000+ / night</span>
                 </div>
               </div>
 
               {/* Amenities */}
               <div className="filter-group">
                 <div className="filter-group__label">
-                  <span>Amenities</span>
+                  <span>Essential & Luxury Amenities</span>
                 </div>
                 <div className="amenity-chips">
                   {AMENITY_OPTIONS.map((am) => {
@@ -167,6 +309,7 @@ export const StaysCatalog: React.FC = () => {
 
             <div className="modal-sheet__footer">
               <button
+                type="button"
                 className="btn btn--ghost"
                 onClick={() => {
                   setTempPriceMax(50000);
@@ -177,8 +320,8 @@ export const StaysCatalog: React.FC = () => {
               >
                 Clear All
               </button>
-              <button className="btn btn--primary" onClick={applyAdvancedFilters}>
-                Show {stays.length} Stays
+              <button type="button" className="btn btn--primary" onClick={applyAdvancedFilters}>
+                Apply &amp; View Stays
               </button>
             </div>
           </div>
@@ -212,10 +355,16 @@ const StayCard: React.FC<StayCardProps> = ({ stay, isSaved, onToggleSave, onClic
     <article className="stay-card" onClick={onClick}>
       <div className="stay-card__media">
         <img
-          src={stay.imageUrls[photoIndex] || '/images/villa_1.jpg'}
+          src={stay.imageUrls[photoIndex] || '/images/real_villa.jpg'}
           alt={stay.title}
           className="stay-card__img"
           loading="lazy"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            if (!target.src.includes('real_villa.jpg')) {
+              target.src = '/images/real_villa.jpg';
+            }
+          }}
         />
 
         {/* Heart Wishlist Button */}
@@ -232,7 +381,30 @@ const StayCard: React.FC<StayCardProps> = ({ stay, isSaved, onToggleSave, onClic
         </button>
 
         {/* Badge Ribbon */}
-        {stay.isZeroBroker ? (
+        {stay.isSponsored ? (
+          <div
+            className="stay-card__badge"
+            style={{
+              background:
+                stay.sponsoredTier === 'ULTRA_SPOTLIGHT'
+                  ? 'linear-gradient(135deg, #FFB800 0%, #5A31F4 100%)'
+                  : stay.sponsoredTier === 'SUPER_BOOST'
+                  ? 'linear-gradient(135deg, #5A31F4 0%, #9333EA 100%)'
+                  : 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+              color: '#ffffff',
+              fontWeight: 800,
+              boxShadow: '0 4px 12px rgba(90, 49, 244, 0.4)',
+              border: 'none',
+            }}
+          >
+            <Sparkles size={13} />{' '}
+            {stay.sponsoredTier === 'ULTRA_SPOTLIGHT'
+              ? '👑 SPOTLIGHT'
+              : stay.sponsoredTier === 'SUPER_BOOST'
+              ? '🌟 TRENDING'
+              : '⚡ FEATURED'}
+          </div>
+        ) : stay.isZeroBroker ? (
           <div className="stay-card__badge stay-card__badge--zb">
             <ShieldCheck size={13} /> Zero Brokerage
           </div>
@@ -240,7 +412,7 @@ const StayCard: React.FC<StayCardProps> = ({ stay, isSaved, onToggleSave, onClic
           <div className="stay-card__badge stay-card__badge--gf">
             <Sparkles size={13} /> Guest Favorite
           </div>
-        ) : stay.isSuperhost ? (
+        ) : stay.isStarHost ? (
           <div className="stay-card__badge">StarHost</div>
         ) : null}
 

@@ -1,5 +1,6 @@
 class StayModel {
   final String id;
+  final String hostId;
   final String title;
   final String location;
   final double pricePerNight;
@@ -12,7 +13,6 @@ class StayModel {
   final String hostAvatar;
   final bool isGuestFavorite;
   final bool isStarHost;
-  bool get isSuperhost => isStarHost;
   final bool isNew;
   final bool isFeatured;
   final List<String> amenities;
@@ -32,8 +32,22 @@ class StayModel {
   final int maxSpots;
   final int availableSpots;
 
+  // Sponsored Property Boosting & Search Visibility
+  final bool isSponsored;
+  final String? sponsoredTier; // 'BOOST_BASIC', 'SUPER_BOOST', 'ULTRA_SPOTLIGHT'
+  final DateTime? sponsoredUntil;
+  final int searchRankBoost;
+
+  bool get hasActiveBoost => isSponsored || (sponsoredTier != null);
+  String get sponsoredBadgeText {
+    if (sponsoredTier == 'ULTRA_SPOTLIGHT') return '👑 SPOTLIGHT';
+    if (sponsoredTier == 'SUPER_BOOST') return '🌟 TRENDING';
+    return '⚡ FEATURED';
+  }
+
   StayModel({
     required this.id,
+    this.hostId = '',
     required this.title,
     required this.location,
     required this.pricePerNight,
@@ -45,8 +59,7 @@ class StayModel {
     required this.hostName,
     required this.hostAvatar,
     this.isGuestFavorite = false,
-    bool isStarHost = false,
-    bool? isSuperhost,
+    this.isStarHost = false,
     this.isNew = false,
     this.isFeatured = false,
     required this.amenities,
@@ -65,11 +78,16 @@ class StayModel {
     this.hostPresenceType,
     this.maxSpots = 10,
     this.availableSpots = 10,
-  }) : isStarHost = isStarHost || (isSuperhost ?? false);
+    this.isSponsored = false,
+    this.sponsoredTier,
+    this.sponsoredUntil,
+    this.searchRankBoost = 0,
+  });
 
   factory StayModel.fromFirestore(Map<String, dynamic> data, String documentId) {
     return StayModel(
       id: documentId,
+      hostId: data['hostId'] ?? data['userId'] ?? '',
       title: data['title'] ?? '',
       location: data['address'] ?? '',
       pricePerNight: (data['pricePerNight'] ?? 0).toDouble(),
@@ -81,7 +99,7 @@ class StayModel {
       hostName: data['hostName'] ?? '',
       hostAvatar: data['hostAvatarUrl'] ?? '',
       isGuestFavorite: data['badges']?['isGuestFavorite'] ?? false,
-      isStarHost: data['badges']?['isStarHost'] ?? data['badges']?['isSuperhost'] ?? false,
+      isStarHost: data['badges']?['isStarHost'] ?? data['badges']?['isStar Host'] ?? false,
       isNew: data['badges']?['isNew'] ?? false,
       isFeatured: data['badges']?['isFeatured'] ?? false,
       amenities: List<String>.from(data['amenities'] ?? []),
@@ -141,14 +159,16 @@ class StayModel {
     }
 
     // Parse host
+    String parsedHostId = json['hostId'] ?? (json['host'] != null ? json['host']['id'] ?? '' : '');
     String parsedHostName = 'Stay Q Host';
     String parsedHostAvatar = '';
     bool parsedIsStarHost = false;
     if (json['host'] != null) {
       parsedHostName = json['host']['displayName'] ?? parsedHostName;
       parsedHostAvatar = json['host']['photoUrl'] ?? parsedHostAvatar;
-      parsedIsStarHost = json['host']['isStarHost'] ?? json['host']['isSuperhost'] ?? false;
+      parsedIsStarHost = json['host']['isStarHost'] ?? json['host']['isStar Host'] ?? false;
     }
+
 
     // Parse tags/badges
     bool parsedIsGuestFavorite = false;
@@ -170,9 +190,11 @@ class StayModel {
 
     return StayModel(
       id: json['id'] ?? '',
+      hostId: parsedHostId,
       title: json['title'] ?? '',
       location: '${json['city'] ?? ''}, ${json['country'] ?? ''}'.trim().replaceAll(RegExp(r'^,\s*'), ''),
       pricePerNight: price,
+
       rating: 4.8, // Fallback since reviews aren't included yet
       reviewCount: 15,
       imageUrls: parsedImages,
@@ -201,6 +223,10 @@ class StayModel {
       hostPresenceType: json['hostPresenceType'] ?? (json['isStayingWithHost'] == true ? 'Host on premises' : null),
       maxSpots: json['maxSpots'] != null ? int.tryParse(json['maxSpots'].toString()) ?? 10 : 10,
       availableSpots: json['availableSpots'] != null ? int.tryParse(json['availableSpots'].toString()) ?? 10 : 10,
+      isSponsored: json['isSponsored'] == true,
+      sponsoredTier: json['sponsoredTier'],
+      sponsoredUntil: json['sponsoredUntil'] != null ? DateTime.tryParse(json['sponsoredUntil'].toString()) : null,
+      searchRankBoost: json['searchRankBoost'] != null ? int.tryParse(json['searchRankBoost'].toString()) ?? 0 : 0,
     );
   }
 
@@ -225,7 +251,7 @@ class StayModel {
       'badges': {
         'isGuestFavorite': isGuestFavorite,
         'isStarHost': isStarHost,
-        'isSuperhost': isStarHost,
+        'isStar Host': isStarHost,
         'isNew': isNew,
         'isFeatured': isFeatured,
       },

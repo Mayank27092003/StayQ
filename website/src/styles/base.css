@@ -11,6 +11,9 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  overflow-x: hidden !important;
+  max-width: 100vw;
+  width: 100%;
 }
 
 body {
@@ -22,7 +25,19 @@ body {
   background: var(--white);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow-x: hidden !important;
+  max-width: 100vw;
+  width: 100%;
+  position: relative;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden !important;
+  max-width: 100%;
+  width: 100%;
 }
 
 h1,
@@ -364,4 +379,164 @@ ul {
 .rel {
   position: relative;
   z-index: 2;
+}
+\n\n
+/* ==========================================================================
+   STAY Q — COMPREHENSIVE 3D CLAYMORPHISM DESIGN SYSTEM
+   ========================================================================== */
+
+/* 1. Claymorphic Primary Buttons (Inflated 3D Purple/Violet Clay) */
+.btn--primary,
+.hero-full-bg__search-submit,
+.auth-modal__btn,
+.checkout-modal__btn,
+.payment-pay-btn,
+.btn-primary,
+.clay-btn-primary {
+  background: linear-gradient(135deg, #6D28D9 0%, #5A31F4 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 9999px !important;
+  box-shadow: 
+    0 10px 24px rgba(90, 49, 244, 0.42),
+    0 3px 8px rgba(15, 23, 42, 0.12),
+    inset 0 3px 6px rgba(255, 255, 255, 0.65),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.25) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  cursor: pointer !important;
+}
+
+.btn--primary:hover,
+.hero-full-bg__search-submit:hover,
+.auth-modal__btn:hover,
+.checkout-modal__btn:hover,
+.payment-pay-btn:hover {
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 
+    0 16px 36px rgba(90, 49, 244, 0.52),
+    0 6px 14px rgba(15, 23, 42, 0.15),
+    inset 0 4px 8px rgba(255, 255, 255, 0.8),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.25) !important;
+}
+
+.btn--primary:active,
+.hero-full-bg__search-submit:active {
+  transform: translateY(2px) scale(0.98) !important;
+  box-shadow: 
+    0 4px 12px rgba(90, 49, 244, 0.35),
+    inset 0 2px 5px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* 2. Claymorphic Secondary / Ghost / Pill Buttons (White Matte 3D Clay) */
+.btn--ghost,
+.btn--secondary,
+.nav__signin-btn,
+.nav__contact-btn,
+.clay-btn-ghost {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  border-radius: 9999px !important;
+  box-shadow: 
+    0 8px 22px rgba(15, 23, 42, 0.1),
+    0 2px 6px rgba(15, 23, 42, 0.04),
+    inset 0 3px 6px rgba(255, 255, 255, 0.98),
+    inset 0 -2px 4px rgba(15, 23, 42, 0.06) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.btn--ghost:hover,
+.btn--secondary:hover,
+.nav__signin-btn:hover,
+.nav__contact-btn:hover {
+  background: #fbfaff !important;
+  color: #5a31f4 !important;
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 
+    0 14px 32px rgba(15, 23, 42, 0.14),
+    inset 0 3px 6px rgba(255, 255, 255, 1),
+    inset 0 -2px 4px rgba(90, 49, 244, 0.12) !important;
+}
+
+/* 3. Claymorphic Category Pills & Filter Badges */
+.hero-full-bg__pill,
+.category-pill,
+.chip,
+.filter-pill,
+.filter-btn,
+.eyebrow,
+.clay-pill {
+  border-radius: 9999px !important;
+  box-shadow: 
+    0 6px 18px rgba(15, 23, 42, 0.12),
+    0 2px 5px rgba(15, 23, 42, 0.05),
+    inset 0 2px 5px rgba(255, 255, 255, 0.85),
+    inset 0 -2px 4px rgba(15, 23, 42, 0.06) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.hero-full-bg__pill:hover,
+.category-pill:hover,
+.chip:hover,
+.filter-btn:hover {
+  transform: translateY(-2px) scale(1.04) !important;
+  box-shadow: 
+    0 12px 26px rgba(15, 23, 42, 0.18),
+    inset 0 3px 6px rgba(255, 255, 255, 0.98) !important;
+}
+
+/* 4. Claymorphic Cards & Containers (Pillowy 3D Surfaces) */
+.card,
+.stay-card,
+.quote,
+.policy-card,
+.hero-full-bg__tour-card,
+.hero-full-bg__stay-capsule,
+.clay-card {
+  border-radius: 28px !important;
+  box-shadow: 
+    0 16px 40px rgba(15, 23, 42, 0.1),
+    0 4px 14px rgba(15, 23, 42, 0.05),
+    inset 0 3px 6px rgba(255, 255, 255, 0.95),
+    inset 0 -2px 5px rgba(15, 23, 42, 0.05) !important;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease !important;
+}
+
+.card:hover,
+.stay-card:hover,
+.quote:hover {
+  transform: translateY(-6px) scale(1.01) !important;
+  box-shadow: 
+    0 26px 60px rgba(15, 23, 42, 0.16),
+    0 8px 22px rgba(15, 23, 42, 0.08),
+    inset 0 4px 8px rgba(255, 255, 255, 1) !important;
+}
+
+/* 5. Claymorphic Search Bars & Form Inputs */
+.hero-full-bg__search-bar,
+.search-console,
+.clay-search-bar,
+input,
+select,
+textarea {
+  border-radius: 24px !important;
+  box-shadow: 
+    0 14px 34px rgba(15, 23, 42, 0.14),
+    inset 0 3px 6px rgba(255, 255, 255, 0.95),
+    inset 0 -2px 4px rgba(15, 23, 42, 0.05) !important;
+}
+
+/* 6. Claymorphic Modals & Popovers */
+.modal-card,
+.auth-modal,
+.detail-modal,
+.nav__user-popover,
+.qube-bubble,
+.clay-modal {
+  border-radius: 32px !important;
+  box-shadow: 
+    0 32px 80px rgba(15, 23, 42, 0.25),
+    0 8px 24px rgba(15, 23, 42, 0.12),
+    inset 0 4px 8px rgba(255, 255, 255, 0.98),
+    inset 0 -3px 6px rgba(15, 23, 42, 0.06) !important;
 }

@@ -27,7 +27,7 @@ class WishlistsScreen extends StatelessWidget {
  // Placeholder for Wishlist Lottie
                 buttonText: 'Start Exploring',
                 onAction: () {
-                  Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+                  context.read<AppProvider>().setTabIndex(0);
                 },
               )
             : ListView.builder(

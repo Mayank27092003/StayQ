@@ -1,10 +1,13 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminAnalyticsService } from './admin-analytics.service';
 import { AnalyticsRangeQueryDto, TopListQueryDto } from './dto/analytics.dto';
+import { FirebaseAuthGuard } from '../../common/guards/firebase-auth.guard';
+import { AdminGuard } from '../guards/admin.guard';
 
 @ApiTags('Admin / Analytics')
 @ApiBearerAuth()
+@UseGuards(FirebaseAuthGuard, AdminGuard)
 @Controller('admin/analytics')
 export class AdminAnalyticsController {
   constructor(private readonly analytics: AdminAnalyticsService) {}

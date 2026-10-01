@@ -22,6 +22,9 @@ export class HostDashboardService {
         email: true,
         phone: true,
         isSuperhost: true,
+        isStarhost: true,
+        isHostVerified: true,
+        hostStatus: true,
         payoutAccount: true,
       },
     });
@@ -52,7 +55,20 @@ export class HostDashboardService {
       0,
     );
 
-    // 2. Fetch recent bookings and all historical bookings for chart analytics
+    // 2. Fetch real reviews for host's properties
+    const reviews = propertyIds.length > 0
+      ? await this.prisma.review.findMany({
+          where: { propertyId: { in: propertyIds } },
+          select: { rating: true },
+        })
+      : [];
+
+    const reviewCount = reviews.length;
+    const rating = reviewCount > 0
+      ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount).toFixed(2))
+      : 0.0;
+
+    // 3. Fetch recent bookings and all historical bookings for chart analytics
     const allBookings = await this.prisma.booking.findMany({
       where: {
         propertyId: { in: propertyIds },
@@ -76,7 +92,7 @@ export class HostDashboardService {
     const upcomingGuests = allBookings.filter(b => b.status === 'CONFIRMED' && new Date(b.checkIn) >= now);
     const recentRequests = allBookings.filter(b => b.status === 'PENDING_HOST_APPROVAL' || b.status === 'PENDING_PAYMENT');
 
-    // 3. Fetch earnings
+    // 4. Fetch earnings
     const earnings = await this.prisma.hostEarning.findMany({
       where: {
         OR: [
@@ -94,7 +110,23 @@ export class HostDashboardService {
 
     const totalEarningsAllTime = earnings.reduce((sum, e) => sum + Number(e.netPayout), 0);
 
-    // 4. Generate Dynamic Chart Data (Last 6 Months)
+    // Calculate real occupancy rate for current month
+    let occupancyRate = 0;
+    if (totalRooms > 0 && allBookings.length > 0) {
+      const daysInCurrentMonth = new Date(currentYear, currentMonthIdx + 1, 0).getDate();
+      const currentMonthBookings = allBookings.filter(b => {
+        const checkIn = new Date(b.checkIn);
+        return checkIn.getMonth() === currentMonthIdx && checkIn.getFullYear() === currentYear && b.status === 'CONFIRMED';
+      });
+      const bookedNights = currentMonthBookings.reduce((sum, b) => {
+        const diff = Math.max(1, Math.round((new Date(b.checkOut).getTime() - new Date(b.checkIn).getTime()) / (1000 * 60 * 60 * 24)));
+        return sum + diff;
+      }, 0);
+      const totalCapacityNights = totalRooms * daysInCurrentMonth;
+      occupancyRate = totalCapacityNights > 0 ? Math.min(100, Math.round((bookedNights / totalCapacityNights) * 100)) : 0;
+    }
+
+    // 5. Generate Dynamic Chart Data (Last 6 Months)
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
     const earningsChartData: { month: string; amount: number }[] = [];
@@ -126,17 +158,25 @@ export class HostDashboardService {
       viewsChartData.push({ month: monthLabel, amount: monthViews });
     }
 
+    const isApproved = !!(hostUser?.isHostVerified || hostUser?.hostStatus === 'APPROVED' || activeListings > 0);
+    const hostStatus = hostUser?.hostStatus || (isApproved ? 'APPROVED' : 'PENDING');
+    const isStarHost = !!((hostUser?.isStarhost || hostUser?.isSuperhost) && isApproved);
+
     return {
-      hostName: hostUser?.displayName || hostUser?.payoutAccount?.accountHolderName || 'Host',
+      hostName: hostUser?.displayName || hostUser?.payoutAccount?.accountHolderName || 'Host Partner',
       hostAvatar: hostUser?.photoUrl || '',
-      isSuperhost: hostUser?.isSuperhost ?? true,
+      isStarHost,
+      isSuperhost: isStarHost,
+      isHostVerified: isApproved,
+      isApproved,
+      hostStatus,
       isPayoutVerified: !!hostUser?.payoutAccount?.verified,
       activeListings,
       totalListings: properties.length,
       totalRooms,
-      occupancyRate: properties.length > 0 ? 86 : 0,
-      rating: 4.95,
-      reviewCount: 38,
+      occupancyRate,
+      rating,
+      reviewCount,
       earningsThisMonth,
       totalEarningsAllTime,
       upcomingGuests,

@@ -5,7 +5,6 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/empty_state_view.dart';
 import '../../models/booking_model.dart';
-import '../booking/booking_confirmation_screen.dart';
 import '../listing/write_review_screen.dart';
 import 'trip_detail_screen.dart';
 
@@ -29,7 +28,7 @@ class TripsScreen extends StatelessWidget {
                 message: 'Time to dust off your bags and start planning your next great adventure!',
                 buttonText: 'Start Searching',
                 onAction: () {
-                  Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+                  context.read<AppProvider>().setTabIndex(0);
                 },
               )
             : RefreshIndicator(

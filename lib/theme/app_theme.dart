@@ -4,7 +4,7 @@ import 'app_colors.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
-    final baseText = GoogleFonts.plusJakartaSansTextTheme();
+    final baseText = GoogleFonts.urbanistTextTheme();
 
     return ThemeData(
       useMaterial3: true,
@@ -33,6 +33,7 @@ class AppTheme {
         titleLarge: baseText.titleLarge?.copyWith(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.w800,
+          letterSpacing: -0.3,
         ),
         titleMedium: baseText.titleMedium?.copyWith(
           color: AppColors.textPrimary,
@@ -40,20 +41,23 @@ class AppTheme {
         ),
         bodyLarge: baseText.bodyLarge?.copyWith(
           color: AppColors.textPrimary,
+          letterSpacing: 0.1,
         ),
         bodyMedium: baseText.bodyMedium?.copyWith(
           color: AppColors.textSecondary,
+          letterSpacing: 0.1,
         ),
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.background,
         elevation: 0,
         scrolledUnderElevation: 0,
-        iconTheme: IconThemeData(color: AppColors.textPrimary),
-        titleTextStyle: TextStyle(
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        titleTextStyle: GoogleFonts.urbanist(
           color: AppColors.textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w800,
+          letterSpacing: -0.4,
         ),
       ),
       cardTheme: CardThemeData(
@@ -74,9 +78,10 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: GoogleFonts.plusJakartaSans(
+          textStyle: GoogleFonts.urbanist(
             fontSize: 16,
             fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
           ),
         ),
       ),
@@ -87,9 +92,10 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: GoogleFonts.plusJakartaSans(
+          textStyle: GoogleFonts.urbanist(
             fontSize: 16,
             fontWeight: FontWeight.w700,
+            letterSpacing: 0.2,
           ),
         ),
       ),
@@ -97,7 +103,7 @@ class AppTheme {
   }
 
   static ThemeData get darkTheme {
-    final baseText = GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme);
+    final baseText = GoogleFonts.urbanistTextTheme(ThemeData.dark().textTheme);
 
     return ThemeData(
       useMaterial3: true,
@@ -116,13 +122,16 @@ class AppTheme {
         displayLarge: baseText.displayLarge?.copyWith(
           color: Colors.white,
           fontWeight: FontWeight.w900,
+          letterSpacing: -1.0,
         ),
         titleLarge: baseText.titleLarge?.copyWith(
           color: Colors.white,
           fontWeight: FontWeight.w800,
+          letterSpacing: -0.3,
         ),
         bodyMedium: baseText.bodyMedium?.copyWith(
           color: Colors.white70,
+          letterSpacing: 0.1,
         ),
       ),
       cardTheme: CardThemeData(

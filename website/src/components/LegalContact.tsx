@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { Scale, Building, Clock, MapPin, ShieldCheck } from 'lucide-react';
 
@@ -76,6 +78,25 @@ export const LegalContact: React.FC = () => {
           <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--gray-600)', lineHeight: 1.7 }}>
             In accordance with the Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021, any consumer or host grievance addressed to the Grievance Officer will be acknowledged within forty-eight (48) hours and redressed within fifteen (15) days from the date of its receipt.
           </p>
+        </section>
+
+        {/* Directory of Other Official Desks */}
+        <section style={{ background: 'linear-gradient(135deg, rgba(90, 49, 244, 0.04), rgba(16, 185, 129, 0.04))', padding: '1.75rem', borderRadius: '20px', border: '1px solid var(--border)' }}>
+          <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--ink)', marginBottom: '0.75rem' }}>
+            Looking for General Support or Partnerships?
+          </h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', fontSize: '0.85rem' }}>
+            <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              <strong style={{ color: 'var(--violet)', display: 'block', marginBottom: '0.2rem' }}>24/7 Customer Support</strong>
+              <p style={{ margin: '0 0 0.5rem', color: 'var(--gray-600)', fontSize: '0.8rem' }}>For reservations, booking changes &amp; guest assistance:</p>
+              <a href="mailto:support@stayq.space" style={{ color: 'var(--violet)', fontWeight: 700, textDecoration: 'none' }}>support@stayq.space</a>
+            </div>
+            <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              <strong style={{ color: '#D97706', display: 'block', marginBottom: '0.2rem' }}>Brand &amp; Partnerships</strong>
+              <p style={{ margin: '0 0 0.5rem', color: 'var(--gray-600)', fontSize: '0.8rem' }}>For host onboarding, brand press &amp; partnerships:</p>
+              <a href="mailto:hello@stayq.space" style={{ color: '#D97706', fontWeight: 700, textDecoration: 'none' }}>hello@stayq.space</a>
+            </div>
+          </div>
         </section>
       </div>
     </div>

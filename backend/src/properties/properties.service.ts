@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Property, Prisma, PropertyCategory, PropertyType, AvailabilityBlockType } from '@prisma/client';
 
@@ -9,6 +9,22 @@ export class PropertiesService {
   async create(data: any): Promise<Property> {
     // 1. Ensure a valid hostId exists
     let hostId = data.hostId;
+    if (!hostId && (data.phone || data.hostPhone || data.email || data.hostEmail)) {
+      const ph = data.phone || data.hostPhone;
+      const em = data.email || data.hostEmail;
+      const existingUser = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            ...(ph ? [{ phone: ph }] : []),
+            ...(em ? [{ email: em }] : []),
+          ],
+        },
+      });
+      if (existingUser) {
+        hostId = existingUser.id;
+      }
+    }
+
     if (!hostId) {
       const defaultHost = await this.prisma.user.findFirst();
       if (defaultHost) {
@@ -17,11 +33,11 @@ export class PropertiesService {
         const newHost = await this.prisma.user.create({
           data: {
             firebaseUid: `admin-host-${Date.now()}`,
-            email: data.host?.email || 'admin@stayq.space',
-            displayName: data.host?.firstName ? `${data.host.firstName} ${data.host.lastName || ''}`.trim() : 'Stay Q Host',
-            phone: data.host?.phone || '+919999999999',
+            email: data.host?.email || data.email || 'admin@stayq.space',
+            displayName: data.host?.firstName ? `${data.host.firstName} ${data.host.lastName || ''}`.trim() : (data.firstName ? `${data.firstName} ${data.lastName || ''}`.trim() : 'Stay Q Host'),
+            phone: data.host?.phone || data.phone || '+919999999999',
             roles: ['HOST', 'GUEST'],
-            isAdmin: true,
+            isAdmin: false,
           },
         });
         hostId = newHost.id;
@@ -117,19 +133,87 @@ export class PropertiesService {
       },
     });
 
-    // Create property images if provided
-    if (Array.isArray(data.imageUrls) && data.imageUrls.length > 0) {
+    // Create property images — categorized or flat (parallel inserts)
+    const imageInserts: Promise<any>[] = [];
+    let imageOrder = 0;
+    if (data.categorizedImages && typeof data.categorizedImages === 'object') {
+      for (const [category, urls] of Object.entries(data.categorizedImages)) {
+        if (Array.isArray(urls)) {
+          for (const url of urls as string[]) {
+            if (typeof url === 'string' && url.trim()) {
+              const order = imageOrder++;
+              imageInserts.push(
+                this.prisma.propertyImage.create({
+                  data: {
+                    propertyId: property.id,
+                    url: url.trim(),
+                    order,
+                    caption: category,
+                  },
+                }).catch(() => {}),
+              );
+            }
+          }
+        }
+      }
+    } else if (Array.isArray(data.imageUrls) && data.imageUrls.length > 0) {
       for (let i = 0; i < data.imageUrls.length; i++) {
         const url = data.imageUrls[i];
         if (typeof url === 'string' && url.trim()) {
-          await this.prisma.propertyImage.create({
-            data: {
-              propertyId: property.id,
-              url: url.trim(),
-              order: i,
-            },
-          }).catch(() => {});
+          imageInserts.push(
+            this.prisma.propertyImage.create({
+              data: {
+                propertyId: property.id,
+                url: url.trim(),
+                order: i,
+              },
+            }).catch(() => {}),
+          );
         }
+      }
+    }
+    await Promise.all(imageInserts);
+
+    // Ensure host user has HOST role in their profile
+    if (hostId) {
+      const hostUser = await this.prisma.user.findUnique({ where: { id: hostId } });
+      if (hostUser && !hostUser.roles.includes('HOST')) {
+        await this.prisma.user.update({
+          where: { id: hostId },
+          data: { roles: { set: [...hostUser.roles, 'HOST'] } },
+        }).catch(() => {});
+      }
+
+      // Upsert HostPayoutAccount if details are provided in onboarding
+      if (data.accountNumber || data.upiId) {
+        const holderName = data.accountHolderName || data.name || (hostUser ? hostUser.displayName || 'Host' : 'Host');
+        const accNum = data.accountNumber ? String(data.accountNumber) : (data.upiId ? String(data.upiId) : 'N/A');
+        const ifsc = data.ifscCode ? String(data.ifscCode).toUpperCase() : 'UPI0000000';
+        const bName = data.bankName || (data.upiId ? 'UPI' : 'Bank');
+
+        await this.prisma.hostPayoutAccount.upsert({
+          where: { userId: hostId },
+          create: {
+            userId: hostId,
+            accountHolderName: holderName,
+            accountNumber: accNum,
+            ifscCode: ifsc,
+            bankName: bName,
+            upiId: data.upiId || null,
+            verified: true,
+            govIdType: data.governmentIdType || null,
+            govIdNumber: data.governmentIdNumber || null,
+          },
+          update: {
+            accountHolderName: data.accountHolderName || undefined,
+            accountNumber: data.accountNumber ? String(data.accountNumber) : undefined,
+            ifscCode: data.ifscCode ? String(data.ifscCode).toUpperCase() : undefined,
+            bankName: data.bankName || undefined,
+            upiId: data.upiId || undefined,
+            govIdType: data.governmentIdType || undefined,
+            govIdNumber: data.governmentIdNumber || undefined,
+          },
+        }).catch(() => {});
       }
     }
 
@@ -186,7 +270,12 @@ export class PropertiesService {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { isSponsored: 'desc' },
+        { searchRankBoost: 'desc' },
+        { starRating: 'desc' },
+        { createdAt: 'desc' },
+      ],
     });
 
     if (adminView) return list;
@@ -389,6 +478,12 @@ export class PropertiesService {
         host: true,
         tags: true,
       },
+      orderBy: [
+        { isSponsored: 'desc' },
+        { searchRankBoost: 'desc' },
+        { starRating: 'desc' },
+        { createdAt: 'desc' },
+      ],
     });
   }
 
@@ -403,7 +498,12 @@ export class PropertiesService {
         host: true,
         tags: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { isSponsored: 'desc' },
+        { searchRankBoost: 'desc' },
+        { starRating: 'desc' },
+        { createdAt: 'desc' },
+      ],
     });
   }
 
@@ -414,7 +514,13 @@ export class PropertiesService {
     `;
   }
 
-  async update(id: string, updateDto: any): Promise<Property> {
+  async update(id: string, updateDto: any, user?: any): Promise<Property> {
+    const existing = await this.prisma.property.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Property not found');
+    if (user && existing.hostId !== user.id && !user.isAdmin) {
+      throw new ForbiddenException('Only the property owner or an admin can update this property');
+    }
+
     const data: any = {};
     if (updateDto.title !== undefined) data.title = updateDto.title;
     if (updateDto.description !== undefined) data.description = updateDto.description;
@@ -455,7 +561,12 @@ export class PropertiesService {
     });
   }
 
-  async remove(id: string): Promise<Property> {
+  async remove(id: string, user?: any): Promise<Property> {
+    const existing = await this.prisma.property.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Property not found');
+    if (user && existing.hostId !== user.id && !user.isAdmin) {
+      throw new ForbiddenException('Only the property owner or an admin can delete this property');
+    }
     return this.prisma.property.delete({ where: { id } });
   }
 
@@ -470,7 +581,12 @@ export class PropertiesService {
     return blocks.length === 0;
   }
 
-  async addAvailabilityBlocks(id: string, blockedDates: { startDate: string; endDate: string }[]) {
+  async addAvailabilityBlocks(id: string, blockedDates: { startDate: string; endDate: string }[], user?: any) {
+    const existing = await this.prisma.property.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Property not found');
+    if (user && existing.hostId !== user.id && !user.isAdmin) {
+      throw new ForbiddenException('Only the property owner can add availability blocks');
+    }
     const blocks = blockedDates.map(date => ({
       propertyId: id,
       startDate: new Date(date.startDate),

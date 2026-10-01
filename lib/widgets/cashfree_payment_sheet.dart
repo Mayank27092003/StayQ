@@ -56,14 +56,19 @@ class CashfreePaymentSheet extends StatefulWidget {
     return showModalBottomSheet<PaymentSuccessResult>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       backgroundColor: Colors.transparent,
-      builder: (_) => CashfreePaymentSheet(
-        bookingId: bookingId,
-        totalAmount: totalAmount,
-        propertyTitle: propertyTitle,
-        customerName: customerName,
-        customerEmail: customerEmail,
-        customerPhone: customerPhone,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: CashfreePaymentSheet(
+          bookingId: bookingId,
+          totalAmount: totalAmount,
+          propertyTitle: propertyTitle,
+          customerName: customerName,
+          customerEmail: customerEmail,
+          customerPhone: customerPhone,
+        ),
       ),
     );
   }
@@ -75,10 +80,8 @@ class CashfreePaymentSheet extends StatefulWidget {
 class _CashfreePaymentSheetState extends State<CashfreePaymentSheet> {
   late final PaymentsApi _paymentsApi;
   bool _isLoadingOrder = true;
-  String? _orderError;
 
   String _orderId = '';
-  String _paymentSessionId = '';
   int _activeTab = 0; // 0: UPI, 1: Card, 2: NetBanking
   bool _copiedVpa = false;
   int _secondsLeft = 599; // 10 mins
@@ -139,7 +142,6 @@ class _CashfreePaymentSheetState extends State<CashfreePaymentSheet> {
   Future<void> _initializeLiveOrder() async {
     setState(() {
       _isLoadingOrder = true;
-      _orderError = null;
     });
 
     try {
@@ -154,7 +156,6 @@ class _CashfreePaymentSheetState extends State<CashfreePaymentSheet> {
       if (mounted) {
         setState(() {
           _orderId = res['orderId'] ?? 'order_${DateTime.now().millisecondsSinceEpoch}';
-          _paymentSessionId = res['paymentSessionId'] ?? '';
           _isLoadingOrder = false;
         });
       }
@@ -162,7 +163,6 @@ class _CashfreePaymentSheetState extends State<CashfreePaymentSheet> {
       if (mounted) {
         setState(() {
           _orderId = 'order_stayq_${DateTime.now().millisecondsSinceEpoch}';
-          _paymentSessionId = 'session_fallback_${DateTime.now().millisecondsSinceEpoch}';
           _isLoadingOrder = false;
         });
       }
@@ -369,6 +369,12 @@ class _CashfreePaymentSheetState extends State<CashfreePaymentSheet> {
                 ),
                 ElevatedButton(
                   onPressed: () {
+                    if (enteredOtp.trim().length < 4) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter a valid 6-digit OTP code')),
+                      );
+                      return;
+                    }
                     otpTimer?.cancel();
                     Navigator.pop(ctx);
                     _handleVerifyPayment('Credit/Debit Card (Visa/Mastercard)');

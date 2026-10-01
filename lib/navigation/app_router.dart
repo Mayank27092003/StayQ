@@ -11,12 +11,14 @@ import '../theme/app_motion.dart';
 import '../screens/splash_screen.dart';
 import '../screens/walkthrough_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import '../screens/rewards/rewards_screen.dart';
 
 class AppRoutes {
   static const String initial = '/';
   static const String walkthrough = '/walkthrough';
   static const String mainShell = '/main';
   static const String profile = '/profile';
+  static const String rewards = '/rewards';
   static const String login = '/login'; // Points to Auth Gateway now
   static const String phoneInput = '/auth/phone';
   static const String otpVerify = '/auth/otp';
@@ -37,6 +39,8 @@ class AppRouter {
         return _buildPageRoute(const MainShell(), settings);
       case AppRoutes.profile:
         return _buildPageRoute(const ProfileScreen(), settings);
+      case AppRoutes.rewards:
+        return _buildPageRoute(const RewardsScreen(), settings);
       case AppRoutes.login:
         return _buildPageRoute(const AuthGatewayScreen(), settings);
       case AppRoutes.phoneInput:

@@ -86,9 +86,9 @@ class _BottomNavBarState extends State<BottomNavBar> {
                       curve: AppMotion.signatureCurve,
                       style: TextStyle(
                         fontSize: 11,
-                        fontFamily: 'Inter',
                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                         color: isSelected ? AppColors.primary : AppColors.textMuted,
+                        letterSpacing: 0.1,
                       ),
                       child: Text(item.label),
                     ),

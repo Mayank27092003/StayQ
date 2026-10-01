@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { Shield, Search, Info } from 'lucide-react';
 
@@ -562,7 +564,7 @@ export const GuestRulesPage: React.FC = () => {
               These Guest House Rules represent the baseline standard of conduct for all bookings across the Stay Q platform. Where a property-specific rule conflicts with applicable law or Stay Q's mandatory safety policies, applicable law and Stay Q's policies prevail.
             </p>
             <div style={{ marginTop: '0.75rem', fontSize: '0.78rem', color: 'var(--violet)', fontWeight: 700 }}>
-              QUATALYST PRIVATE LIMITED (CIN: U62011GA2026PTC018230) · Grievance Redressal: grievance@stayq.space
+              QUATALYST PRIVATE LIMITED (CIN: U62011GA2026PTC018230) · Support Desk: support@stayq.space · Grievance Redressal: grievance@stayq.space
             </div>
           </div>
         </div>

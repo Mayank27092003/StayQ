@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/bottom_nav_bar.dart';
-import '../widgets/feature_showcase.dart';
 import '../services/qube_trigger_service.dart';
 import 'explore/home_screen.dart';
 import 'wishlists/wishlists_screen.dart';
@@ -24,7 +23,6 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentTabIndex = 0;
   bool _hasTriggeredWelcome = false;
 
   @override
@@ -42,7 +40,8 @@ class _MainShellState extends State<MainShell> {
 
   Future<void> _initQubeWelcome() async {
     final provider = Provider.of<AppProvider>(context, listen: false);
-    WelcomeFeaturePopup.show(context, provider.isHostMode);
+    await WelcomeFeaturePopup.showIfFirstTime(context, provider.isHostMode);
+    if (!mounted) return;
     await QubeTriggerService.instance.showWelcomeIfFirstTime(context);
   }
 
@@ -55,6 +54,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
+    final activeTabIndex = provider.currentTabIndex;
 
     if (provider.isHostMode) {
       final hostPages = [
@@ -64,15 +64,13 @@ class _MainShellState extends State<MainShell> {
         const ProfileScreen(),
       ];
 
-      final safeIndex = _currentTabIndex < hostPages.length ? _currentTabIndex : 0;
+      final safeIndex = activeTabIndex < hostPages.length ? activeTabIndex : 0;
 
       return PopScope(
         canPop: safeIndex == 0,
-        onPopInvoked: (didPop) {
+        onPopInvokedWithResult: (didPop, result) {
           if (!didPop) {
-            setState(() {
-              _currentTabIndex = 0;
-            });
+            provider.setTabIndex(0);
           }
         },
         child: Scaffold(
@@ -85,7 +83,7 @@ class _MainShellState extends State<MainShell> {
             currentIndex: safeIndex,
             onTap: (index) {
               if (index < hostPages.length) {
-                setState(() => _currentTabIndex = index);
+                provider.setTabIndex(index);
               }
             },
           ),
@@ -108,13 +106,13 @@ class _MainShellState extends State<MainShell> {
       const ProfileScreen(),
     ];
 
+    final safeGuestIndex = activeTabIndex < guestPages.length ? activeTabIndex : 0;
+
     return PopScope(
-      canPop: _currentTabIndex == 0,
-      onPopInvoked: (didPop) {
+      canPop: safeGuestIndex == 0,
+      onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          setState(() {
-            _currentTabIndex = 0;
-          });
+          provider.setTabIndex(0);
         }
       },
       child: Scaffold(
@@ -122,16 +120,19 @@ class _MainShellState extends State<MainShell> {
         body: Stack(
           children: [
             IndexedStack(
-              index: _currentTabIndex,
+              index: safeGuestIndex,
               children: guestPages,
             ),
-            const DraggableQubeMascot(),
+            if (safeGuestIndex == 0)
+              const DraggableQubeMascot(),
           ],
         ),
         bottomNavigationBar: BottomNavBar(
-          currentIndex: _currentTabIndex,
+          currentIndex: safeGuestIndex,
           onTap: (index) {
-            setState(() => _currentTabIndex = index);
+            if (index < guestPages.length) {
+              provider.setTabIndex(index);
+            }
           },
         ),
       ),

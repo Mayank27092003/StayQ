@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { Sparkles, Palmtree, Trees, Mountain, ShieldCheck, Flame, Compass, Castle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -44,7 +46,7 @@ export const CategoryFilter: React.FC = () => {
             <button
               key={cat.id}
               className={`cat-pill ${isActive ? 'cat-pill--active' : ''}`}
-              onClick={() => updateFilters({ category: cat.id })}
+              onClick={() => updateFilters({ category: cat.id, zeroBrokerOnly: cat.id === 'ZERO_BROKER' })}
               type="button"
             >
               <span className="cat-pill__icon">{cat.icon}</span>

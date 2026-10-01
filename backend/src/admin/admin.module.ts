@@ -18,7 +18,8 @@ import { HostApplicationsController } from './moderation/host-applications.contr
 
 import { AdminHostsController } from './hosts/admin-hosts.controller';
 import { AdminHostsService } from './hosts/admin-hosts.service';
-import { TestAdminHostsController } from './hosts/test-hosts.controller';
+
+
 
 import { AdminAnalyticsController } from './analytics/admin-analytics.controller';
 import { AdminAnalyticsService } from './analytics/admin-analytics.service';
@@ -53,6 +54,10 @@ import { AdminQubeService } from './qube/admin-qube.service';
 
 import { AdminStaffController } from './staff/admin-staff.controller';
 import { AdminStaffService } from './staff/admin-staff.service';
+import { AdminExportController } from './export/admin-export.controller';
+import { AdminExportService } from './export/admin-export.service';
+import { AdminConversationsController } from './conversations/admin-conversations.controller';
+import { AdminConversationsService } from './conversations/admin-conversations.service';
 
 @Module({
   imports: [PrismaModule, NotificationsModule],
@@ -64,7 +69,6 @@ import { AdminStaffService } from './staff/admin-staff.service';
     AdminModerationController,
     HostApplicationsController,
     AdminHostsController,
-    TestAdminHostsController,
     AdminAnalyticsController,
     AdminUsersController,
     AdminBookingsController,
@@ -75,6 +79,8 @@ import { AdminStaffService } from './staff/admin-staff.service';
     AdminBulkController,
     AdminReportsController,
     AdminQubeController,
+    AdminExportController,
+    AdminConversationsController,
   ],
   providers: [
     AdminService,
@@ -95,7 +101,9 @@ import { AdminStaffService } from './staff/admin-staff.service';
     AdminBulkService,
     AdminReportsService,
     AdminQubeService,
+    AdminExportService,
+    AdminConversationsService,
   ],
-  exports: [AdminStaffService],
+  exports: [AdminStaffService, AdminExportService],
 })
 export class AdminModule {}

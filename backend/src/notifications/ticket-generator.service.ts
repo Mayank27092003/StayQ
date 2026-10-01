@@ -50,7 +50,7 @@ export class TicketGeneratorService {
                   type: 'div',
                   props: {
                     style: { fontSize: '24px', fontWeight: 'bold', color: '#c5a880', letterSpacing: '4px' },
-                    children: 'STAY Q CRUISE | BOARDING PASS'
+                    children: 'STAY Q | DIGITAL STAY PASS'
                   }
                 }
               }
@@ -88,8 +88,8 @@ export class TicketGeneratorService {
                                 props: {
                                   style: { display: 'flex', flexDirection: 'column' },
                                   children: [
-                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Cruise Line' } },
-                                    { type: 'span', props: { style: { fontSize: '20px', fontWeight: 'bold', color: '#073359' }, children: 'STAY Q EXPERIENCES' } },
+                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Property / Host' } },
+                                    { type: 'span', props: { style: { fontSize: '20px', fontWeight: 'bold', color: '#073359' }, children: 'STAY Q VERIFIED STAY' } },
                                   ]
                                 }
                               },

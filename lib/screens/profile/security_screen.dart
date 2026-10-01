@@ -155,6 +155,44 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 32),
+            const Text('Legal Compliance & Grievances', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            _buildSettingsContainer(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.gavel_rounded, color: AppColors.primary),
+                  title: const Text('Grievance Officer & Legal Desk', style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Shayan Mandal · grievance@stayq.space', style: TextStyle(fontSize: 12)),
+                  trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Statutory Grievance Desk'),
+                        content: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Entity: QUATALYST PRIVATE LIMITED', style: TextStyle(fontWeight: FontWeight.bold)),
+                            Text('CIN: U62011GA2026PTC018230', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                            SizedBox(height: 12),
+                            Text('Appointed Grievance Officer:\nShayan Mandal', style: TextStyle(fontSize: 13)),
+                            SizedBox(height: 8),
+                            Text('Email: grievance@stayq.space\nSLA: Acknowledged within 48 hrs\nRedressed within 15 days', style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                            SizedBox(height: 12),
+                            Text('For standard booking & customer support, contact support@stayq.space.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ],
         ),
       ),

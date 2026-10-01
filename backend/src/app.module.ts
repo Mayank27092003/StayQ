@@ -31,6 +31,9 @@ import { HostDashboardModule } from './host-dashboard/host-dashboard.module';
 import { QubeModule } from './qube/qube.module';
 import { SupportModule } from './support/support.module';
 import { VerificationModule } from './verification/verification.module';
+import { LoyaltyModule } from './loyalty/loyalty.module';
+import { PricingModule } from './pricing/pricing.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -43,7 +46,7 @@ import { VerificationModule } from './verification/verification.module';
     }]),
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'public'),
-      exclude: ['/api/{*splat}'],
+      exclude: ['/api/*path'],
       serveStaticOptions: {
         setHeaders: (res, path) => {
           if (path.endsWith('.html')) {
@@ -60,6 +63,7 @@ import { VerificationModule } from './verification/verification.module';
     UsersModule,
     AdminModule,
     VerificationModule,
+    LoyaltyModule,
     
     // Inventory
     PropertiesModule,
@@ -85,6 +89,8 @@ import { VerificationModule } from './verification/verification.module';
     HostDashboardModule,
     QubeModule,
     SupportModule,
+    PricingModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController],
   providers: [

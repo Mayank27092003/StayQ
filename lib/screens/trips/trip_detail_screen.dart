@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../../models/booking_model.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
-import '../../widgets/bouncing_widget.dart';
+import '../../providers/messaging_provider.dart';
+import '../../providers/app_provider.dart';
 import '../inbox/chat_detail_screen.dart';
 import '../listing/listing_detail_screen.dart';
 
 class TripDetailScreen extends StatelessWidget {
+
   final BookingModel booking;
 
   const TripDetailScreen({super.key, required this.booking});
@@ -276,19 +278,41 @@ class TripDetailScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       AppMotion.tapSelection();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChatDetailScreen(
-                            chatId: 'conv_${booking.id}',
-                            otherUserName: stay.hostName.isNotEmpty ? stay.hostName : 'Host',
-                            otherUserAvatar: stay.hostAvatar,
-                          ),
-                        ),
+                      final provider = Provider.of<AppProvider>(context, listen: false);
+                      if (!provider.isLoggedIn) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please log in to chat with the host')),
+                        );
+                        return;
+                      }
+
+                      final messaging = Provider.of<MessagingProvider>(context, listen: false);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Connecting to ${stay.hostName}...'), duration: const Duration(seconds: 1)),
                       );
+
+                      final convId = await messaging.createOrGetConversation(
+                        hostId: stay.hostId.isNotEmpty ? stay.hostId : stay.id,
+                        propertyId: stay.id,
+                        bookingId: booking.id,
+                      );
+
+                      if (context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatDetailScreen(
+                              chatId: convId ?? 'conv_${booking.id}',
+                              otherUserName: stay.hostName.isNotEmpty ? stay.hostName : 'Host',
+                              otherUserAvatar: stay.hostAvatar,
+                            ),
+                          ),
+                        );
+                      }
                     },
+
                   ),
                 ),
                 const SizedBox(width: 12),

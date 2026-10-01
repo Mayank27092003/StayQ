@@ -73,14 +73,13 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
     if (!widget.isAddingNewProperty) {
       base.addAll([
         const BankDetailsScreen(),
+        const HostVerificationScreen(),
       ]);
+    } else {
+      base.add(const HostVerificationScreen());
     }
 
     base.add(const PropertyReviewAndSubmitScreen());
-
-    if (!widget.isAddingNewProperty) {
-      base.add(const HostVerificationScreen());
-    }
 
     return base;
   }
@@ -89,10 +88,18 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final hostProvider = context.read<HostOnboardingProvider>();
-      if (mounted && hostProvider.currentPage > 0) {
+      final total = _getScreens(hostProvider).length;
+      if (widget.isAddingNewProperty) {
         setState(() {
-          _currentIndex = hostProvider.currentPage;
+          _currentIndex = 0;
+        });
+        hostProvider.resetForNewProperty();
+      } else if (hostProvider.currentPage > 0) {
+        final safeIdx = hostProvider.currentPage.clamp(0, total > 0 ? total - 1 : 0);
+        setState(() {
+          _currentIndex = safeIdx;
         });
       }
     });
@@ -111,7 +118,7 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
       return provider.title.isNotEmpty && provider.description.isNotEmpty;
     }
     if (currentScreen is PropertyLocationScreen) {
-      return provider.address.isNotEmpty && provider.city.isNotEmpty && provider.state.isNotEmpty;
+      return provider.city.isNotEmpty && provider.state.isNotEmpty;
     }
     if (currentScreen is BankDetailsScreen) {
       return (provider.accountNumber.isNotEmpty && provider.ifscCode.isNotEmpty) || provider.upiId.isNotEmpty;
@@ -120,50 +127,31 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
   }
 
   Future<void> _nextPage(HostOnboardingProvider provider, List<Widget> currentScreens) async {
-    if (_currentIndex < currentScreens.length) {
-      if (!_validateCurrentScreen(provider, currentScreens[_currentIndex])) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please fill all required fields'),
-            backgroundColor: Colors.redAccent,
-          )
-        );
-        return;
-      }
-    }
-
-    // If on review screen, attempt to submit before continuing!
-    if (currentScreens[_currentIndex] is PropertyReviewAndSubmitScreen) {
-      // Show loading snackbar or just rely on the button turning into a spinner
-      final success = await provider.submitProperty();
-      if (!success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Submission failed. Please try again.')),
-          );
-        }
-        return; // Stop here, do not go to Verification screen
-      }
-    }
-
-    // If on verification screen and not approved, block them.
-    if (_currentIndex < currentScreens.length && currentScreens[_currentIndex] is HostVerificationScreen && !provider.isVerificationApproved) {
+    if (currentScreens.isEmpty) return;
+    final safeIdx = _currentIndex.clamp(0, currentScreens.length - 1);
+    
+    if (!_validateCurrentScreen(provider, currentScreens[safeIdx])) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Verification is pending approval from the admin panel.'),
+          content: Text('Please fill all required fields'),
           backgroundColor: Colors.redAccent,
         )
       );
       return;
     }
 
-    if (_currentIndex < currentScreens.length - 1) {
-      final nextIdx = _currentIndex + 1;
-      setState(() {
-        _currentIndex = nextIdx;
-      });
-      provider.setPage(nextIdx);
-    } else {
+    // If on review screen, attempt to submit and finish!
+    if (currentScreens[safeIdx] is PropertyReviewAndSubmitScreen) {
+      final success = await provider.submitProperty();
+      if (!success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Submission failed. Please check network and try again.')),
+          );
+        }
+        return;
+      }
+
       await provider.clearDraftPrefs();
       if (mounted) {
         Navigator.pushReplacement(
@@ -177,6 +165,15 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
           ),
         );
       }
+      return;
+    }
+
+    if (safeIdx < currentScreens.length - 1) {
+      final nextIdx = safeIdx + 1;
+      setState(() {
+        _currentIndex = nextIdx;
+      });
+      provider.setPage(nextIdx);
     }
   }
 
@@ -192,17 +189,29 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Consumer<HostOnboardingProvider>(
       builder: (context, provider, child) {
         final currentScreens = _getScreens(provider);
-        // Check if NEXT is disabled
-        bool isNextDisabled = (_currentIndex < currentScreens.length && currentScreens[_currentIndex] is HostVerificationScreen && !provider.isVerificationApproved);
+        if (currentScreens.isEmpty) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
 
-        bool isWelcomeScreen = _currentIndex < currentScreens.length && currentScreens[_currentIndex] is HostWelcomeScreen;
+        final safeIndex = _currentIndex.clamp(0, currentScreens.length - 1);
+        bool isNextDisabled = provider.isUploading;
+        bool isWelcomeScreen = safeIndex < currentScreens.length && currentScreens[safeIndex] is HostWelcomeScreen;
 
-        return Scaffold(
-          backgroundColor: Colors.white,
-          body: SafeArea(
+        return PopScope(
+          canPop: safeIndex == 0 || isWelcomeScreen,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop && safeIndex > 0) {
+              _previousPage(provider);
+            }
+          },
+          child: Scaffold(
+            backgroundColor: isDark ? const Color(0xFF0F0E17) : Colors.white,
+            body: SafeArea(
             child: Column(
               children: [
                 Padding(
@@ -215,15 +224,19 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
                           Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
+                              color: AppColors.primary.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Icon(Icons.home_work_rounded, color: AppColors.primary, size: 20),
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Step ${_currentIndex + 1} of ${currentScreens.length}',
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                            'Step ${safeIndex + 1} of ${currentScreens.length}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white70 : AppColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -253,26 +266,26 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
                   duration: const Duration(milliseconds: 300),
                   tween: Tween<double>(
                     begin: 0,
-                    end: currentScreens.isEmpty ? 0 : (_currentIndex + 1) / currentScreens.length,
+                    end: (safeIndex + 1) / currentScreens.length,
                   ),
                   builder: (context, value, child) {
                     return LinearProgressIndicator(
                       value: value,
-                      backgroundColor: Colors.grey[200],
+                      backgroundColor: isDark ? Colors.white12 : Colors.grey[200],
                       valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                      minHeight: 6,
+                      minHeight: 5,
                     );
                   },
-                ).animate().fadeIn(duration: 600.ms),
+                ).animate().fadeIn(duration: 400.ms),
                 Expanded(
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
+                    duration: const Duration(milliseconds: 300),
                     transitionBuilder: (Widget child, Animation<double> animation) {
                       return FadeTransition(
                         opacity: animation,
                         child: SlideTransition(
                           position: Tween<Offset>(
-                            begin: const Offset(0.05, 0),
+                            begin: const Offset(0.04, 0),
                             end: Offset.zero,
                           ).animate(animation),
                           child: child,
@@ -280,10 +293,11 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
                       );
                     },
                     child: KeyedSubtree(
-                      key: ValueKey<int>(_currentIndex),
-                      child: currentScreens.isNotEmpty
-                          ? currentScreens[_currentIndex]
-                          : const SizedBox.shrink(),
+                      key: ValueKey<int>(safeIndex),
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: currentScreens[safeIndex],
+                      ),
                     ),
                   ),
                 ),
@@ -295,59 +309,75 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
               : SafeArea(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? const Color(0xFF161424) : Colors.white,
+                      border: Border(
+                        top: BorderSide(
+                          color: isDark ? Colors.white10 : AppColors.borderLight,
+                          width: 1,
+                        ),
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, -5),
                         )
                       ],
                     ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Back Button
-                    if (_currentIndex > 0 && !isWelcomeScreen)
-                      TextButton(
-                        onPressed: () => _previousPage(provider),
-                        child: const Text('Back', style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold)),
-                      ),
-                    
-                    const Spacer(),
-                    
-                    // Next / Submit Button
-                    if (!isWelcomeScreen)
-                      ElevatedButton(
-                        onPressed: isNextDisabled || provider.isUploading ? null : () => _nextPage(provider, currentScreens),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isNextDisabled || provider.isUploading ? Colors.grey : AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 0,
-                          minimumSize: const Size(120, 48), // Override global infinite width
-                        ),
-                        child: provider.isUploading 
-                          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : Text(
-                              _currentIndex == currentScreens.length - 2 
-                                  ? 'Submit' 
-                                  : _currentIndex == currentScreens.length - 1 
-                                      ? 'Finish' 
-                                      : 'Next', 
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Back Button
+                          if (safeIndex > 0 && !isWelcomeScreen)
+                            TextButton(
+                              onPressed: () => _previousPage(provider),
+                              child: Text(
+                                'Back',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: isDark ? Colors.white60 : Colors.grey[600],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            )
+                          else
+                            const SizedBox(width: 40),
+                          
+                          const Spacer(),
+                          
+                          // Next / Submit Button
+                          if (!isWelcomeScreen)
+                            ElevatedButton(
+                              onPressed: isNextDisabled || provider.isUploading ? null : () => _nextPage(provider, currentScreens),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isNextDisabled || provider.isUploading ? Colors.grey : AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                                minimumSize: const Size(120, 48),
+                              ),
+                              child: provider.isUploading 
+                                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : Text(
+                                    safeIndex == currentScreens.length - 2 
+                                        ? 'Submit' 
+                                        : safeIndex == currentScreens.length - 1 
+                                            ? 'Finish' 
+                                            : 'Next', 
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                                  ),
                             ),
+                        ],
                       ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      }
-    );
+          );
+        }
+      );
   }
 }

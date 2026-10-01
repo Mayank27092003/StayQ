@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Calendar, Users, MapPin, X, Compass, Loader2, Palmtree, Mountain, Landmark, Trees, Building, Tent } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -75,7 +77,7 @@ const CURATED_DESTINATIONS: LocationSuggestion[] = [
 ];
 
 export const SearchBar: React.FC<SearchBarProps> = ({ compact = false, className = '' }) => {
-  const { filters, updateFilters } = useApp();
+  const { filters, updateFilters, setIsSearchModalOpen } = useApp();
   const [destination, setDestination] = useState(filters.destination || '');
   const [checkIn, setCheckIn] = useState(filters.checkIn || '');
   const [checkOut, setCheckOut] = useState(filters.checkOut || '');
@@ -184,6 +186,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({ compact = false, className
       pets,
     });
 
+    // Close the search modal if opened inside it
+    setIsSearchModalOpen(false);
+
     // Scroll smoothly to catalog or switch hash to stays
     if (window.location.hash !== '#/stays' && window.location.hash !== '#stays') {
       const el = document.getElementById('stays-catalog');
@@ -239,6 +244,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({ compact = false, className
                 setShowDestDropdown(true);
                 setShowCalendar(false);
                 setShowGuestsDropdown(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSearch(e);
+                }
               }}
             />
           </div>

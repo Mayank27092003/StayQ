@@ -46,15 +46,15 @@ class _PropertyBasicInfoScreenState extends State<PropertyBasicInfoScreen> {
 
   Map<String, String> _getCategoryConfig(String propertyType) {
     switch (propertyType) {
-      case 'HOTEL':
+      case 'VILLA':
         return {
-          'badge': '🏨 Hotel & Resort Setup',
-          'titleLabel': 'Hotel / Resort Name',
-          'titleHint': 'e.g. The Grand Royal Palace & Spa',
-          'descHint': 'Describe your suites, in-house dining, banquet halls, 24/7 reception, swimming pool, and check-in policies...',
-          'counter1': 'Total Guest Rooms',
+          'badge': '🏡 Luxury Villa Setup',
+          'titleLabel': 'Villa Name',
+          'titleHint': 'e.g. The Grand Royal Sunset Villa & Pool',
+          'descHint': 'Describe your bedrooms, private pool, gardens, caretaker, in-house meals, and scenic views...',
+          'counter1': 'Total Bedrooms',
           'counter2': 'Attached Bathrooms',
-          'counter3': 'Max Guests / Room',
+          'counter3': 'Max Guests Capacity',
         };
       case 'CAMPING_SITE':
         return {

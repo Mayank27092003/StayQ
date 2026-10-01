@@ -1,3 +1,5 @@
+"use client";
+
 import { Gift, Heart, MessageSquare, ShieldCheck, Users, Wallet, Zap, BellRing } from 'lucide-react';
 import { Reveal } from './Reveal';
 
@@ -20,13 +22,13 @@ const FEATURES = [
   },
   {
     icon: Wallet,
-    title: 'Wallet credits',
-    body: 'Referral bonuses and goodwill credits land in your wallet and apply at checkout.',
+    title: 'Wallet Credits & Rewards',
+    body: 'Referral bonuses and reward credits land in your wallet — redeem up to 10% on every booking checkout.',
   },
   {
     icon: Gift,
-    title: 'Referrals',
-    body: 'Invite a friend and you both earn — ₹500 for you, ₹300 for them on their first stay.',
+    title: 'Refer & Earn (₹100 / ₹250)',
+    body: 'Earn ₹100 per friend, and ₹250 bonus on every 5th referral! Friends get ₹100 welcome credit — redeem up to 10% on checkout.',
   },
   {
     icon: Heart,
@@ -40,8 +42,8 @@ const FEATURES = [
   },
   {
     icon: BellRing,
-    title: 'Cruise Ticket',
-    body: 'Every confirmed booking generates a shareable ticket with your trip details.',
+    title: 'Digital Stay Pass',
+    body: 'Every confirmed booking generates an instant digital pass with directions, keycode, and host contacts.',
   },
 ];
 

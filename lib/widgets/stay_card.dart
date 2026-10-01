@@ -84,8 +84,62 @@ class StayCard extends StatelessWidget {
                   ),
                 ),
 
-                // Badge Tag
-                if (stay.isStayingWithHost)
+                // Sponsored Paid Boost Badge (Top Priority)
+                if (stay.hasActiveBoost)
+                  Positioned(
+                    top: 14,
+                    left: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: stay.sponsoredTier == 'ULTRA_SPOTLIGHT'
+                              ? [const Color(0xFFFFB800), const Color(0xFF5A31F4)]
+                              : stay.sponsoredTier == 'SUPER_BOOST'
+                                  ? [const Color(0xFF5A31F4), const Color(0xFF9333EA)]
+                                  : [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (stay.sponsoredTier == 'ULTRA_SPOTLIGHT'
+                                    ? const Color(0xFFFFB800)
+                                    : const Color(0xFF5A31F4))
+                                .withValues(alpha: 0.45),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            stay.sponsoredTier == 'ULTRA_SPOTLIGHT'
+                                ? Icons.workspace_premium_rounded
+                                : stay.sponsoredTier == 'SUPER_BOOST'
+                                    ? Icons.auto_awesome_rounded
+                                    : Icons.bolt_rounded,
+                            size: 13,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            stay.sponsoredBadgeText,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (stay.isStayingWithHost)
                   Positioned(
                     top: 14,
                     left: 14,

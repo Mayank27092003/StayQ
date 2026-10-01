@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LeaseStatus } from '@prisma/client';
 
@@ -16,17 +16,25 @@ export class LeasesService {
         securityDeposit: createLeaseDto.securityDeposit,
         leaseStartDate: new Date(createLeaseDto.startDate),
         leaseEndDate: new Date(createLeaseDto.endDate),
-        platformFee: 500, // Replace with logic
+        platformFee: 500,
         status: LeaseStatus.DRAFT,
       },
     });
   }
 
-  async generateLeasePdf(id: string) {
-    const lease = await this.prisma.leaseAgreement.findUnique({ where: { id } });
+  async generateLeasePdf(id: string, user?: any) {
+    const lease = await this.prisma.leaseAgreement.findUnique({
+      where: { id },
+      include: {
+        booking: { include: { property: true } },
+      },
+    });
     if (!lease) throw new NotFoundException('Lease not found');
+
+    if (user && lease.booking?.guestId !== user.id && lease.booking?.property?.hostId !== user.id && !user.isAdmin) {
+      throw new ForbiddenException('Only the tenant, landlord, or admin can access lease documents');
+    }
     
-    // PDF Generation logic would go here
     const pdfUrl = 'https://cloud-storage.example.com/lease-docs/generated.pdf';
     
     return this.prisma.leaseAgreement.update({
@@ -36,7 +44,6 @@ export class LeasesService {
   }
 
   async processMonthlyRent() {
-    // Automation to collect rent for active leases
     return { status: 'Success', processed: 0 };
   }
 }

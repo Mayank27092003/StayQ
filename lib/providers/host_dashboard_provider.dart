@@ -11,14 +11,17 @@ class HostDashboardProvider extends ChangeNotifier {
 
   String _hostName = '';
   String _hostAvatar = '';
-  bool _isSuperhost = true;
+  bool _isStarHost = false;
   bool _isPayoutVerified = false;
+  bool _isHostVerified = false;
+  bool _isApproved = false;
+  String _hostStatus = 'PENDING';
   int _activeListings = 0;
   int _totalListings = 0;
   int _totalRooms = 0;
-  double _occupancyRate = 86.0;
-  double _rating = 4.95;
-  int _reviewCount = 38;
+  double _occupancyRate = 0.0;
+  double _rating = 0.0;
+  int _reviewCount = 0;
   double _earningsThisMonth = 0;
   double _totalEarningsAllTime = 0;
   List<BookingModel> _upcomingGuests = [];
@@ -32,8 +35,11 @@ class HostDashboardProvider extends ChangeNotifier {
   String? get error => _error;
   String get hostName => _hostName;
   String get hostAvatar => _hostAvatar;
-  bool get isSuperhost => _isSuperhost;
+  bool get isStarHost => _isStarHost;
   bool get isPayoutVerified => _isPayoutVerified;
+  bool get isHostVerified => _isHostVerified;
+  bool get isApproved => _isApproved || _isHostVerified || _activeListings > 0;
+  String get hostStatus => _hostStatus;
   int get activeListings => _activeListings;
   int get totalListings => _totalListings;
   int get totalRooms => _totalRooms;
@@ -83,15 +89,18 @@ class HostDashboardProvider extends ChangeNotifier {
         
         _hostName = data['hostName'] ?? '';
         _hostAvatar = data['hostAvatar'] ?? '';
-        _isSuperhost = data['isSuperhost'] ?? true;
-        _isPayoutVerified = data['isPayoutVerified'] ?? false;
-        _activeListings = data['activeListings'] ?? 0;
-        _totalListings = data['totalListings'] ?? 0;
-        _totalRooms = data['totalRooms'] ?? 0;
-        _occupancyRate = (data['occupancyRate'] as num?)?.toDouble() ?? 86.0;
-        _rating = (data['rating'] as num?)?.toDouble() ?? 4.95;
-        _reviewCount = data['reviewCount'] ?? 38;
-        _earningsThisMonth = (data['earningsThisMonth'] ?? 0).toDouble();
+        _isStarHost = data['isStarHost'] == true || data['isSuperhost'] == true;
+        _isPayoutVerified = data['isPayoutVerified'] == true;
+        _isApproved = data['isApproved'] == true;
+        _isHostVerified = data['isHostVerified'] == true;
+        _hostStatus = data['hostStatus'] ?? (_isApproved ? 'APPROVED' : 'PENDING');
+        _activeListings = (data['activeListings'] as num?)?.toInt() ?? 0;
+        _totalListings = (data['totalListings'] as num?)?.toInt() ?? 0;
+        _totalRooms = (data['totalRooms'] as num?)?.toInt() ?? 0;
+        _occupancyRate = (data['occupancyRate'] as num?)?.toDouble() ?? 0.0;
+        _rating = (data['rating'] as num?)?.toDouble() ?? 0.0;
+        _reviewCount = (data['reviewCount'] as num?)?.toInt() ?? 0;
+        _earningsThisMonth = (data['earningsThisMonth'] as num?)?.toDouble() ?? 0.0;
         _totalEarningsAllTime = (data['totalEarningsAllTime'] as num?)?.toDouble() ?? _earningsThisMonth;
         
         if (data['upcomingGuests'] != null) {

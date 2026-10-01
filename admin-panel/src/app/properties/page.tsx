@@ -121,7 +121,6 @@ const PROPERTY_CATEGORIES = [
   "Studio",
   "Hostel",
   "Homestay",
-  "Hotel",
   "Dorm",
 ];
 

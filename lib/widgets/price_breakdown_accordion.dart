@@ -9,6 +9,7 @@ class PriceBreakdownAccordion extends StatefulWidget {
   final double cleaningFee;
   final double serviceFee;
   final double taxes;
+  final double referralDiscount;
 
   const PriceBreakdownAccordion({
     super.key,
@@ -17,6 +18,7 @@ class PriceBreakdownAccordion extends StatefulWidget {
     this.cleaningFee = 0.0,
     this.serviceFee = 0.0,
     this.taxes = 0.0,
+    this.referralDiscount = 0.0,
   });
 
   @override
@@ -30,7 +32,8 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
   Widget build(BuildContext context) {
     final double subtotal = widget.nightRate * widget.nights;
     final double calculatedTaxes = widget.taxes > 0 ? widget.taxes : ((subtotal + widget.cleaningFee) * 0.18);
-    final double total = subtotal + widget.cleaningFee + widget.serviceFee + calculatedTaxes;
+    final double rawTotal = subtotal + widget.cleaningFee + widget.serviceFee + calculatedTaxes;
+    final double total = (rawTotal - widget.referralDiscount).clamp(0.0, double.infinity);
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -81,6 +84,10 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
                   ],
                   const SizedBox(height: 10),
                   _priceRow('Taxes & GST (18%)', calculatedTaxes),
+                  if (widget.referralDiscount > 0) ...[
+                    const SizedBox(height: 10),
+                    _priceRow('🎁 Referral Reward (10% Cap)', -widget.referralDiscount, isDiscount: true),
+                  ],
                 ],
               ),
             ),
@@ -120,21 +127,25 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
     );
   }
 
-  Widget _priceRow(String label, double amount) {
+  Widget _priceRow(String label, double amount, {bool isDiscount = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-        TweenAnimationBuilder<double>(
-          tween: Tween<double>(begin: 0, end: amount),
-          duration: AppMotion.extended,
-          curve: AppMotion.signatureCurve,
-          builder: (context, val, child) {
-            return Text(
-              '₹${val.toStringAsFixed(2)}',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-            );
-          },
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isDiscount ? FontWeight.w600 : FontWeight.normal,
+            color: isDiscount ? const Color(0xFF059669) : AppColors.textSecondary,
+          ),
+        ),
+        Text(
+          isDiscount ? '-₹${amount.abs().toStringAsFixed(2)}' : '₹${amount.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: isDiscount ? const Color(0xFF059669) : AppColors.textPrimary,
+          ),
         ),
       ],
     );

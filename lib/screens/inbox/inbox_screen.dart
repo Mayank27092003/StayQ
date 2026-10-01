@@ -40,7 +40,7 @@ class _InboxScreenState extends State<InboxScreen> {
             message: 'You need to be logged in to view your messages.',
             buttonText: 'Start Exploring',
             onAction: () {
-              Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+              context.read<AppProvider>().setTabIndex(0);
             },
           ),
         ),
@@ -87,8 +87,12 @@ class _InboxScreenState extends State<InboxScreen> {
                 final chatId = chat['id'];
                 
                 // Determine the other user based on host vs guest
-                final isHost = chat['hostId'] == currentUserId;
+                final isHost = chat['hostId'] == provider.userId || 
+                               chat['hostId'] == currentUserId || 
+                               chat['host']?['firebaseUid'] == currentUserId ||
+                               chat['host']?['id'] == provider.userId;
                 final otherUser = isHost ? chat['guest'] : chat['host'];
+
                 final otherUserName = otherUser?['displayName'] ?? otherUser?['firstName'] ?? 'User';
                 final otherUserAvatar = otherUser?['photoUrl'] ?? otherUser?['avatarUrl'] ?? '';
                 

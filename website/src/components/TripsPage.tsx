@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import {
   Calendar,
@@ -14,8 +16,65 @@ import { useApp } from '../context/AppContext';
 import { Booking, Stay } from '../types';
 
 export const TripsPage: React.FC = () => {
-  const { bookings, cancelBooking, setActiveConfirmation, stays, setSelectedStay } = useApp();
+  const { bookings, cancelBooking, setActiveConfirmation, stays, setSelectedStay, user, setIsAuthModalOpen } = useApp();
   const [filterTab, setFilterTab] = useState<'UPCOMING' | 'COMPLETED' | 'CANCELLED'>('UPCOMING');
+
+  if (!user) {
+    return (
+      <div style={{ minHeight: '85vh', background: 'var(--bg)', padding: '6.5rem 1rem 5rem' }}>
+        <div className="shell" style={{ maxWidth: '640px', textAlign: 'center' }}>
+          <div
+            style={{
+              background: 'var(--white)',
+              borderRadius: '28px',
+              border: '1px solid var(--border)',
+              padding: '4rem 2rem',
+              boxShadow: 'var(--shadow-md)',
+            }}
+          >
+            <div
+              style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '24px',
+                background: 'linear-gradient(135deg, var(--violet) 0%, #7f56d9 100%)',
+                color: 'var(--white)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1.5rem',
+                boxShadow: '0 12px 24px rgba(90, 49, 244, 0.25)',
+              }}
+            >
+              <Calendar size={40} />
+            </div>
+            <h1 className="h1" style={{ fontSize: '2rem', marginBottom: '0.75rem', color: 'var(--ink)' }}>
+              Sign In to View Your Trips
+            </h1>
+            <p
+              className="lead"
+              style={{
+                maxWidth: '480px',
+                margin: '0 auto 2rem',
+                color: 'var(--gray-600)',
+                fontSize: '1.02rem',
+              }}
+            >
+              Sign in to view your upcoming bookings, check-in passes, invoice receipts, and trip itineraries.
+            </p>
+            <button
+              type="button"
+              className="btn btn--primary btn--lg"
+              onClick={() => setIsAuthModalOpen(true)}
+              style={{ padding: '0.85rem 2.2rem', fontSize: '1rem', fontWeight: 700 }}
+            >
+              Sign In to Stay Q
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const upcomingCount = bookings.filter((b) => b.status === 'CONFIRMED').length;
   const completedCount = bookings.filter((b) => b.status === 'COMPLETED').length;

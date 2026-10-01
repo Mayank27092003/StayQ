@@ -102,32 +102,4 @@ export class AdminModerationController {
   ) {
     return this.moderation.resolveReport(id, dto, adminId);
   }
-
-  // ---- Host Applications ---------------------------------------------------
-
-  @Get('host-applications')
-  @ApiOperation({ summary: 'List first-time host applications' })
-  listHostApplications() {
-    return this.moderation.getHostApplications();
-  }
-
-  @Post('host-applications/:id/approve')
-  @AdminRoles(AdminRole.TRUST_SAFETY, AdminRole.OPERATIONS)
-  @ApiOperation({ summary: 'Approve a host application and their first property' })
-  approveHostApplication(
-    @Param('id', ParseUUIDPipe) userId: string,
-    @CurrentUser('id') adminId: string,
-  ) {
-    return this.moderation.approveHostApplication(userId, adminId);
-  }
-
-  @Post('host-applications/:id/reject')
-  @AdminRoles(AdminRole.TRUST_SAFETY, AdminRole.OPERATIONS)
-  @ApiOperation({ summary: 'Reject a host application' })
-  rejectHostApplication(
-    @Param('id', ParseUUIDPipe) userId: string,
-    @CurrentUser('id') adminId: string,
-  ) {
-    return this.moderation.rejectHostApplication(userId, adminId);
-  }
 }

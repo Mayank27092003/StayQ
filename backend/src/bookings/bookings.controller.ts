@@ -15,35 +15,33 @@ export class BookingsController {
 
   @Post()
   createBooking(@CurrentUser() user: any, @Body() createBookingDto: any) {
-    // Assuming createBookingDto doesn't already have guestId, we might inject it or let the service do it.
-    // Let's pass user.id if necessary, or just rely on DTO. Better to enforce user.id.
     createBookingDto.guestId = user.id;
     return this.bookingsService.createBooking(createBookingDto);
   }
 
   @Patch(':id/cancel')
-  cancelBooking(@Param('id') id: string, @Body('reason') reason: string) {
-    return this.bookingsService.cancelBooking(id, reason);
+  cancelBooking(@CurrentUser() user: any, @Param('id') id: string, @Body('reason') reason: string) {
+    return this.bookingsService.cancelBooking(id, reason, user);
   }
 
   @Patch(':id/host-respond')
-  hostRespond(@Param('id') id: string, @Body('accept') accept: boolean) {
-    return this.bookingsService.hostRespond(id, accept);
+  hostRespond(@CurrentUser() user: any, @Param('id') id: string, @Body('accept') accept: boolean) {
+    return this.bookingsService.hostRespond(id, accept, user);
   }
 
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.bookingsService.updateStatus(id, status);
+  updateStatus(@CurrentUser() user: any, @Param('id') id: string, @Body('status') status: string) {
+    return this.bookingsService.updateStatus(id, status, user);
   }
 
   @Get(':id/access-details')
-  getAccessDetails(@Param('id') id: string) {
-    return this.bookingsService.getAccessDetails(id);
+  getAccessDetails(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.bookingsService.getAccessDetails(id, user);
   }
 
   @Get(':id/ticket')
-  async getTicket(@Param('id') id: string) {
-    const buffer = await this.bookingsService.getTicketPass(id);
+  async getTicket(@CurrentUser() user: any, @Param('id') id: string) {
+    const buffer = await this.bookingsService.getTicketPass(id, user);
     return {
       bookingId: id,
       ticketImageBase64: buffer.toString('base64'),
@@ -51,22 +49,23 @@ export class BookingsController {
   }
 
   @Post(':id/cancel')
-  postCancelBooking(@Param('id') id: string, @Body('reason') reason: string) {
-    return this.bookingsService.cancelBooking(id, reason || 'Guest requested cancellation');
+  postCancelBooking(@CurrentUser() user: any, @Param('id') id: string, @Body('reason') reason: string) {
+    return this.bookingsService.cancelBooking(id, reason || 'Guest requested cancellation', user);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.bookingsService.findOne(id);
+  findOne(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.bookingsService.findOne(id, user);
   }
 
   @Get()
   findAll(@CurrentUser() user: any, @Query('adminView') adminView?: string, @Query('guestId') guestId?: string) {
+    // If not admin, strictly scope queries to the authenticated user's own bookings
+    if (!user?.isAdmin) {
+      return this.bookingsService.findByGuestId(user.id);
+    }
     if (guestId) {
       return this.bookingsService.findByGuestId(guestId);
-    }
-    if (user?.id && adminView !== 'true') {
-      return this.bookingsService.findByGuestId(user.id);
     }
     return this.bookingsService.findAll();
   }

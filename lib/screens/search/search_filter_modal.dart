@@ -256,7 +256,6 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                                     child: AnimatedDefaultTextStyle(
                                       duration: const Duration(milliseconds: 250),
                                       style: TextStyle(
-                                        fontFamily: 'Inter',
                                         fontWeight: !isExp ? FontWeight.w800 : FontWeight.w600,
                                         color: !isExp ? Colors.white : AppColors.textPrimary.withOpacity(0.6),
                                         fontSize: 16,
@@ -275,7 +274,6 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                                     child: AnimatedDefaultTextStyle(
                                       duration: const Duration(milliseconds: 250),
                                       style: TextStyle(
-                                        fontFamily: 'Inter',
                                         fontWeight: isExp ? FontWeight.w800 : FontWeight.w600,
                                         color: isExp ? Colors.white : AppColors.textPrimary.withOpacity(0.6),
                                         fontSize: 16,

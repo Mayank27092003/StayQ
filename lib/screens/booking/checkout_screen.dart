@@ -23,6 +23,7 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedPaymentMethod = 'Apple Pay';
   bool _showCalendar = false;
+  bool _applyReferral = false;
   late DateTimeRange _tripDates;
 
   @override
@@ -178,6 +179,74 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
               const SizedBox(height: 20),
 
+              // Referral Rewards Redemption Card (10% Checkout Cap)
+              if (provider.referralBalance > 0)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primary.withValues(alpha: 0.06),
+                        const Color(0xFF6366F1).withValues(alpha: 0.08),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.card_giftcard_rounded, color: AppColors.primary, size: 20),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Redeem Referral Balance',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                            ],
+                          ),
+                          Switch(
+                            value: _applyReferral,
+                            activeThumbColor: Colors.white,
+                            activeTrackColor: AppColors.primary,
+                            onChanged: (val) {
+                              AppMotion.tapSelection();
+                              setState(() => _applyReferral = val);
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Available: ₹${provider.referralBalance.toStringAsFixed(0)}',
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFECFDF5),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFFA7F3D0)),
+                            ),
+                            child: Text(
+                              'Max 10% Cap: -₹${((stay.pricePerNight * (nights > 0 ? nights : 1)) * 0.10).floor().toString()}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
               // Interactive Price Accordion with Number Roll-Up Counter
               PriceBreakdownAccordion(
                 nightRate: stay.pricePerNight,
@@ -185,6 +254,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 cleaningFee: 0.0,
                 serviceFee: 0.0,
                 taxes: ((stay.pricePerNight * (nights > 0 ? nights : 1)) * 0.18).roundToDouble(),
+                referralDiscount: _applyReferral && provider.referralBalance > 0
+                    ? (provider.referralBalance < ((stay.pricePerNight * (nights > 0 ? nights : 1)) * 0.10).floorToDouble()
+                        ? provider.referralBalance
+                        : ((stay.pricePerNight * (nights > 0 ? nights : 1)) * 0.10).floorToDouble())
+                    : 0.0,
               ),
 
               const SizedBox(height: 24),

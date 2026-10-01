@@ -140,7 +140,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             text: 'Terms of Service',
                             style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
                             recognizer: TapGestureRecognizer()..onTap = () {
-                              launchUrl(Uri.parse('https://stayq.in/terms'));
+                              launchUrl(Uri.parse('https://stayq.space/terms'));
                             },
                           ),
                           const TextSpan(text: ' and '),
@@ -148,7 +148,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             text: 'Privacy Policy',
                             style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
                             recognizer: TapGestureRecognizer()..onTap = () {
-                              launchUrl(Uri.parse('https://stayq.in/privacy'));
+                              launchUrl(Uri.parse('https://stayq.space/privacy'));
                             },
                           ),
                         ],

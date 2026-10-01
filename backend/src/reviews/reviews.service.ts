@@ -1,13 +1,18 @@
 import { Injectable, ForbiddenException, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 
 @Injectable()
 export class ReviewsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly loyaltyService: LoyaltyService,
+  ) {}
 
   async createReview(guestId: string, dto: { propertyId: string, bookingId: string, rating: number, text?: string, photos?: string[] }) {
     const booking = await this.prisma.booking.findUnique({
-      where: { id: dto.bookingId }
+      where: { id: dto.bookingId },
+      include: { property: { select: { title: true } } }
     });
 
     if (!booking) throw new NotFoundException('Booking not found');
@@ -22,7 +27,7 @@ export class ReviewsService {
 
     const visibleAt = new Date(); // Simplified for now. Should handle 14-day or both reviewed logic.
 
-    return this.prisma.review.create({
+    const review = await this.prisma.review.create({
       data: {
         propertyId: dto.propertyId,
         bookingId: dto.bookingId,
@@ -33,6 +38,19 @@ export class ReviewsService {
         visibleAt
       }
     });
+
+    // Auto-award 10 loyalty points for verified review
+    try {
+      await this.loyaltyService.awardReviewPoints(
+        guestId,
+        review.id,
+        booking.property?.title,
+      );
+    } catch (e) {
+      // Non-blocking
+    }
+
+    return review;
   }
 
   async replyToReview(hostId: string, reviewId: string, reply: string) {

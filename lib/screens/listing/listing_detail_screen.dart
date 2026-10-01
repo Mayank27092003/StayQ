@@ -20,8 +20,12 @@ import '../../constants/stay_amenities.dart';
 import '../booking/checkout_screen.dart';
 import '../booking/rv_checkout_screen.dart';
 import '../booking/camping_checkout_screen.dart';
+import '../inbox/chat_detail_screen.dart';
+import '../../providers/messaging_provider.dart';
 
 class ListingDetailScreen extends StatefulWidget {
+
+
   final StayModel stay;
 
   const ListingDetailScreen({super.key, required this.stay});
@@ -107,7 +111,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Link copied to clipboard: https://stayq.in/stays/${stay.id}'),
+                              content: Text('Link copied to clipboard: https://stayq.space/stays/${stay.id}'),
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
@@ -285,6 +289,60 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                         ),
                       ],
 
+                      if (stay.propertyType == 'RV' || stay.category.toLowerCase().contains('rv')) ...[
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFEDE9FE), Color(0xFFF5F3FF)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.explore_rounded, color: AppColors.primary, size: 18),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    "India's 1st Overland & RV Network",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  _buildRvBadge(Icons.navigation_rounded, 'Pickup & Drop', 'Hubs set by Host'),
+                                  const SizedBox(width: 8),
+                                  _buildRvBadge(Icons.speed_rounded, 'Daily Km Quota', '100 km/day incl.'),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  _buildRvBadge(Icons.ev_station_rounded, 'Power Hookup', '220V shore dock'),
+                                  const SizedBox(width: 8),
+                                  _buildRvBadge(Icons.hotel_rounded, 'Resort Pit-Stops', 'Partner access'),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Divider(color: AppColors.borderLight),
+                        ),
+                      ],
+
                       // Host Card with Contact Action
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -318,10 +376,38 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                             ],
                           ),
                           OutlinedButton.icon(
-                            onPressed: () {
+                            onPressed: () async {
+                              AppMotion.tapSelection();
+                              final provider = Provider.of<AppProvider>(context, listen: false);
+                              if (!provider.isLoggedIn) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Please log in to chat with the host')),
+                                );
+                                return;
+                              }
+
+                              final messaging = Provider.of<MessagingProvider>(context, listen: false);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Starting chat with ${stay.hostName}...')),
+                                SnackBar(content: Text('Connecting to ${stay.hostName}...'), duration: const Duration(seconds: 1)),
                               );
+
+                              final convId = await messaging.createOrGetConversation(
+                                hostId: stay.hostId.isNotEmpty ? stay.hostId : stay.id,
+                                propertyId: stay.id,
+                              );
+
+                              if (context.mounted) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ChatDetailScreen(
+                                      chatId: convId ?? 'conv_${stay.id}',
+                                      otherUserName: stay.hostName.isNotEmpty ? stay.hostName : 'Host',
+                                      otherUserAvatar: stay.hostAvatar,
+                                    ),
+                                  ),
+                                );
+                              }
                             },
                             icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: AppColors.primary),
                             label: const Text('Contact Host', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
@@ -331,6 +417,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             ),
                           ),
+
                         ],
                       ),
 
@@ -490,7 +577,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                         child: Divider(color: AppColors.borderLight),
                       ),
 
-                      // Location & Neighborhood (Airbnb-Style Privacy)
+                      // Location & Neighborhood Privacy Protection
                       Row(
                         children: const [
                           Icon(Icons.location_on_rounded, color: AppColors.primary, size: 22),
@@ -742,6 +829,45 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             ).animate().slideY(begin: 1.0, duration: 600.ms, curve: Curves.easeOutBack).fadeIn(duration: 600.ms),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRvBadge(IconData icon, String title, String subtitle) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 14, color: AppColors.primary),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.textPrimary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }

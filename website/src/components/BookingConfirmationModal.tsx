@@ -1,3 +1,6 @@
+"use client";
+
+import { navigateTo } from '../utils/navigation';
 import React from 'react';
 import { CheckCircle2, QrCode, Download, Calendar, MapPin, Sparkles, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -9,7 +12,7 @@ export const BookingConfirmationModal: React.FC = () => {
 
   const handleGoToTrips = () => {
     setActiveConfirmation(null);
-    window.location.hash = '#/trips';
+    navigateTo('/trips');
   };
 
   return (

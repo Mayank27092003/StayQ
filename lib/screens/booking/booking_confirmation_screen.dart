@@ -11,6 +11,7 @@ import '../../widgets/confetti_burst.dart';
 import '../../widgets/bouncing_widget.dart';
 import '../../services/qube_trigger_service.dart';
 import '../../widgets/custom_toast.dart';
+import '../../navigation/app_router.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
 
@@ -55,12 +56,20 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
   Widget build(BuildContext context) {
     final stay = widget.stay;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          context.read<AppProvider>().setTabIndex(0);
+          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Column(
             children: [
               const SizedBox(height: 12),
 
@@ -329,14 +338,18 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 onPressed: () {
-                  Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+                  context.read<AppProvider>().setTabIndex(2);
+                  Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);
                 },
               ),
               const SizedBox(height: 12),
               TextButton.icon(
                 icon: const Icon(Icons.home_rounded, size: 18, color: AppColors.textSecondary),
                 label: const Text('Back to Explore', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
-                onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false),
+                onPressed: () {
+                  context.read<AppProvider>().setTabIndex(0);
+                  Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);
+                },
               ),
 
               const SizedBox(height: 24),
@@ -344,6 +357,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 }

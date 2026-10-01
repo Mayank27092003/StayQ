@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, UnauthorizedException, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../notifications/email.service';
 import * as crypto from 'crypto';
@@ -26,16 +26,98 @@ function generateSecurePassword(): string {
 }
 
 @Injectable()
-export class AdminStaffService {
+export class AdminStaffService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
   ) {}
 
+  async onModuleInit() {
+    // Check and auto-seed initial 3 staff accounts if database has 0 staff
+    try {
+      const count = await this.prisma.adminStaff.count();
+      if (count === 0) {
+        await this.seedInitialStaff();
+      }
+    } catch (e) {
+      console.warn('[AdminStaffService] Auto-seed check failed or skipped:', e);
+    }
+  }
+
   /**
-   * List all staff members
+   * Seed 3 initial staff accounts matching the user's operational structure:
+   * 1. Bookings & Inventory Staff (SQ-EMP-1001)
+   * 2. Accounts & Finance Staff (SQ-EMP-1002)
+   * 3. Customer Support Staff (SQ-EMP-1003)
+   */
+  async seedInitialStaff() {
+    const defaultPassword = 'StayQ@Staff2026';
+    const passwordHash = hashPassword(defaultPassword);
+
+    const initialStaff = [
+      {
+        staffId: 'SQ-EMP-1001',
+        fullName: 'Aarav Sharma',
+        email: 'bookings@stayq.space',
+        department: 'Operations & Ground Ops',
+        role: 'STAFF',
+        status: 'ACTIVE',
+        allowedModules: ['bookings', 'properties', 'experiences'],
+        phoneNumber: '+91 98765 11001',
+      },
+      {
+        staffId: 'SQ-EMP-1002',
+        fullName: 'Neha Verma',
+        email: 'accounts@stayq.space',
+        department: 'Finance & Accounts',
+        role: 'STAFF',
+        status: 'ACTIVE',
+        allowedModules: ['revenue', 'taxes', 'analytics', 'export'],
+        phoneNumber: '+91 98765 11002',
+      },
+      {
+        staffId: 'SQ-EMP-1003',
+        fullName: 'Rohan Patel',
+        email: 'support.desk@stayq.space',
+        department: 'Customer Support Desk',
+        role: 'STAFF',
+        status: 'ACTIVE',
+        allowedModules: ['support', 'reviews'],
+        phoneNumber: '+91 98765 11003',
+      },
+    ];
+
+    for (const s of initialStaff) {
+      const exists = await this.prisma.adminStaff.findFirst({
+        where: { OR: [{ email: s.email }, { staffId: s.staffId }] },
+      });
+      if (!exists) {
+        await this.prisma.adminStaff.create({
+          data: {
+            ...s,
+            passwordHash,
+          },
+        });
+        // Create initial creation audit log
+        await this.prisma.staffActivityLog.create({
+          data: {
+            staffId: 'SYSTEM',
+            staffName: 'Platform Initialization',
+            email: 'admin@stayq.space',
+            module: 'staff',
+            action: 'INITIAL_SEED',
+            description: `Provisioned initial staff account ${s.staffId} (${s.fullName}) for ${s.department}`,
+          },
+        });
+      }
+    }
+  }
+
+  /**
+   * List all staff members with live attendance calculation
    */
   async getAllStaff() {
+    const now = Date.now();
     const staff = await this.prisma.adminStaff.findMany({
       orderBy: { createdAt: 'desc' },
       select: {
@@ -49,14 +131,39 @@ export class AdminStaffService {
         allowedModules: true,
         phoneNumber: true,
         lastLoginAt: true,
+        lastLogoutAt: true,
+        lastActiveAt: true,
+        isOnline: true,
+        currentSessionIp: true,
         createdAt: true,
         updatedAt: true,
       },
     });
+
+    // Compute live attendance status based on heartbeat freshness
+    const staffWithPresence = staff.map((s) => {
+      let presenceStatus: 'ONLINE' | 'IDLE' | 'OFFLINE' = 'OFFLINE';
+      if (s.isOnline && s.lastActiveAt) {
+        const diffMs = now - new Date(s.lastActiveAt).getTime();
+        if (diffMs < 2.5 * 60 * 1000) {
+          presenceStatus = 'ONLINE';
+        } else if (diffMs < 5 * 60 * 1000) {
+          presenceStatus = 'IDLE';
+        } else {
+          presenceStatus = 'OFFLINE';
+        }
+      }
+
+      return {
+        ...s,
+        presenceStatus,
+      };
+    });
+
     return {
       success: true,
-      count: staff.length,
-      staff,
+      count: staffWithPresence.length,
+      staff: staffWithPresence,
     };
   }
 
@@ -71,6 +178,9 @@ export class AdminStaffService {
     allowedModules: string[];
     phoneNumber?: string;
     customPassword?: string;
+    customStaffId?: string;
+    createdById?: string;
+    createdByName?: string;
   }) {
     const existing = await this.prisma.adminStaff.findFirst({
       where: { email: dto.email.trim().toLowerCase() },
@@ -79,9 +189,17 @@ export class AdminStaffService {
       throw new BadRequestException('A staff member with this email already exists.');
     }
 
-    // Generate unique Staff ID: e.g. SQ-EMP-1049
-    const count = await this.prisma.adminStaff.count();
-    const staffId = `SQ-EMP-${1000 + count + 1}`;
+    // Generate unique Staff ID or use custom
+    let staffId = dto.customStaffId?.trim().toUpperCase();
+    if (!staffId) {
+      const count = await this.prisma.adminStaff.count();
+      staffId = `SQ-EMP-${1000 + count + 1}`;
+    } else {
+      const idExists = await this.prisma.adminStaff.findUnique({ where: { staffId } });
+      if (idExists) {
+        throw new BadRequestException(`Staff ID ${staffId} is already assigned to another employee.`);
+      }
+    }
 
     const plainPassword = dto.customPassword?.trim() || generateSecurePassword();
     const passwordHash = hashPassword(plainPassword);
@@ -92,14 +210,26 @@ export class AdminStaffService {
         fullName: dto.fullName.trim(),
         email: dto.email.trim().toLowerCase(),
         passwordHash,
-        department: dto.department || 'Operations',
+        department: dto.department || 'Operations & Ground Ops',
         role: dto.role || 'STAFF',
         status: 'ACTIVE',
         allowedModules: dto.allowedModules && dto.allowedModules.length > 0
           ? dto.allowedModules
           : ['properties', 'bookings'],
         phoneNumber: dto.phoneNumber?.trim() || null,
+        createdById: dto.createdById || null,
       },
+    });
+
+    // Log Activity
+    await this.logActivity({
+      staffId: dto.createdById || 'MASTER_ADMIN',
+      staffName: dto.createdByName || 'Master Admin',
+      email: 'admin@stayq.space',
+      module: 'staff',
+      action: 'CREATE_STAFF',
+      description: `Created new staff member ${newStaff.staffId} (${newStaff.fullName}) with modules: ${newStaff.allowedModules.join(', ')}`,
+      targetId: newStaff.id,
     });
 
     // Send Welcome Email with credentials via Hostinger SMTP
@@ -150,6 +280,8 @@ export class AdminStaffService {
     allowedModules?: string[];
     phoneNumber?: string;
     newPassword?: string;
+    adminStaffId?: string;
+    adminStaffName?: string;
   }) {
     const staff = await this.prisma.adminStaff.findUnique({ where: { id } });
     if (!staff) {
@@ -170,6 +302,17 @@ export class AdminStaffService {
     const updated = await this.prisma.adminStaff.update({
       where: { id },
       data: updateData,
+    });
+
+    // Log Activity
+    await this.logActivity({
+      staffId: dto.adminStaffId || 'MASTER_ADMIN',
+      staffName: dto.adminStaffName || 'Master Admin',
+      email: 'admin@stayq.space',
+      module: 'staff',
+      action: 'UPDATE_STAFF',
+      description: `Updated permissions/profile for staff ${updated.staffId} (${updated.fullName}). Status: ${updated.status}`,
+      targetId: updated.id,
     });
 
     return {
@@ -204,7 +347,17 @@ export class AdminStaffService {
 
     await this.prisma.adminStaff.update({
       where: { id },
-      data: { passwordHash },
+      data: { passwordHash, sessionRevokedAt: new Date(), isOnline: false },
+    });
+
+    await this.logActivity({
+      staffId: 'MASTER_ADMIN',
+      staffName: 'Master Admin',
+      email: 'admin@stayq.space',
+      module: 'staff',
+      action: 'RESET_PASSWORD',
+      description: `Reset password for staff member ${staff.staffId} (${staff.fullName})`,
+      targetId: staff.id,
     });
 
     // Dispatch update mail
@@ -241,6 +394,16 @@ export class AdminStaffService {
       throw new NotFoundException('Staff member not found.');
     }
 
+    await this.logActivity({
+      staffId: 'MASTER_ADMIN',
+      staffName: 'Master Admin',
+      email: 'admin@stayq.space',
+      module: 'staff',
+      action: 'REVOKE_STAFF',
+      description: `Revoked and deleted staff account ${staff.staffId} (${staff.fullName})`,
+      targetId: staff.id,
+    });
+
     await this.prisma.adminStaff.delete({ where: { id } });
     return {
       success: true,
@@ -249,9 +412,9 @@ export class AdminStaffService {
   }
 
   /**
-   * Staff login authentication
+   * Staff login authentication with presence and audit tracking
    */
-  async staffLogin(identifier: string, password: string) {
+  async staffLogin(identifier: string, password: string, ipAddress?: string, userAgent?: string) {
     const cleanId = identifier.trim().toLowerCase();
     const staff = await this.prisma.adminStaff.findFirst({
       where: {
@@ -275,10 +438,30 @@ export class AdminStaffService {
       throw new UnauthorizedException('Invalid Staff ID / Email or Password.');
     }
 
-    // Update last login timestamp
+    const now = new Date();
+
+    // Mark online and update timestamps
     await this.prisma.adminStaff.update({
       where: { id: staff.id },
-      data: { lastLoginAt: new Date() },
+      data: {
+        lastLoginAt: now,
+        lastActiveAt: now,
+        isOnline: true,
+        currentSessionIp: ipAddress || 'Direct Gateway',
+      },
+    });
+
+    // Record login activity in audit log
+    await this.logActivity({
+      staffId: staff.staffId,
+      staffName: staff.fullName,
+      email: staff.email,
+      module: 'auth',
+      action: 'STAFF_LOGIN',
+      description: `Staff ${staff.staffId} logged in to Command Center from ${ipAddress || 'Web Gateway'}`,
+      targetId: staff.id,
+      ipAddress,
+      userAgent,
     });
 
     return {
@@ -292,7 +475,185 @@ export class AdminStaffService {
         department: staff.department,
         role: staff.role,
         allowedModules: staff.allowedModules,
+        lastLoginAt: now,
       },
+    };
+  }
+
+  /**
+   * Staff Heartbeat — keeps presence alive while browser tab is open
+   */
+  async staffHeartbeat(staffId: string, ipAddress?: string) {
+    const staff = await this.prisma.adminStaff.findUnique({
+      where: { staffId: staffId.trim().toUpperCase() },
+    });
+
+    if (!staff) {
+      return { success: false, message: 'Staff member not recognized.' };
+    }
+
+    // Check if session was revoked by Master Admin
+    if (staff.sessionRevokedAt && staff.lastLoginAt) {
+      if (new Date(staff.sessionRevokedAt).getTime() > new Date(staff.lastLoginAt).getTime()) {
+        await this.prisma.adminStaff.update({
+          where: { id: staff.id },
+          data: { isOnline: false },
+        });
+        throw new UnauthorizedException('Your session was revoked by Master Admin. Please sign in again.');
+      }
+    }
+
+    await this.prisma.adminStaff.update({
+      where: { id: staff.id },
+      data: {
+        lastActiveAt: new Date(),
+        isOnline: true,
+        currentSessionIp: ipAddress || staff.currentSessionIp,
+      },
+    });
+
+    return { success: true, isOnline: true };
+  }
+
+  /**
+   * Staff Logout — cleans up presence and logs event
+   */
+  async staffLogout(staffId: string, ipAddress?: string) {
+    const cleanId = staffId.trim().toUpperCase();
+    const staff = await this.prisma.adminStaff.findFirst({
+      where: { OR: [{ staffId: cleanId }, { email: staffId.trim().toLowerCase() }] },
+    });
+
+    if (staff) {
+      const now = new Date();
+      await this.prisma.adminStaff.update({
+        where: { id: staff.id },
+        data: {
+          isOnline: false,
+          lastLogoutAt: now,
+          lastActiveAt: now,
+        },
+      });
+
+      await this.logActivity({
+        staffId: staff.staffId,
+        staffName: staff.fullName,
+        email: staff.email,
+        module: 'auth',
+        action: 'STAFF_LOGOUT',
+        description: `Staff ${staff.staffId} logged out cleanly`,
+        targetId: staff.id,
+        ipAddress,
+      });
+    }
+
+    return { success: true, message: 'Logged out successfully.' };
+  }
+
+  /**
+   * Master Admin Force Logout — instantly kicks staff off the system
+   */
+  async forceLogoutStaff(id: string, adminStaffId?: string, adminStaffName?: string) {
+    const staff = await this.prisma.adminStaff.findUnique({ where: { id } });
+    if (!staff) {
+      throw new NotFoundException('Staff member not found.');
+    }
+
+    const now = new Date();
+    await this.prisma.adminStaff.update({
+      where: { id },
+      data: {
+        isOnline: false,
+        sessionRevokedAt: now,
+        lastLogoutAt: now,
+      },
+    });
+
+    await this.logActivity({
+      staffId: adminStaffId || 'MASTER_ADMIN',
+      staffName: adminStaffName || 'Master Admin',
+      email: 'admin@stayq.space',
+      module: 'staff',
+      action: 'FORCE_LOGOUT',
+      description: `Force terminated active session for staff member ${staff.staffId} (${staff.fullName})`,
+      targetId: staff.id,
+    });
+
+    return {
+      success: true,
+      message: `Active session for ${staff.staffId} (${staff.fullName}) has been terminated.`,
+    };
+  }
+
+  /**
+   * Activity Logger: Records any operational action taken by staff
+   */
+  async logActivity(data: {
+    staffId: string;
+    staffName: string;
+    email: string;
+    module: string;
+    action: string;
+    description: string;
+    targetId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    try {
+      return await this.prisma.staffActivityLog.create({
+        data: {
+          staffId: data.staffId,
+          staffName: data.staffName,
+          email: data.email,
+          module: data.module,
+          action: data.action,
+          description: data.description,
+          targetId: data.targetId || null,
+          ipAddress: data.ipAddress || null,
+          userAgent: data.userAgent || null,
+        },
+      });
+    } catch (e) {
+      console.warn('[StaffService] Activity log write warning:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch recent staff activity audit logs
+   */
+  async getStaffActivities(query: {
+    staffId?: string;
+    module?: string;
+    limit?: number;
+    skip?: number;
+  }) {
+    const limit = Math.min(Number(query.limit || 50), 100);
+    const skip = Number(query.skip || 0);
+
+    const where: any = {};
+    if (query.staffId && query.staffId !== 'ALL') {
+      where.staffId = query.staffId;
+    }
+    if (query.module && query.module !== 'ALL') {
+      where.module = query.module;
+    }
+
+    const [total, activities] = await Promise.all([
+      this.prisma.staffActivityLog.count({ where }),
+      this.prisma.staffActivityLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip,
+      }),
+    ]);
+
+    return {
+      success: true,
+      total,
+      count: activities.length,
+      activities,
     };
   }
 }

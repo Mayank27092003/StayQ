@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { X, ArrowRight, ShieldCheck, Check, Smartphone } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -140,7 +142,7 @@ export const AuthModal: React.FC = () => {
           <img src="/images/logo_sq.png" alt="Stay Q" className="auth-modal__logo" />
           <h2 className="h3">Welcome to Stay Q</h2>
           <p className="lead" style={{ fontSize: '0.95rem' }}>
-            Sign in with your real Firebase phone number or Google account to sync trips.
+            Sign in with your mobile number or Google account to access your bookings &amp; exclusive stays.
           </p>
         </div>
 
@@ -225,7 +227,7 @@ export const AuthModal: React.FC = () => {
 
         <div className="auth-modal__footer">
           <ShieldCheck size={16} />
-          <span>Real Firebase &amp; NestJS PostgreSQL Synced Authentication</span>
+          <span>100% Safe &amp; Encrypted Verification</span>
         </div>
       </div>
     </div>

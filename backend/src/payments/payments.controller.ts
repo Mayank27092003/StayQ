@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Body, Headers, Param, UseGuards, Req } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
+import { AdminGuard } from '../admin/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 
@@ -85,7 +86,7 @@ export class PaymentsController {
    * 4. INITIATE REFUND
    */
   @Post('refund')
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(FirebaseAuthGuard, AdminGuard)
   async initiateRefund(
     @Body() body: {
       orderId: string;

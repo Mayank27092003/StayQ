@@ -54,6 +54,7 @@ def load_env_vars():
         "GROQ_API_KEY", "DATABASE_URL", "MSG91_AUTH_KEY", "MSG91_TEMPLATE_ID",
         "CASHFREE_APP_ID", "CASHFREE_CLIENT_ID", "CASHFREE_SECRET_KEY",
         "CASHFREE_CLIENT_SECRET", "CASHFREE_ENV", "CASHFREE_BASE_URL",
+        "CASHFREE_PUBLIC_KEY",
         "CASHFREE_PG_BASE_URL", "CASHFREE_PG_APP_ID", "CASHFREE_PG_SECRET_KEY",
         "SMTP_HOST", "SMTP_PORT", "SMTP_SECURE", "SMTP_USER", "SMTP_PASS", "SMTP_FROM"
     ]
@@ -97,6 +98,13 @@ def get_gcloud_token():
         sys.exit(1)
 
 
+def get_firebase_cmd():
+    npm_fb = Path(os.environ.get("APPDATA", "")) / "npm" / "firebase.cmd"
+    if npm_fb.exists():
+        return f'"{npm_fb}"'
+    return "firebase"
+
+
 def deploy_website_to_firebase():
     log("WEBSITE", "Step 1: Building Stay Q Customer Website...")
     run_cmd("npm run build", cwd=WEBSITE_DIR)
@@ -108,7 +116,8 @@ def deploy_website_to_firebase():
         log_error("website/dist does not exist after build.")
         sys.exit(1)
 
-    run_cmd(f'npx --yes firebase-tools deploy --only hosting:website --project {PROJECT_ID}', cwd=ROOT_DIR)
+    fb_cmd = get_firebase_cmd()
+    run_cmd(f'{fb_cmd} deploy --only hosting:website --project {PROJECT_ID} --non-interactive', cwd=ROOT_DIR)
     log_success("Customer Website is 100% Live on: https://stayq.space")
 
 
@@ -116,8 +125,7 @@ def deploy_admin_and_backend():
     log("ADMIN", "Step 1: Building Admin Panel (Next.js Static Export)...")
     run_cmd("npm run build", cwd=ADMIN_DIR)
 
-    log("SYNC", "Step 2: Syncing Admin Panel to backend/public...")
-    admin_dist = ADMIN_DIR / "dist"
+    admin_dist = ADMIN_DIR / "dist" if (ADMIN_DIR / "dist").exists() else ADMIN_DIR / "out"
     backend_public = BACKEND_DIR / "public"
 
     if os.name == "nt":
@@ -140,7 +148,8 @@ def deploy_admin_and_backend():
     )
 
     log("FIREBASE ADMIN", "Step 4: Deploying Admin Domain Routing (stayq-admin)...")
-    run_cmd(f'npx --yes firebase-tools deploy --only hosting:admin --project {PROJECT_ID}', cwd=ROOT_DIR)
+    fb_cmd = get_firebase_cmd()
+    run_cmd(f'{fb_cmd} deploy --only hosting:admin --project {PROJECT_ID} --non-interactive', cwd=ROOT_DIR)
 
     log_success("Admin Panel & Backend API are 100% Live on: https://admin.stayq.space & https://stayq-api-608570851336.asia-south1.run.app")
 

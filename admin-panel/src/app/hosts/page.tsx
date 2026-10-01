@@ -101,11 +101,11 @@ export default function HostManagement() {
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-md border border-outline-variant shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-sm">
-            <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Total Superhosts</span>
+            <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Total Star Hosts</span>
             <span className="material-symbols-outlined text-outline">star</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="font-display-lg text-display-lg text-on-surface">{summary?.superhosts ?? "-"}</span>
+            <span className="font-display-lg text-display-lg text-on-surface">{summary?.starhosts ?? "-"}</span>
           </div>
         </div>
       </div>

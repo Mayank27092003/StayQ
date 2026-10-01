@@ -69,11 +69,14 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
       case 'noc':
         provider.updatePropertyDocuments(landlordNoc: filePath);
         break;
-      case 'trade':
-        provider.updatePropertyDocuments(tradeLicense: filePath);
+      case 'society_noc':
+        provider.updatePropertyDocuments(societyNoc: filePath);
         break;
       case 'owner_id':
         provider.updatePropertyDocuments(ownerIdProof: filePath);
+        break;
+      case 'selfie_face':
+        provider.updatePropertyDocuments(selfieFaceProof: filePath);
         break;
     }
   }
@@ -91,7 +94,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
         children: [
           // Screen Title
           const Text(
-            'Property Documents & Legal Ownership',
+            'Property Documents & Host Verification',
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w900,
@@ -101,7 +104,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
           ).animate().fadeIn().slideX(),
           const SizedBox(height: 6),
           const Text(
-            'Submit proof of property ownership or lease agreement. This is a one-time verification for your StarHost credentials.',
+            'Submit proof of legal ownership or registered lease agreement, along with host ID and live selfie match.',
             style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary, height: 1.4),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 18),
@@ -153,9 +156,9 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
 
           const SizedBox(height: 24),
 
-          // 1. Ownership Type Selection
+          // 1. Ownership Type Selection (Two Options Only: Owned vs Leased)
           const Text(
-            'Select Ownership Type',
+            'Select Property Ownership Type',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 10),
@@ -167,25 +170,16 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
                 type: 'OWNED',
                 icon: Icons.home_rounded,
                 label: 'Owned Property',
-                subtitle: 'I am the Owner',
+                subtitle: 'I am the Legal Owner',
                 isDark: isDark,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               _buildOwnershipTab(
                 provider,
                 type: 'LEASED_SUBLET',
                 icon: Icons.description_rounded,
                 label: 'Leased / Sublet',
-                subtitle: 'Rented + NOC',
-                isDark: isDark,
-              ),
-              const SizedBox(width: 10),
-              _buildOwnershipTab(
-                provider,
-                type: 'COMMERCIAL_HOTEL',
-                icon: Icons.hotel_rounded,
-                label: 'Hotel / Resort',
-                subtitle: 'Trade License',
+                subtitle: 'Rented + Landlord NOC',
                 isDark: isDark,
               ),
             ],
@@ -196,10 +190,8 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
           // 2. Dynamic Required Document Cards Based on Ownership
           if (provider.ownershipType == 'OWNED') ...[
             _buildOwnedDocumentsSection(provider, isDark),
-          ] else if (provider.ownershipType == 'LEASED_SUBLET') ...[
-            _buildLeasedDocumentsSection(provider, isDark),
           ] else ...[
-            _buildCommercialHotelDocumentsSection(provider, isDark),
+            _buildLeasedDocumentsSection(provider, isDark),
           ],
 
           const SizedBox(height: 24),
@@ -305,22 +297,40 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // OWNED PROPERTY DOCUMENTS (Electricity Bill + Registry / Sale Deed)
+  // ══════════════════════════════════════════════════════════════════════════
+  // OWNED PROPERTY DOCUMENTS (No Landlord NOC, Society NOC only for flats)
   // ══════════════════════════════════════════════════════════════════════════
   Widget _buildOwnedDocumentsSection(HostOnboardingProvider provider, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Required Ownership Proofs (Ghar ke Kagaj)',
+          'Required Ownership Documents',
           style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 6),
+        const Text(
+          'As the direct property owner, landlord NOC is not required.',
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 14),
 
-        // Document 1: Electricity / Utility Bill or Property Tax
+        // Document 1: Sale Deed / Registry Papers / Property Tax
         _buildUploadCard(
-          title: '1. Electricity / Utility Bill or Property Tax Receipt',
-          subtitle: 'Recent bill (within 3 months) showing property address & owner name.',
+          title: '1. Sale Deed / Property Registry / Tax Receipt *',
+          subtitle: 'Ownership title deed, 7/12 extract, or recent property tax receipt.',
+          docPath: provider.propertyRegistryDocPath,
+          icon: Icons.assignment_rounded,
+          isDark: isDark,
+          onUpload: () => _pickDocument('registry'),
+        ),
+
+        const SizedBox(height: 14),
+
+        // Document 2: Electricity / Utility Bill
+        _buildUploadCard(
+          title: '2. Electricity / Water Utility Bill (Latest 3 Months) *',
+          subtitle: 'Active utility bill showing property address & owner name.',
           docPath: provider.electricityBillDocPath,
           icon: Icons.electric_bolt_rounded,
           isDark: isDark,
@@ -329,21 +339,100 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
 
         const SizedBox(height: 14),
 
-        // Document 2: Sale Deed / Registry Papers / Title Deed
-        _buildUploadCard(
-          title: '2. Sale Deed / Property Registry Papers / Khata Certificate',
-          subtitle: 'Front page / index page of registry establishing legal title.',
-          docPath: provider.propertyRegistryDocPath,
-          icon: Icons.assignment_rounded,
-          isDark: isDark,
-          onUpload: () => _pickDocument('registry'),
+        // Society / Apartment Toggle
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.borderLight),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Is this inside a Flat, Apartment or Gated Society?',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    ),
+                    Text(
+                      provider.isInsideGatedSociety
+                          ? 'Society NOC / RWA permission is required'
+                          : 'Individual house / standalone villa (No Society NOC needed)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: provider.isInsideGatedSociety ? AppColors.primary : AppColors.textSecondary,
+                        fontWeight: provider.isInsideGatedSociety ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: provider.isInsideGatedSociety,
+                activeColor: AppColors.primary,
+                onChanged: (val) {
+                  provider.updatePropertyDocuments(isGatedSociety: val);
+                },
+              ),
+            ],
+          ),
+        ),
+
+        if (provider.isInsideGatedSociety) ...[
+          const SizedBox(height: 14),
+          _buildUploadCard(
+            title: '3. Society / Resident Welfare Association (RWA) NOC *',
+            subtitle: 'Permission certificate from society manager or committee for homestay/guest hosting.',
+            docPath: provider.societyNocDocPath,
+            icon: Icons.domain_rounded,
+            isDark: isDark,
+            onUpload: () => _pickDocument('society_noc'),
+          ),
+        ],
+
+        const SizedBox(height: 14),
+
+        // KYC Already Verified Banner
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF10B981).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.verified_user_rounded, color: Color(0xFF10B981), size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Host ID & Live Selfie — Already Verified ✓',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF065F46)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Your Aadhaar/PAN and face selfie were verified via Cashfree SecureID in the previous step.',
+                      style: TextStyle(fontSize: 11, color: const Color(0xFF047857)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // LEASED / SUBLET PROPERTY DOCUMENTS (Lease Agreement + Landlord NOC)
+  // LEASED / SUBLET PROPERTY DOCUMENTS (Lease + Landlord NOC + Society NOC)
   // ══════════════════════════════════════════════════════════════════════════
   Widget _buildLeasedDocumentsSection(HostOnboardingProvider provider, bool isDark) {
     return Column(
@@ -353,12 +442,17 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
           'Required Sublease & Tenancy Documents',
           style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 6),
+        const Text(
+          'For leased properties, both registered lease agreement & landlord NOC are mandatory.',
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 14),
 
         // Document 1: Rent / Lease Agreement
         _buildUploadCard(
-          title: '1. Registered Rent / Lease Agreement',
-          subtitle: 'Valid agreement showing tenancy term and premises details.',
+          title: '1. Registered Rent / Lease Agreement *',
+          subtitle: 'Valid agreement showing active tenancy term and premises details.',
           docPath: provider.leaseAgreementDocPath,
           icon: Icons.article_rounded,
           isDark: isDark,
@@ -369,8 +463,8 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
 
         // Document 2: Landlord NOC
         _buildUploadCard(
-          title: '2. Landlord No-Objection Certificate (NOC)',
-          subtitle: 'Written NOC from property owner permitting Stay Q hosting.',
+          title: '2. Landlord No-Objection Certificate (NOC) *',
+          subtitle: 'Written & signed NOC from property owner permitting Stay Q hosting / sublease.',
           docPath: provider.landlordNocDocPath,
           icon: Icons.verified_rounded,
           isDark: isDark,
@@ -379,52 +473,105 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
 
         const SizedBox(height: 14),
 
-        // Document 3: Primary Owner ID Copy
-        _buildUploadCard(
-          title: '3. Primary Property Owner ID Proof (Optional / Recommended)',
-          subtitle: 'Aadhaar / PAN copy of the main property owner.',
-          docPath: provider.ownerIdProofDocPath,
-          icon: Icons.badge_rounded,
-          isDark: isDark,
-          onUpload: () => _pickDocument('owner_id'),
+        // Society / Apartment Toggle
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.borderLight),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Is this inside a Flat, Apartment or Gated Society?',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    ),
+                    Text(
+                      provider.isInsideGatedSociety
+                          ? 'Society NOC / RWA permission is required'
+                          : 'Individual house / standalone building (No Society NOC needed)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: provider.isInsideGatedSociety ? AppColors.primary : AppColors.textSecondary,
+                        fontWeight: provider.isInsideGatedSociety ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: provider.isInsideGatedSociety,
+                activeColor: AppColors.primary,
+                onChanged: (val) {
+                  provider.updatePropertyDocuments(isGatedSociety: val);
+                },
+              ),
+            ],
+          ),
         ),
-      ],
-    );
-  }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // COMMERCIAL HOTEL DOCUMENTS (Trade License + GST)
-  // ══════════════════════════════════════════════════════════════════════════
-  Widget _buildCommercialHotelDocumentsSection(HostOnboardingProvider provider, bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Required Commercial Hospitality Licenses',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-        ),
-        const SizedBox(height: 12),
+        if (provider.isInsideGatedSociety) ...[
+          const SizedBox(height: 14),
+          _buildUploadCard(
+            title: '3. Society / Resident Welfare Association (RWA) NOC *',
+            subtitle: 'Permission certificate from society manager or committee for homestay/guest hosting.',
+            docPath: provider.societyNocDocPath,
+            icon: Icons.domain_rounded,
+            isDark: isDark,
+            onUpload: () => _pickDocument('society_noc'),
+          ),
+        ],
 
-        // Document 1: Trade License / Shop & Establishment
+        const SizedBox(height: 14),
+
+        // Document 4: Electricity / Utility Bill
         _buildUploadCard(
-          title: '1. Trade License / Hotel Operating License',
-          subtitle: 'Municipal or Tourism Board license for commercial operation.',
-          docPath: provider.tradeLicenseDocPath,
-          icon: Icons.business_rounded,
+          title: '${provider.isInsideGatedSociety ? "4" : "3"}. Electricity / Utility Bill (Latest 3 Months) *',
+          subtitle: 'Recent bill establishing active utility connection at premises.',
+          docPath: provider.electricityBillDocPath,
+          icon: Icons.electric_bolt_rounded,
           isDark: isDark,
-          onUpload: () => _pickDocument('trade'),
+          onUpload: () => _pickDocument('electricity'),
         ),
 
         const SizedBox(height: 14),
 
-        // Document 2: Electricity Bill / Property Tax of Hotel
-        _buildUploadCard(
-          title: '2. Commercial Electricity / Utility Bill or GST Certificate',
-          subtitle: 'Recent commercial bill or GST certificate of establishment.',
-          docPath: provider.electricityBillDocPath,
-          icon: Icons.receipt_long_rounded,
-          isDark: isDark,
-          onUpload: () => _pickDocument('electricity'),
+        // KYC Already Verified Banner
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF10B981).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.verified_user_rounded, color: Color(0xFF10B981), size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Host ID & Live Selfie — Already Verified ✓',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF065F46)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Your Aadhaar/PAN and face selfie were verified via Cashfree SecureID in the previous step.',
+                      style: TextStyle(fontSize: 11, color: const Color(0xFF047857)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

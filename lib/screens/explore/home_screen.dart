@@ -5,24 +5,20 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/search_bar_header.dart';
 import '../../widgets/category_selector.dart';
-import '../../widgets/hero_banner_carousel.dart';
 import '../../widgets/zero_broker_banner.dart';
+import '../../widgets/rv_overland_feature_card.dart';
 import '../../widgets/camping_section_banner.dart';
-import '../../widgets/rv_section_banner.dart';
 import '../../widgets/trust_features_grid.dart';
 import '../../widgets/curated_stays_list.dart';
-import '../../widgets/stay_card.dart';
 import '../../widgets/stays_highlight_carousel.dart';
 import '../../widgets/floating_map_button.dart';
 import '../../widgets/master_home_slider.dart';
 import '../search/search_filter_modal.dart';
-import '../map/map_discovery_screen.dart';
-import '../listing/listing_detail_screen.dart';
-import '../auth/login_screen.dart';
-import '../inbox/inbox_screen.dart';
 import 'category_view_screen.dart';
-import '../../widgets/category_popup.dart';
 import '../../widgets/bouncing_widget.dart';
+import '../../widgets/home_bento_box.dart';
+import '../../widgets/moving_collage_banner.dart';
+import '../profile/notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback onOpenMap;
@@ -141,25 +137,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Ultra Premium Logo
+                        // Ultra Premium Logo without background
                         Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                gradient: AppColors.primaryGradient,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withOpacity(0.3),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(Icons.maps_home_work_rounded, color: Colors.white, size: 22),
+                            Image.asset(
+                              'assets/images/logo_sq.png',
+                              height: 36,
+                              fit: BoxFit.contain,
+                              color: AppColors.primary,
                             ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             ShaderMask(
                               shaderCallback: (bounds) => const LinearGradient(
                                 colors: [AppColors.primary, AppColors.accent],
@@ -186,15 +173,32 @@ class _HomeScreenState extends State<HomeScreen> {
                                 shape: BoxShape.circle,
                                 border: Border.all(color: AppColors.borderLight),
                               ),
-                              child: IconButton(
-                                icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
-                                color: AppColors.textPrimary,
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => const InboxScreen()),
-                                  );
-                                },
+                              child: Stack(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.notifications_none_rounded, size: 22),
+                                    color: AppColors.textPrimary,
+                                    tooltip: 'Notifications',
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                                      );
+                                    },
+                                  ),
+                                  Positioned(
+                                    top: 10,
+                                    right: 10,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.primary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -249,10 +253,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-                // Category Selector Row
+                // Category Selector Row (RV and Camping First, Equal Buttons)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                     child: CategorySelector(
                       selectedCategory: provider.selectedCategory,
                       onSelectCategory: (category) {
@@ -270,73 +274,41 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-                // Hero Banner
-                SliverToBoxAdapter(
+                // 1. FIRST: Bento Box Grid (RVs, Camping, Qube AI Planner, Luxury Stays)
+                const SliverToBoxAdapter(
+                  child: HomeBentoBox(),
+                ),
+
+                // 2. SECOND: Moving Collage Marquee
+                const SliverToBoxAdapter(
+                  child: MovingCollageBanner(),
+                ),
+
+                // 3. THIRD: India's 1st RV & Overland Tourism Feature Card (Full Details)
+                const SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 8),
-                    child: HeroBannerCarousel(
-                      onExploreTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const MapDiscoveryScreen()),
-                        );
-                      },
-                    ),
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: RvOverlandFeatureCard(),
                   ),
                 ),
 
-                // NEW: Our Stays Highlight Carousel
-                SliverToBoxAdapter(
+                // 4. FOURTH: Camping & Eco-Glamping Banner (Customer Booking Showcase)
+                const SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 24),
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: CampingSectionBanner(),
+                  ),
+                ),
+
+                // 5. Stays Highlight Carousel
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 20),
                     child: StaysHighlightCarousel(),
                   ),
                 ),
 
-                // RV & Camping (Side-by-side Row)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: RvSectionBanner(
-                            onTap: () {
-                              CategoryPopup.show(
-                                context,
-                                title: 'List Your RV',
-                                description: 'Your RV is sitting idle? List it on Stay Q and let travelers rent it for their open-road adventures!',
-                                imagePath: 'assets/images/mascot_rv.jpg',
-                                onExplore: () {
-                                  provider.setCategory('All Stays');
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoryViewScreen(categoryTitle: 'RVs')));
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                        Expanded(
-                          child: CampingSectionBanner(
-                            onTap: () {
-                              CategoryPopup.show(
-                                context,
-                                title: 'List Your Camp',
-                                description: 'Did you know you can list your own camping site on Stay Q and earn money? Turn your land into an experience!',
-                                imagePath: 'assets/images/camping_mascot.jpg',
-                                onExplore: () {
-                                  provider.setCategory('Cabins');
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoryViewScreen(categoryTitle: 'Cabins')));
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Zero Broker Banner (11 months)
+                // 6. Zero Broker Banner (11 months)
                 const SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.only(bottom: 24),
@@ -542,58 +514,6 @@ class _HomeScreenState extends State<HomeScreen> {
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ExperienceCard extends StatelessWidget {
-  final String title;
-  final String price;
-  final String imageUrl;
-
-  const _ExperienceCard({
-    required this.title,
-    required this.price,
-    required this.imageUrl,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 170,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderLight),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            child: AspectRatio(
-              aspectRatio: 1.5,
-              child: Image.asset(imageUrl, fit: BoxFit.cover),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(price, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-              ],
             ),
           ),
         ],

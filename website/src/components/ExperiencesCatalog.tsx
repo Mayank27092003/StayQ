@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { Star, Clock, MapPin, Check, Sparkles, X, ChevronRight } from 'lucide-react';
 import { fetchExperiences } from '../services/api';
@@ -99,7 +101,18 @@ export const ExperiencesCatalog: React.FC = () => {
             {filtered.map((exp: Experience) => (
               <article key={exp.id} className="exp-card" onClick={() => handleOpenSlotModal(exp)}>
               <div className="exp-card__media">
-                <img src={exp.imageUrls[0]} alt={exp.title} className="exp-card__img" loading="lazy" />
+                <img
+                  src={exp.imageUrls[0] || '/images/real_category_experiences.jpg'}
+                  alt={exp.title}
+                  className="exp-card__img"
+                  loading="lazy"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (!target.src.includes('real_category_experiences.jpg')) {
+                      target.src = '/images/real_category_experiences.jpg';
+                    }
+                  }}
+                />
                 <div className="exp-card__duration">
                   <Clock size={13} /> {exp.duration}
                 </div>
@@ -109,7 +122,17 @@ export const ExperiencesCatalog: React.FC = () => {
               <div className="exp-card__content">
                 <div className="exp-card__top">
                   <div className="exp-card__host">
-                    <img src={exp.hostAvatar} alt={exp.hostName} className="exp-card__host-avatar" />
+                    <img
+                      src={exp.hostAvatar || '/images/avatar_alex.jpg'}
+                      alt={exp.hostName}
+                      className="exp-card__host-avatar"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (!target.src.includes('avatar_alex.jpg')) {
+                          target.src = '/images/avatar_alex.jpg';
+                        }
+                      }}
+                    />
                     <span>Hosted by {exp.hostName}</span>
                   </div>
                   <div className="exp-card__rating">

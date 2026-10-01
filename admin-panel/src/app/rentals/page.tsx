@@ -225,7 +225,7 @@ export default function ZeroBrokerRentalsPage() {
       title,
       subtitle,
       description: `${description} | Furnishing: ${furnishing}, Area: ${sqft} sq.ft., Facing: ${facing}, Floor: ${floorNumber}/${totalFloors}, Lease: ${leaseMonths}M, Lock-in: ${lockInMonths}M, 0% Brokerage Direct Contract`,
-      type: "HOTEL",
+      type: "LONG_TERM_HOME",
       category: "LONG_TERM",
       city,
       address,

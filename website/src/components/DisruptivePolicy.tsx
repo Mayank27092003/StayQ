@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, ChevronDown } from 'lucide-react';
@@ -369,7 +371,7 @@ const policyData = [
   }
 ];
 
-export default function DisruptivePolicy() {
+export function DisruptivePolicy() {
   const [activeId, setActiveId] = useState<string>('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -510,7 +512,7 @@ export default function DisruptivePolicy() {
                     Stay Q
                   </div>
                   <p><strong>A property booking and hosting platform by Quatalyst Private Limited</strong></p>
-                  <p>Email: <a href="mailto:grievance@stayq.space">grievance@stayq.space</a></p>
+                  <p>Support: <a href="mailto:support@stayq.space">support@stayq.space</a> &bull; Grievance: <a href="mailto:grievance@stayq.space">grievance@stayq.space</a></p>
                   <p>Website: <a href="https://www.stayq.space">www.stayq.space</a></p>
                   <p className="policy-slogan">Stay. Discover. Experience.</p>
                   <p className="policy-copyright">© 2026 Quatalyst Private Limited. All Rights Reserved</p>

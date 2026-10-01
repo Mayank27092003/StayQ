@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
@@ -149,10 +151,10 @@ export const StayDetailModal: React.FC = () => {
               <span className="detail-location">
                 <MapPin size={15} /> {selectedStay.location}
               </span>
-              {(selectedStay.isSuperhost || (selectedStay as any).isStarHost) && (
+              {(selectedStay.isStarHost || (selectedStay as any).isStarHost) && (
                 <>
                   <span className="detail-divider">·</span>
-                  <span className="badge-superhost" style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 800 }}>
+                  <span className="badge-starhost" style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 800 }}>
                     <Star size={12} fill="#F59E0B" color="#F59E0B" /> Starhost
                   </span>
                 </>
@@ -372,7 +374,7 @@ export const StayDetailModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Location & Neighborhood Privacy Section (Airbnb Style) */}
+              {/* Location & Neighborhood Privacy Section */}
               <div className="detail-section" style={{ borderTop: '1px solid var(--gray-200)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
                 <h3 className="detail-section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <MapPin size={20} color="var(--primary)" />

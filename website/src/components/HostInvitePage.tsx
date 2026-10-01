@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
@@ -51,43 +53,43 @@ export interface DocSlotConfig {
 
 export const DOCUMENT_SLOTS: DocSlotConfig[] = [
   {
-    key: 'electricityBill',
-    title: 'Electricity / Utility Bill (Latest 3 Months)',
-    description: 'Latest electricity, water, or municipal bill proving active address & connection.',
-    icon: '⚡',
-    required: true,
-    acceptedTypes: '.pdf,.jpg,.jpeg,.png',
-  },
-  {
     key: 'propertyRegistry',
-    title: 'Property Sale Deed / Registry / Index II',
-    description: 'Ownership title deed, 7/12 extract, property tax receipt, or builder agreement.',
+    title: 'Property Sale Deed / Registry / Tax Receipt',
+    description: 'Ownership title deed, 7/12 extract, property tax receipt, or builder buyer agreement.',
     icon: '📜',
     required: true,
     acceptedTypes: '.pdf,.jpg,.jpeg,.png',
   },
   {
+    key: 'electricityBill',
+    title: 'Electricity / Utility Bill (Latest 3 Months)',
+    description: 'Recent electricity or municipal water bill proving active connection at property address.',
+    icon: '⚡',
+    required: true,
+    acceptedTypes: '.pdf,.jpg,.jpeg,.png',
+  },
+  {
     key: 'leaseAgreement',
-    title: 'Lease / Rent / Sublease Agreement',
-    description: 'Required if operating as a managed stay, master tenant, or operating an 11-month lease.',
+    title: 'Registered Rent / Lease / Sublease Agreement',
+    description: 'Active tenancy agreement showing tenancy duration and permission for managed operations.',
     icon: '🤝',
-    required: false,
+    required: true,
     acceptedTypes: '.pdf,.jpg,.jpeg,.png',
   },
   {
     key: 'landlordNoc',
-    title: 'Landlord / Society NOC Certificate',
-    description: 'No Objection Certificate from the property owner or resident welfare society.',
-    icon: '🏢',
-    required: false,
+    title: 'Landlord / Property Owner No-Objection Certificate (NOC)',
+    description: 'Written & signed NOC from property owner permitting Stay Q hosting / sublease.',
+    icon: '✍️',
+    required: true,
     acceptedTypes: '.pdf,.jpg,.jpeg,.png',
   },
   {
-    key: 'tradeLicense',
-    title: 'Homestay / Tourism Dept Certificate / Fire NOC',
-    description: 'State tourism department homestay registration or local hospitality license (if registered).',
-    icon: '⚖️',
-    required: false,
+    key: 'societyNoc',
+    title: 'Society / Resident Welfare Association (RWA) NOC',
+    description: 'Required for flats/apartments in gated residential societies for guest hosting.',
+    icon: '🏢',
+    required: true,
     acceptedTypes: '.pdf,.jpg,.jpeg,.png',
   },
   {
@@ -99,12 +101,12 @@ export const DOCUMENT_SLOTS: DocSlotConfig[] = [
     acceptedTypes: '.pdf,.jpg,.jpeg,.png',
   },
   {
-    key: 'bankPassbook',
-    title: 'Bank Passbook / Cancelled Cheque Copy',
-    description: 'For direct 0% commission guest payouts and escrow settlements to your bank account.',
-    icon: '🏦',
+    key: 'selfieFaceProof',
+    title: 'Host Live Face Selfie / Face Match Capture',
+    description: 'Clear live front-camera photo of host matching the Aadhaar/PAN government ID.',
+    icon: '🤳',
     required: true,
-    acceptedTypes: '.pdf,.jpg,.jpeg,.png',
+    acceptedTypes: 'image/*',
   },
 ];
 
@@ -282,15 +284,20 @@ export const HostInvitePage: React.FC = () => {
   const [isSendingEmailOtp, setIsSendingEmailOtp] = useState(false);
   const [emailOtpError, setEmailOtpError] = useState('');
 
+  // Property Ownership & Check-In Method State
+  const [ownershipType, setOwnershipType] = useState<'owned' | 'leased'>('owned');
+  const [isGatedSociety, setIsGatedSociety] = useState(false);
+  const [checkInMethod, setCheckInMethod] = useState<'self_checkin' | 'host_greeting' | 'caretaker'>('self_checkin');
+
   // Legal Documents Upload State
   const [documents, setDocuments] = useState<Record<string, UploadedDoc | null>>({
-    electricityBill: null,
     propertyRegistry: null,
+    electricityBill: null,
     leaseAgreement: null,
     landlordNoc: null,
-    tradeLicense: null,
+    societyNoc: null,
     ownerIdProof: null,
-    bankPassbook: null,
+    selfieFaceProof: null,
   });
 
   // Cashfree Secure ID — PAN Verification State
@@ -381,9 +388,9 @@ export const HostInvitePage: React.FC = () => {
       window.confirmationResult = confirmation;
       setIsPhoneOtpSent(true);
       setPhoneTimer(60);
-      setToast({ message: `SMS verification OTP sent to ${cleanPhone} via Firebase!`, type: 'info' });
+      setToast({ message: `SMS verification OTP sent to ${cleanPhone}!`, type: 'info' });
     } catch (err: any) {
-      console.warn('[Firebase Phone Auth Note]:', err);
+      console.warn('[Phone Auth Note]:', err);
       // Seamless testing fallback code
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       setActivePhoneOtp(code);
@@ -406,7 +413,7 @@ export const HostInvitePage: React.FC = () => {
       if (window.confirmationResult) {
         await window.confirmationResult.confirm(phoneOtp.trim());
         setIsPhoneVerified(true);
-        setToast({ message: 'Mobile number verified successfully via Firebase! ✓', type: 'success' });
+        setToast({ message: 'Mobile number verified successfully! ✓', type: 'success' });
       } else if (phoneOtp.trim() === activePhoneOtp || phoneOtp.trim() === '123456') {
         setIsPhoneVerified(true);
         setToast({ message: 'Mobile number verified successfully! ✓', type: 'success' });
@@ -479,8 +486,8 @@ export const HostInvitePage: React.FC = () => {
 
   // Real Aadhaar OTP Generation Handler (Cashfree UIDAI OKYC)
   const handleGenerateAadhaarOtp = async () => {
-    const cleanAadhaar = aadhaarNumber.replace(/\s+/g, '');
-    if (cleanAadhaar.length !== 12 || !/^\d{12}$/.test(cleanAadhaar)) {
+    const cleanAadhaar = aadhaarNumber.replace(/\D/g, '');
+    if (cleanAadhaar.length !== 12) {
       setAadhaarError('Please enter a valid 12-digit Aadhaar number');
       return;
     }
@@ -488,7 +495,7 @@ export const HostInvitePage: React.FC = () => {
     setIsGeneratingAadhaarOtp(true);
     try {
       const res = await generateAadhaarOtpApi(cleanAadhaar);
-      if (res.status === 'SUCCESS' || res.referenceId) {
+      if (res.status === 'SUCCESS' && res.referenceId) {
         setAadhaarRefId(res.referenceId);
         setIsAadhaarOtpSent(true);
         setAadhaarTimer(60);
@@ -497,8 +504,8 @@ export const HostInvitePage: React.FC = () => {
         setAadhaarError(res.message || 'Could not generate Aadhaar OTP. Please try again.');
         setToast({ message: res.message || 'Aadhaar OTP request failed', type: 'error' });
       }
-    } catch {
-      setAadhaarError('Failed to generate Aadhaar OTP');
+    } catch (e: any) {
+      setAadhaarError(e?.message || 'Failed to generate Aadhaar OTP');
     } finally {
       setIsGeneratingAadhaarOtp(false);
     }
@@ -514,7 +521,7 @@ export const HostInvitePage: React.FC = () => {
     setIsVerifyingAadhaarOtp(true);
     try {
       const res = await verifyAadhaarOtpApi(aadhaarRefId, aadhaarOtp.trim());
-      if (res.status === 'VERIFIED') {
+      if (res.status === 'VERIFIED' || res.status === 'SUCCESS') {
         setIsAadhaarVerified(true);
         setAadhaarVerifiedName(res.name || hostName || 'Verified Aadhaar Holder');
         setToast({ message: `Aadhaar verified successfully with UIDAI! (${res.name || hostName}) ✓`, type: 'success' });
@@ -522,8 +529,8 @@ export const HostInvitePage: React.FC = () => {
         setAadhaarError(res.message || 'Invalid Aadhaar OTP code.');
         setToast({ message: res.message || 'Aadhaar verification failed', type: 'error' });
       }
-    } catch {
-      setAadhaarError('Failed to verify Aadhaar OTP');
+    } catch (e: any) {
+      setAadhaarError(e?.message || 'Failed to verify Aadhaar OTP');
     } finally {
       setIsVerifyingAadhaarOtp(false);
     }
@@ -538,23 +545,24 @@ export const HostInvitePage: React.FC = () => {
     setBankError('');
     setIsVerifyingBank(true);
     try {
+      const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : '';
       const res = await verifyBankAccountApi({
         accountNumber: bankAccountNumber.trim(),
         ifsc: bankIfsc.trim().toUpperCase(),
-        name: hostName || undefined,
-        phone: phone || undefined,
+        name: hostName?.trim() || undefined,
+        phone: cleanPhone && cleanPhone.length === 10 ? cleanPhone : undefined,
       });
       if (res.valid) {
         setIsBankVerified(true);
         setBankVerifiedName(res.accountHolderName || hostName || 'Verified Account Holder');
         setBankVerifiedBank(res.bankName || bankIfsc.slice(0, 4));
-        setToast({ message: `Bank account verified with ₹1 Penny Drop! (${res.bankName || 'Verified'}) ✓`, type: 'success' });
+        setToast({ message: `Bank account verified with ₹1 Penny Drop! (${res.accountHolderName || res.bankName || 'Verified'}) ✓`, type: 'success' });
       } else {
         setBankError(res.message || 'Penny drop verification failed. Please check Account & IFSC.');
         setToast({ message: res.message || 'Bank verification failed', type: 'error' });
       }
-    } catch {
-      setBankError('Failed to verify bank account');
+    } catch (e: any) {
+      setBankError(e?.message || 'Failed to verify bank account');
     } finally {
       setIsVerifyingBank(false);
     }
@@ -2490,9 +2498,9 @@ export const HostInvitePage: React.FC = () => {
 
         <div style={{ height: '1px', background: 'var(--border)' }} />
 
-        {/* Section 3: Property Legal Documents & Verification Proofs */}
+        {/* Section 4: Property Ownership & Legal Documents */}
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div>
               <h3
                 style={{
@@ -2506,10 +2514,10 @@ export const HostInvitePage: React.FC = () => {
                 }}
               >
                 <FileCheck size={20} style={{ color: 'var(--violet)' }} />
-                4. Property Legal Documents &amp; Verification Proofs
+                4. Property Ownership &amp; Legal Documents
               </h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--gray-500)', margin: '0.3rem 0 0' }}>
-                Upload official ownership, utility &amp; identity documents for fast-track onboarding. (PDF, JPG, PNG up to 15MB each)
+                Select whether you are the direct owner or holding an active sublease/lease agreement.
               </p>
             </div>
             <span
@@ -2526,15 +2534,118 @@ export const HostInvitePage: React.FC = () => {
             </span>
           </div>
 
+          {/* Ownership Type Selector Tabs */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: '1rem',
+              marginBottom: '1.25rem',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setOwnershipType('owned')}
+              style={{
+                padding: '1rem 1.25rem',
+                borderRadius: '16px',
+                border: `2px solid ${ownershipType === 'owned' ? 'var(--violet)' : 'var(--border)'}`,
+                background: ownershipType === 'owned' ? 'rgba(90, 49, 244, 0.06)' : '#ffffff',
+                textAlign: 'left',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.85rem',
+              }}
+            >
+              <span style={{ fontSize: '1.75rem' }}>🏡</span>
+              <div>
+                <strong style={{ fontSize: '0.95rem', color: ownershipType === 'owned' ? 'var(--violet)' : 'var(--ink)', display: 'block' }}>
+                  Owned Property
+                </strong>
+                <span style={{ fontSize: '0.78rem', color: 'var(--gray-500)', marginTop: '0.2rem', display: 'block' }}>
+                  I am the legal property owner (No landlord NOC needed)
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setOwnershipType('leased')}
+              style={{
+                padding: '1rem 1.25rem',
+                borderRadius: '16px',
+                border: `2px solid ${ownershipType === 'leased' ? 'var(--violet)' : 'var(--border)'}`,
+                background: ownershipType === 'leased' ? 'rgba(90, 49, 244, 0.06)' : '#ffffff',
+                textAlign: 'left',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.85rem',
+              }}
+            >
+              <span style={{ fontSize: '1.75rem' }}>📜</span>
+              <div>
+                <strong style={{ fontSize: '0.95rem', color: ownershipType === 'leased' ? 'var(--violet)' : 'var(--ink)', display: 'block' }}>
+                  Leased / Sublet Property
+                </strong>
+                <span style={{ fontSize: '0.78rem', color: 'var(--gray-500)', marginTop: '0.2rem', display: 'block' }}>
+                  Rented premises with active lease &amp; landlord NOC
+                </span>
+              </div>
+            </button>
+          </div>
+
+          {/* Gated Society / Flat Checkbox Toggle */}
+          <div
+            style={{
+              background: isGatedSociety ? 'rgba(90, 49, 244, 0.04)' : 'var(--gray-50)',
+              border: `1.5px solid ${isGatedSociety ? 'rgba(90, 49, 244, 0.3)' : 'var(--border)'}`,
+              borderRadius: '14px',
+              padding: '0.85rem 1.15rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '1.25rem',
+              cursor: 'pointer',
+            }}
+            onClick={() => setIsGatedSociety(!isGatedSociety)}
+          >
+            <div>
+              <strong style={{ fontSize: '0.88rem', color: 'var(--ink)', display: 'block' }}>
+                🏢 Is this located inside a Flat, Apartment or Gated Society?
+              </strong>
+              <span style={{ fontSize: '0.76rem', color: 'var(--gray-500)' }}>
+                {isGatedSociety
+                  ? 'Society / RWA NOC is required for guest homestay verification'
+                  : 'Individual house / Standalone villa (No society NOC required)'}
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              checked={isGatedSociety}
+              onChange={(e) => setIsGatedSociety(e.target.checked)}
+              style={{ width: '18px', height: '18px', accentColor: 'var(--violet)', cursor: 'pointer' }}
+            />
+          </div>
+
+          {/* Dynamic Document Upload Slots */}
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
               gap: '1rem',
-              marginTop: '1.25rem',
             }}
           >
-            {DOCUMENT_SLOTS.map((slot) => {
+            {DOCUMENT_SLOTS.filter((slot) => {
+              if (slot.key === 'propertyRegistry' && ownershipType !== 'owned') return false;
+              if (slot.key === 'leaseAgreement' && ownershipType !== 'leased') return false;
+              if (slot.key === 'landlordNoc' && ownershipType !== 'leased') return false;
+              if (slot.key === 'societyNoc' && !isGatedSociety) return false;
+              return true;
+            }).map((slot) => {
               const uploaded = documents[slot.key];
               return (
                 <div
@@ -2557,15 +2668,9 @@ export const HostInvitePage: React.FC = () => {
                         <span style={{ fontSize: '1.25rem' }}>{slot.icon}</span>
                         <strong style={{ fontSize: '0.88rem', color: 'var(--ink)' }}>{slot.title}</strong>
                       </div>
-                      {slot.required ? (
-                        <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#FEE2E2', color: '#B91C1C', padding: '0.15rem 0.45rem', borderRadius: '6px' }}>
-                          REQUIRED
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: '0.68rem', fontWeight: 600, background: 'var(--gray-200)', color: 'var(--gray-600)', padding: '0.15rem 0.45rem', borderRadius: '6px' }}>
-                          OPTIONAL
-                        </span>
-                      )}
+                      <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#FEE2E2', color: '#B91C1C', padding: '0.15rem 0.45rem', borderRadius: '6px' }}>
+                        REQUIRED
+                      </span>
                     </div>
                     <p style={{ fontSize: '0.76rem', color: 'var(--gray-500)', lineHeight: 1.35, margin: 0 }}>
                       {slot.description}
@@ -2632,7 +2737,7 @@ export const HostInvitePage: React.FC = () => {
                       }}
                     >
                       <UploadCloud size={16} />
-                      <span>Upload Paper / Document</span>
+                      <span>Upload Document / Photo</span>
                       <input
                         type="file"
                         accept={slot.acceptedTypes}
@@ -2649,7 +2754,7 @@ export const HostInvitePage: React.FC = () => {
 
         <div style={{ height: '1px', background: 'var(--border)' }} />
 
-        {/* Section 5: Photo Link & Notes */}
+        {/* Section 5: Check-in Method, Photo Link & Notes */}
         <div>
           <h3
             style={{
@@ -2663,10 +2768,54 @@ export const HostInvitePage: React.FC = () => {
             }}
           >
             <Camera size={20} style={{ color: 'var(--violet)' }} />
-            5. Photos, Portfolio &amp; Special Highlights
+            5. Check-In Method &amp; Photo Showcase
           </h3>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Check-In Method Selection */}
+            <div>
+              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--ink)', marginBottom: '0.5rem', display: 'block' }}>
+                Guest Check-In Method *
+              </label>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: '0.75rem',
+                }}
+              >
+                {[
+                  { key: 'self_checkin', icon: '🔑', label: 'Self Check-in', desc: 'Smart Lock / Keypad / Key Lockbox' },
+                  { key: 'host_greeting', icon: '🙋‍♂️', label: 'Host In-Person', desc: 'Host or Co-Host greets guests' },
+                  { key: 'caretaker', icon: '🧑‍💼', label: 'Caretaker On-Site', desc: 'Property manager / caretaker handles arrival' },
+                ].map((item) => {
+                  const isSelected = checkInMethod === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setCheckInMethod(item.key as any)}
+                      style={{
+                        padding: '0.85rem 1rem',
+                        borderRadius: '14px',
+                        border: `2px solid ${isSelected ? 'var(--violet)' : 'var(--border)'}`,
+                        background: isSelected ? 'rgba(90, 49, 244, 0.06)' : '#ffffff',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                        <span style={{ fontSize: '1.25rem' }}>{item.icon}</span>
+                        <strong style={{ fontSize: '0.88rem', color: isSelected ? 'var(--violet)' : 'var(--ink)' }}>{item.label}</strong>
+                      </div>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--gray-500)', display: 'block' }}>{item.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="checkout-input-group">
               <label>Photo Link / Google Drive / Cloudinary / Social URL *</label>
               <input
@@ -2722,7 +2871,7 @@ export const HostInvitePage: React.FC = () => {
               lineHeight: 1.5,
             }}
           >
-            By submitting, you agree to Stay Q's Host Community Guidelines and ID-verification standards. Our partner onboarding desk will review and contact you within 24 hours.
+            By submitting, you agree to Stay Q's Host Community Guidelines and ID-verification standards. Questions about listings? Email us at <a href="mailto:hello@stayq.space" style={{ color: 'var(--violet)', fontWeight: 700 }}>hello@stayq.space</a> or reach Host Support at <a href="mailto:support@stayq.space" style={{ color: 'var(--violet)', fontWeight: 700 }}>support@stayq.space</a>. Our team will review and contact you within 24 hours.
           </p>
         </div>
       </form>

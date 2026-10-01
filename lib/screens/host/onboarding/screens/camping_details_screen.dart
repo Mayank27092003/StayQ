@@ -12,11 +12,30 @@ class CampingDetailsScreen extends StatefulWidget {
 }
 
 class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
-  int _bedsProvided = 0;
-  bool _hasFoodOptions = false;
+  final _campsiteLocationController = TextEditingController();
+  int _bedsProvided = 2;
+  bool _hasFoodOptions = true;
   bool _hasTrekking = false;
   bool _hasFirstAid = true;
   bool _isEcoFriendly = false;
+
+  // Washroom / Toilet
+  String _washroomType = 'Shared Clean Restrooms';
+  bool _hasHotWater = true;
+
+  // Food / Dining
+  String _mealPlan = 'Breakfast Only Included';
+
+  // Essentials
+  bool _tentsProvided = true;
+  bool _drinkingWater = true;
+  bool _chargingStations = true;
+
+  @override
+  void dispose() {
+    _campsiteLocationController.dispose();
+    super.dispose();
+  }
 
   final List<Map<String, dynamic>> _terrainOptions = [
     {'name': 'Forest', 'icon': Icons.park},
@@ -52,7 +71,21 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
               height: 1.4,
             ),
           ).animate().fadeIn(delay: 100.ms).slideX(),
-          const SizedBox(height: 32),
+          // 0. Exact Campsite Location & Access Route
+          _buildSectionHeader('Campsite Location & Access Point', Icons.place).animate().fadeIn(delay: 150.ms),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _campsiteLocationController,
+            decoration: InputDecoration(
+              hintText: 'e.g. Kasol Riverside, Near Chalal Bridge, Parvati Valley',
+              labelText: 'Exact Campsite Location / Trailhead Access *',
+              filled: true,
+              fillColor: AppColors.surfaceLight,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              prefixIcon: const Icon(Icons.location_on_outlined, color: AppColors.primary),
+            ),
+          ).animate().fadeIn(delay: 180.ms),
+          const SizedBox(height: 28),
 
           // 1. Terrain Type (Horizontal Cards)
           _buildSectionHeader('Terrain Type', Icons.landscape).animate().fadeIn(delay: 200.ms),
@@ -179,7 +212,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
               const SizedBox(width: 16),
               Expanded(
                 child: _buildToggleCard(
-                  title: 'Food Prov.',
+                  title: 'Meals Service',
                   icon: Icons.fastfood,
                   value: _hasFoodOptions,
                   activeColor: Colors.green,
@@ -188,7 +221,96 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 28),
+
+          // 3b. Washroom & Toilet Facilities
+          _buildSectionHeader('Washroom & Sanitation *', Icons.wash).animate().fadeIn(delay: 620.ms),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              'Attached Western Washroom',
+              'Shared Clean Restrooms',
+              'Eco-Dry Pit Toilets',
+            ].map((ws) {
+              final isSel = _washroomType == ws;
+              return ChoiceChip(
+                label: Text(ws, style: TextStyle(color: isSel ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
+                selected: isSel,
+                selectedColor: AppColors.primary,
+                backgroundColor: AppColors.surfaceLight,
+                onSelected: (sel) {
+                  if (sel) setState(() => _washroomType = ws);
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 12),
+          _buildSwitchTile(
+            title: 'Running Hot Water / Geyser',
+            subtitle: 'Warm showers available for campers',
+            icon: Icons.hot_tub,
+            value: _hasHotWater,
+            onChanged: (val) => setState(() => _hasHotWater = val),
+          ),
+          const SizedBox(height: 28),
+
+          // 3c. Food & Meal Plans
+          if (_hasFoodOptions) ...[
+            _buildSectionHeader('Meal Packages & Dining Options', Icons.restaurant).animate().fadeIn(delay: 630.ms),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                'All Meals (Bkfst, Lunch, Dinner)',
+                'Breakfast Only Included',
+                'Campfire Live BBQ & Snacks',
+                'Self-Cook Camp Kitchen',
+              ].map((m) {
+                final isSel = _mealPlan == m;
+                return ChoiceChip(
+                  label: Text(m, style: TextStyle(color: isSel ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
+                  selected: isSel,
+                  selectedColor: AppColors.primary,
+                  backgroundColor: AppColors.surfaceLight,
+                  onSelected: (sel) {
+                    if (sel) setState(() => _mealPlan = m);
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 28),
+          ],
+
+          // 3d. Stay Essentials Provided by Host
+          _buildSectionHeader('Camping Essentials Provided', Icons.backpack).animate().fadeIn(delay: 640.ms),
+          const SizedBox(height: 12),
+          _buildSwitchTile(
+            title: 'Tents / Glamping Domes & Sleeping Bags',
+            subtitle: 'All setup completed before guest arrives',
+            icon: Icons.night_shelter,
+            value: _tentsProvided,
+            onChanged: (val) => setState(() => _tentsProvided = val),
+          ),
+          const SizedBox(height: 10),
+          _buildSwitchTile(
+            title: '24/7 Filtered Drinking Water',
+            subtitle: 'Fresh RO/natural spring drinking water on site',
+            icon: Icons.local_drink,
+            value: _drinkingWater,
+            onChanged: (val) => setState(() => _drinkingWater = val),
+          ),
+          const SizedBox(height: 10),
+          _buildSwitchTile(
+            title: 'Electricity / Mobile Charging Stations',
+            subtitle: 'Solar / generator charging points available',
+            icon: Icons.battery_charging_full,
+            value: _chargingStations,
+            onChanged: (val) => setState(() => _chargingStations = val),
+          ),
+          const SizedBox(height: 28),
 
           // 4. Activities & Trekking
           _buildSectionHeader('Activities', Icons.directions_walk).animate().fadeIn(delay: 650.ms),

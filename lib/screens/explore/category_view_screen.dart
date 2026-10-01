@@ -47,7 +47,7 @@ class _CategoryViewScreenState extends State<CategoryViewScreen> {
         case 'Guest Favorite':
           return stay.isGuestFavorite;
         case 'Starhost':
-        case 'Superhost':
+        case 'Star Host':
           return stay.isStarHost;
         case 'Rating 4.9+':
           return stay.rating >= 4.9;

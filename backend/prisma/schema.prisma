@@ -264,6 +264,7 @@ model User {
   disputesRaised      Dispute[]
   auditLogs           AdminAuditLog[]
   reportedIncidents   PropertyIncident[]
+  loyaltyProfile      LoyaltyProfile?
 
   @@index([firebaseUid])
   @@index([email])
@@ -379,13 +380,17 @@ model Property {
   hasLocker       Boolean         @default(false)
 
   // Property Legal & Ownership Documents (Ghar ke Kagaj)
-  ownershipType          String?   // "OWNED", "LEASED_SUBLET", "COMMERCIAL_HOTEL"
+  ownershipType          String?   // "OWNED", "LEASED_SUBLET"
+  isInsideGatedSociety   Boolean   @default(false)
+  checkInType            String?   // "SELF_CHECKIN", "HOST_GREETING", "CARETAKER"
   electricityBillDocUrl  String?
   propertyRegistryDocUrl String?
   leaseAgreementDocUrl   String?
   landlordNocDocUrl      String?
+  societyNocDocUrl       String?
   tradeLicenseDocUrl     String?
   ownerIdProofDocUrl     String?
+  selfieFaceProofDocUrl  String?
   propertyDocsVerified   Boolean   @default(false)
   propertyDocsVerifiedAt DateTime?
 
@@ -394,6 +399,12 @@ model Property {
   registeredAt           DateTime  @default(now())
   faultCount             Int       @default(0)
   hasActiveFault         Boolean   @default(false)
+
+  // Sponsored Property Boosting & Search Ranking (Host Paid Promotion)
+  isSponsored            Boolean   @default(false)
+  sponsoredTier          String?   // "BOOST_BASIC", "SUPER_BOOST", "ULTRA_SPOTLIGHT"
+  sponsoredUntil         DateTime?
+  searchRankBoost        Int       @default(0)
 
   // Relations
   images          PropertyImage[]
@@ -407,11 +418,13 @@ model Property {
   roomTypes       RoomType[]      // Added for multi-unit properties
   featuredPlacements FeaturedPlacement[]
   incidents       PropertyIncident[]
+  boosts          PropertyBoost[]
 
   @@index([city])
   @@index([category])
   @@index([status])
   @@index([hostId])
+  @@index([isSponsored])
   @@index([pricePerNight])
   @@index([propertyCode])
 }
@@ -463,6 +476,28 @@ model RoomType {
   bookings        Booking[]
 
   @@index([propertyId])
+}
+
+model PropertyBoost {
+  id              String      @id @default(uuid())
+  propertyId      String
+  property        Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  hostId          String
+  tier            String      // "BOOST_BASIC", "SUPER_BOOST", "ULTRA_SPOTLIGHT"
+  tierName        String      // "⚡ Boost Basic", "🌟 Super Boost", "👑 Ultra Spotlight"
+  amount          Decimal
+  durationDays    Int
+  startDate       DateTime    @default(now())
+  endDate         DateTime
+  status          String      @default("ACTIVE") // ACTIVE, EXPIRED, CANCELLED
+  paymentId       String?
+  orderId         String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([propertyId])
+  @@index([hostId])
+  @@index([status])
 }
 
 model PropertyImage {
@@ -1716,27 +1751,119 @@ model AdminSetting {
 }
 
 // ----------------------------------------------------------------------------
-// Master Admin Staff & RBAC Access Model
+// Master Admin Staff, RBAC Access & Live Attendance Model
 // ----------------------------------------------------------------------------
 model AdminStaff {
-  id              String       @id @default(uuid())
-  staffId         String       @unique // e.g. SQ-EMP-101
-  fullName        String
-  email           String       @unique
-  passwordHash    String
-  department      String       // e.g. "Operations", "Finance", "Guest Support", "Audits"
-  role            String       @default("STAFF") // "MASTER_ADMIN" | "STAFF"
-  status          String       @default("ACTIVE") // "ACTIVE" | "SUSPENDED" | "INACTIVE"
-  allowedModules  String[]     // e.g. ["properties", "bookings", "hosts", "support", "reviews", "revenue", "promotions", "experiences", "analytics"]
-  phoneNumber     String?
-  lastLoginAt     DateTime?
-  createdById     String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id               String              @id @default(uuid())
+  staffId          String              @unique // e.g. SQ-EMP-1001
+  fullName         String
+  email            String              @unique
+  passwordHash     String
+  department       String              // e.g. "Operations", "Finance", "Guest Support", "Audits"
+  role             String              @default("STAFF") // "MASTER_ADMIN" | "STAFF"
+  status           String              @default("ACTIVE") // "ACTIVE" | "SUSPENDED" | "INACTIVE"
+  allowedModules   String[]            // e.g. ["properties", "bookings", "hosts", "support", "reviews", "revenue", "promotions", "experiences", "analytics"]
+  phoneNumber      String?
+  lastLoginAt      DateTime?
+  lastLogoutAt     DateTime?
+  lastActiveAt     DateTime?
+  isOnline         Boolean             @default(false)
+  currentSessionIp String?
+  sessionRevokedAt DateTime?
+  createdById      String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   @@index([staffId])
   @@index([email])
   @@index([role])
   @@index([status])
+  @@index([isOnline])
 }
+
+model StaffActivityLog {
+  id          String      @id @default(uuid())
+  staffId     String      // e.g. SQ-EMP-1001, ADMIN-001, or SYSTEM
+  staffName   String
+  email       String
+  module      String      // "bookings", "hosts", "support", "properties", "revenue", "auth", "staff"
+  action      String      // "LOGIN", "LOGOUT", "FORCE_LOGOUT", "CREATE_STAFF", "UPDATE_STAFF", "RESET_PASSWORD", etc.
+  description String
+  targetId    String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+
+  @@index([staffId])
+  @@index([module])
+  @@index([action])
+  @@index([createdAt])
+}
+
+
+// ============================================================================
+// STAY Q REWARDS & LOYALTY PROGRAM
+// ============================================================================
+
+enum LoyaltyTier {
+  Q_STARTER
+  Q_PLUS
+  Q_PREMIUM
+}
+
+enum PointsTransactionType {
+  BOOKING_EARN
+  REVIEW_EARN
+  REFERRAL_EARN
+  PROFILE_EARN
+  REPEAT_STAY_EARN
+  TIER_PURCHASE_EARN
+  REDEEM
+  ADMIN_ADJUST
+  EXPIRED
+}
+
+model LoyaltyProfile {
+  id                        String              @id @default(uuid())
+  userId                    String              @unique
+  user                      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  totalPoints               Int                 @default(0) // Lifetime earned points
+  availablePoints           Int                 @default(0) // Redeemable points
+  redeemedPoints            Int                 @default(0) // Total redeemed points
+
+  tier                      LoyaltyTier         @default(Q_STARTER)
+  tierExpiresAt             DateTime?
+  tierPurchasedAt           DateTime?
+
+  pointsMultiplier          Float               @default(1.0)
+
+  profileCompletionRewarded Boolean             @default(false)
+
+  transactions              PointsTransaction[]
+
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([tier])
+}
+
+model PointsTransaction {
+  id              String                @id @default(uuid())
+  loyaltyId       String
+  loyalty         LoyaltyProfile        @relation(fields: [loyaltyId], references: [id], onDelete: Cascade)
+
+  points          Int                   // positive = earned, negative = redeemed
+  type            PointsTransactionType
+  reason          String
+  referenceId     String?
+
+  createdAt       DateTime              @default(now())
+
+  @@index([loyaltyId])
+  @@index([type])
+  @@index([createdAt])
+}
+
 

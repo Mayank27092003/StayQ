@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { X, Sparkles, ShieldCheck, IndianRupee, Key, Download, MessageSquare } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -158,7 +160,7 @@ export const HostAppModal: React.FC = () => {
           </a>
 
           <a
-            href="https://wa.me/919999999999?text=Hi%20Stay%20Q%20Team%2C%20I%20am%20a%20property%20owner%20and%20want%20to%20list%20my%20stay."
+            href="https://wa.me/919225270718?text=Hi%20Stay%20Q%20Team%2C%20I%20am%20a%20property%20owner%20and%20want%20to%20list%20my%20stay."
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn--secondary"

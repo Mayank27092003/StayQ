@@ -1,9 +1,68 @@
+"use client";
+
 import React from 'react';
 import { Heart, Star, MapPin, Building, ArrowRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const WishlistPage: React.FC = () => {
-  const { wishlistIds, toggleWishlist, setSelectedStay, stays } = useApp();
+  const { wishlistIds, toggleWishlist, setSelectedStay, stays, user, setIsAuthModalOpen } = useApp();
+
+  if (!user) {
+    return (
+      <div style={{ minHeight: '85vh', background: 'var(--bg)', padding: '6.5rem 1rem 5rem' }}>
+        <div className="shell" style={{ maxWidth: '640px', textAlign: 'center' }}>
+          <div
+            style={{
+              background: 'var(--white)',
+              borderRadius: '28px',
+              border: '1px solid var(--border)',
+              padding: '4rem 2rem',
+              boxShadow: 'var(--shadow-md)',
+            }}
+          >
+            <div
+              style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '24px',
+                background: 'linear-gradient(135deg, #f04438 0%, #d92d20 100%)',
+                color: 'var(--white)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1.5rem',
+                boxShadow: '0 12px 24px rgba(240, 68, 56, 0.25)',
+              }}
+            >
+              <Heart size={40} fill="var(--white)" />
+            </div>
+            <h1 className="h1" style={{ fontSize: '2rem', marginBottom: '0.75rem', color: 'var(--ink)' }}>
+              Sign In to View Your Wishlist
+            </h1>
+            <p
+              className="lead"
+              style={{
+                maxWidth: '480px',
+                margin: '0 auto 2rem',
+                color: 'var(--gray-600)',
+                fontSize: '1.02rem',
+              }}
+            >
+              Log in with your phone or email to view and manage your saved stays, villas, and experiences across all devices.
+            </p>
+            <button
+              type="button"
+              className="btn btn--primary btn--lg"
+              onClick={() => setIsAuthModalOpen(true)}
+              style={{ padding: '0.85rem 2.2rem', fontSize: '1rem', fontWeight: 700 }}
+            >
+              Sign In to Stay Q
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const savedStays = stays.filter((s) => wishlistIds.includes(s.id));
   const recommendedStays = stays.slice(0, 3);

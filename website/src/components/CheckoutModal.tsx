@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { X, ShieldCheck, CreditCard, Smartphone, CheckCircle2, Lock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -5,7 +7,7 @@ import { calculateBookingQuote, createBookingApi, createPaymentOrderApi, Payment
 import { PaymentGatewayModal } from './PaymentGatewayModal';
 
 export const CheckoutModal: React.FC = () => {
-  const { checkoutItem, setCheckoutItem, setActiveConfirmation, addBooking, user, setIsAuthModalOpen } = useApp();
+  const { checkoutItem, setCheckoutItem, setActiveConfirmation, addBooking, user, setIsAuthModalOpen, loyaltyProfile } = useApp();
 
   const [guestName, setGuestName] = useState(user?.name || '');
   const [guestEmail, setGuestEmail] = useState(user?.email || '');
@@ -17,6 +19,17 @@ export const CheckoutModal: React.FC = () => {
   // Live Gateway State
   const [activePaymentOrder, setActivePaymentOrder] = useState<PaymentOrderResponse | null>(null);
   const [isGatewayOpen, setIsGatewayOpen] = useState(false);
+
+  // Referral Rewards State (Ultra-real with 10% max checkout cap)
+  const [referralBalance, setReferralBalance] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('stayq_user_referral_balance');
+      return saved !== null ? Number(saved) : 500;
+    } catch {
+      return 500;
+    }
+  });
+  const [applyReferral, setApplyReferral] = useState<boolean>(true);
 
   // Sync with user profile if user logs in while modal is open
   React.useEffect(() => {
@@ -55,6 +68,12 @@ export const CheckoutModal: React.FC = () => {
         totalAmount: Math.round(expBaseTotal * 1.18),
       };
 
+  // Ultra-real 10% referral discount cap calculation
+  const bookingSubtotal = isStay ? quote.baseTotal : expBaseTotal;
+  const max10PercentCap = Math.floor(bookingSubtotal * 0.10); // Strictly max 10%
+  const appliedReferralDiscount = applyReferral && referralBalance > 0 ? Math.min(referralBalance, max10PercentCap) : 0;
+  const finalPayableTotal = Math.max(0, quote.totalAmount - appliedReferralDiscount);
+
   const handleFinalizeBooking = async (paidMethod: string, _transactionRef?: string) => {
     const finalName = guestName.trim() || user?.name || 'Guest';
     const finalEmail = guestEmail.trim() || user?.email || 'guest@stayq.space';
@@ -74,10 +93,20 @@ export const CheckoutModal: React.FC = () => {
         guestEmail: finalEmail,
         guestPhone: finalPhone,
         guestsCount: guests,
-        totalPrice: quote.totalAmount,
+        totalPrice: finalPayableTotal,
         paymentMethod: paidMethod,
         slotDetails: slotId ? `Slot: ${slotId}` : undefined,
       });
+
+      // Deduct used referral reward from local balance
+      if (appliedReferralDiscount > 0) {
+        const nextBal = Math.max(0, referralBalance - appliedReferralDiscount);
+        setReferralBalance(nextBal);
+        try {
+          localStorage.setItem('stayq_user_referral_balance', String(nextBal));
+          window.dispatchEvent(new Event('stayq_wallet_updated'));
+        } catch {}
+      }
 
       addBooking(newBooking);
       setIsGatewayOpen(false);
@@ -107,7 +136,7 @@ export const CheckoutModal: React.FC = () => {
     setIsSubmitting(true);
     try {
       const order = await createPaymentOrderApi({
-        amount: quote.totalAmount,
+        amount: finalPayableTotal,
         customerName: finalName,
         customerEmail: finalEmail,
         customerPhone: finalPhone,
@@ -307,6 +336,47 @@ export const CheckoutModal: React.FC = () => {
                   <span>Taxes & GST (18%)</span>
                   <span>₹{quote.gstAmount.toLocaleString('en-IN')}</span>
                 </div>
+
+                {/* Ultra-Real Referral Rewards Box */}
+                {referralBalance > 0 && (
+                  <div style={{
+                    margin: '0.75rem 0',
+                    padding: '0.75rem 0.85rem',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(135deg, rgba(157, 0, 255, 0.06), rgba(99, 102, 241, 0.08))',
+                    border: '1px solid rgba(157, 0, 255, 0.2)',
+                  }}>
+                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={applyReferral}
+                          onChange={(e) => setApplyReferral(e.target.checked)}
+                          style={{ accentColor: '#9D00FF', width: '16px', height: '16px', cursor: 'pointer' }}
+                        />
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e293b' }}>
+                          Redeem Referral Rewards
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#9D00FF', background: '#fbf5ff', padding: '0.15rem 0.45rem', borderRadius: '6px', border: '1px solid rgba(157, 0, 255, 0.2)' }}>
+                        ₹{referralBalance} Balance
+                      </span>
+                    </label>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.35rem', lineHeight: '1.3' }}>
+                      10% Checkout Cap: Up to ₹{max10PercentCap.toLocaleString('en-IN')} applied on this booking.
+                    </div>
+                  </div>
+                )}
+
+                {appliedReferralDiscount > 0 && (
+                  <div className="checkout-row checkout-row--discount" style={{ color: '#059669', fontWeight: 700 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span>🎁 Referral Reward (10% Cap)</span>
+                    </span>
+                    <span>-₹{appliedReferralDiscount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+
                 {quote.discountAmount > 0 && (
                   <div className="checkout-row checkout-row--discount">
                     <span>Discount</span>
@@ -318,7 +388,35 @@ export const CheckoutModal: React.FC = () => {
 
                 <div className="checkout-row checkout-row--total">
                   <span>Total Amount</span>
-                  <strong>₹{quote.totalAmount.toLocaleString('en-IN')}</strong>
+                  <strong>₹{finalPayableTotal.toLocaleString('en-IN')}</strong>
+                </div>
+
+                {/* Stay Q Rewards Points Earning Banner */}
+                <div style={{
+                  marginTop: '0.85rem',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(99, 102, 241, 0.1))',
+                  border: '1px solid rgba(168, 85, 247, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <span style={{ fontSize: '1rem' }}>🏆</span>
+                    <div>
+                      <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#7c3aed' }}>
+                        Earn +{Math.max(1, Math.floor((finalPayableTotal / 100) * (loyaltyProfile?.pointsMultiplier || 1.0)))} Stay Q Points
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                        {loyaltyProfile?.tierDetails?.title || 'Q Starter'} ({loyaltyProfile?.pointsMultiplier || 1.0}x multiplier)
+                      </div>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#10b981', background: '#ecfdf5', padding: '0.15rem 0.45rem', borderRadius: '6px' }}>
+                    ≈ ₹{(Math.max(1, Math.floor((finalPayableTotal / 100) * (loyaltyProfile?.pointsMultiplier || 1.0))) * 0.5).toFixed(0)} value
+                  </span>
                 </div>
               </div>
 
@@ -333,7 +431,7 @@ export const CheckoutModal: React.FC = () => {
                 disabled={isSubmitting}
               >
                 <Lock size={16} />
-                <span>{isSubmitting ? 'Processing Booking...' : `Pay ₹${quote.totalAmount.toLocaleString('en-IN')}`}</span>
+                <span>{isSubmitting ? 'Processing Booking...' : `Pay ₹${finalPayableTotal.toLocaleString('en-IN')}`}</span>
               </button>
 
               <p className="checkout-terms">

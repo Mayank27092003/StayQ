@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
+import '../../../../providers/app_provider.dart';
+import '../../../../navigation/app_router.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_motion.dart';
 
@@ -31,33 +34,33 @@ class HostSuccessPassportScreen extends StatelessWidget {
             children: [
               const Spacer(),
 
-              // Animated Mascot / Trophy Icon
+              // Animated Mascot / Verification Hourglass Icon
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                    colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.35),
                       blurRadius: 30,
                       offset: const Offset(0, 10),
                     ),
                   ],
                 ),
-                child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 54),
+                child: const Icon(Icons.hourglass_top_rounded, color: Colors.white, size: 52),
               ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
 
               const SizedBox(height: 24),
 
               const Text(
-                'You’re Officially a Host! 🎉',
+                'Application Under Review! ⏳',
                 style: TextStyle(
-                  fontSize: 26,
+                  fontSize: 25,
                   fontWeight: FontWeight.w900,
                   color: AppColors.textPrimary,
                   letterSpacing: -0.5,
@@ -68,14 +71,14 @@ class HostSuccessPassportScreen extends StatelessWidget {
               const SizedBox(height: 8),
 
               const Text(
-                'Your property has been submitted for instant verification. Here is your official Stay Q Host Passport:',
-                style: TextStyle(fontSize: 13, height: 1.4, color: AppColors.textSecondary),
+                'Your host profile and property listing have been submitted for verification. Our Trust & Safety team is reviewing your documents.',
+                style: TextStyle(fontSize: 13, height: 1.45, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: 300.ms),
 
               const SizedBox(height: 24),
 
-              // Golden Host Passport Card
+              // Host Passport Card (Under Review State)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
@@ -123,12 +126,19 @@ class HostSuccessPassportScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF10B981),
+                            color: const Color(0xFFF59E0B),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Text(
-                            'VERIFIED',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.access_time_filled_rounded, color: Colors.white, size: 12),
+                              SizedBox(width: 4),
+                              Text(
+                                'UNDER REVIEW',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -149,19 +159,19 @@ class HostSuccessPassportScreen extends StatelessWidget {
                       '📍 $city • ₹${pricePerNight.toInt()} / night',
                       style: const TextStyle(fontSize: 13, color: Color(0xFFDDD6FE)),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
                     const Divider(color: Colors.white24),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Protection: ID-Verified Guests',
-                          style: TextStyle(fontSize: 11, color: Color(0xFFFDE68A)),
+                          '⏱️ Estimated Review: 2-4 Hours',
+                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFFDE68A)),
                         ),
                         Text(
-                          'Direct Payouts',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF6EE7B7)),
+                          'KYC Submitted',
+                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF6EE7B7)),
                         ),
                       ],
                     ),
@@ -180,7 +190,12 @@ class HostSuccessPassportScreen extends StatelessWidget {
                     if (onGoToDashboard != null) {
                       onGoToDashboard!();
                     } else {
-                      Navigator.pushNamedAndRemoveUntil(context, '/host', (route) => false);
+                      final provider = Provider.of<AppProvider>(context, listen: false);
+                      if (!provider.isHostMode) {
+                        provider.setHostMode(true);
+                      }
+                      provider.setTabIndex(0);
+                      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);
                     }
                   },
                   style: ElevatedButton.styleFrom(

@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, ChevronDown } from 'lucide-react';
@@ -152,8 +154,10 @@ const privacyData = [
         <p>If you have questions, comments, or statutory grievances about this notice or personal data handling, reach out to:</p>
         <p>
           <strong>Grievance Officer:</strong> Shayan Mandal<br />
-          <strong>Official Contact &amp; Grievance Email:</strong> <a href="mailto:grievance@stayq.space" style={{ color: 'var(--violet)', fontWeight: 700 }}>grievance@stayq.space</a><br />
-          <strong>Entity:</strong> QUATALYST PRIVATE LIMITED (CIN: U62011GA2026PTC018230)
+          <strong>Statutory Grievance Email:</strong> <a href="mailto:grievance@stayq.space" style={{ color: 'var(--violet)', fontWeight: 700 }}>grievance@stayq.space</a><br />
+          <strong>24/7 Customer Support Desk:</strong> <a href="mailto:support@stayq.space" style={{ color: 'var(--violet)', fontWeight: 700 }}>support@stayq.space</a><br />
+          <strong>Partnerships &amp; Corporate Inquiries:</strong> <a href="mailto:hello@stayq.space" style={{ color: '#d97706', fontWeight: 700 }}>hello@stayq.space</a><br />
+          <strong>Corporate Entity:</strong> QUATALYST PRIVATE LIMITED (CIN: U62011GA2026PTC018230)
         </p>
       </>
     )

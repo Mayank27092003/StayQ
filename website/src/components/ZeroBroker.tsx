@@ -1,5 +1,8 @@
+"use client";
+
 import { Check, ArrowRight } from 'lucide-react';
 import { Reveal } from './Reveal';
+import { useApp } from '../context/AppContext';
 
 /** Points reflect the real `LeaseAgreement` model: 11-month term, zero broker
  *  fee, security deposit, digital agreement, renewal reminders. */
@@ -12,6 +15,13 @@ const POINTS = [
 ];
 
 export function ZeroBroker() {
+  const { updateFilters } = useApp();
+
+  const handleBrowseHomes = (e: React.MouseEvent) => {
+    e.preventDefault();
+    updateFilters({ category: 'ZERO_BROKER', zeroBrokerOnly: true });
+    window.location.hash = '#/stays';
+  };
   return (
     <section className="section" id="zero-broker">
       <div
@@ -60,7 +70,7 @@ export function ZeroBroker() {
             </Reveal>
 
             <Reveal delay={0.24}>
-              <a className="btn btn--primary" href="#/zero-broker">
+              <a className="btn btn--primary" href="#/stays" onClick={handleBrowseHomes}>
                 Browse long-term homes
                 <ArrowRight size={16} aria-hidden="true" />
               </a>
@@ -69,34 +79,26 @@ export function ZeroBroker() {
 
           <div className="split__visual">
             <Reveal delay={0.1}>
-              <div 
-                className="split__mascot float--slow"
-                style={{
-                  position: 'relative',
-                  display: 'inline-block',
-                  borderRadius: '3rem',
-                  boxShadow: '0 30px 60px -15px rgba(90, 49, 244, 0.6), 0 0 0 8px rgba(90, 49, 244, 0.05), inset 0 2px 4px rgba(255,255,255,0.4)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  transform: 'perspective(1000px) rotateY(-8deg) rotateX(4deg)',
-                  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1.05)';
-                  e.currentTarget.style.boxShadow = '0 40px 80px -15px rgba(90, 49, 244, 0.7), 0 0 0 12px rgba(90, 49, 244, 0.1), inset 0 2px 4px rgba(255,255,255,0.5)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'perspective(1000px) rotateY(-8deg) rotateX(4deg) scale(1)';
-                  e.currentTarget.style.boxShadow = '0 30px 60px -15px rgba(90, 49, 244, 0.6), 0 0 0 8px rgba(90, 49, 244, 0.05), inset 0 2px 4px rgba(255,255,255,0.4)';
-                }}
-              >
+              <div className="split__host-card float--slow">
                 <img
-                  style={{ display: 'block', width: '100%', height: 'auto', transform: 'scale(1.02)' }}
-                  src="/images/logo_3d.png"
-                  alt="Stay Q Zero Broker emblem"
+                  className="split__host-img"
+                  src="/images/real_zero_broker_living.jpg"
+                  alt="Modern zero-brokerage designer apartment"
                   loading="lazy"
                 />
+                <div className="split__host-gradient" aria-hidden="true" />
+                <span className="split__host-earning-badge" style={{ background: 'linear-gradient(135deg, #5a31f4, #7f56d9)' }}>
+                  <Check size={13} strokeWidth={3} />
+                  ₹0 Brokerage Fee · Save ₹40,000+
+                </span>
+                <div className="split__host-overlay">
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0 0 0.2rem 0', color: '#fff' }}>
+                    11-Month Verified Leases
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>
+                    Direct Landlord Agreement · Zero Broker Commission
+                  </p>
+                </div>
               </div>
             </Reveal>
           </div>

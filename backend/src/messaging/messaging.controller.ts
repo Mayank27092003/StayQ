@@ -27,4 +27,16 @@ export class MessagingController {
   ) {
     return this.messagingService.createConversation(userId, hostId, propertyId, bookingId);
   }
+
+  @Post('conversations/:id/messages')
+  async sendMessage(
+    @CurrentUser('id') userId: string,
+    @Param('id') conversationId: string,
+    @Body('text') text: string,
+    @Body('imageUrl') imageUrl?: string
+  ) {
+    const result = await this.messagingService.sendMessage(userId, conversationId, text, imageUrl);
+    return result.message;
+  }
 }
+

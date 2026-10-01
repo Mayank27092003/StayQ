@@ -67,7 +67,178 @@ export async function syncProfileWithBackend(firebaseUser: { uid: string; displa
   };
 }
 
-export const CURATED_STAYS: Stay[] = [];
+export const CURATED_STAYS: Stay[] = [
+  {
+    id: 'stay-101',
+    title: 'The Highland Infinity Villa',
+    location: 'Candolim, North Goa, India',
+    city: 'Goa',
+    state: 'Goa',
+    pricePerNight: 5500,
+    rating: 4.98,
+    reviewCount: 48,
+    imageUrls: ['/images/real_hero.jpg', '/images/villa_1.jpg', '/images/villa_2.jpg'],
+    category: 'Villas',
+    propertyType: 'STAY',
+    hostName: 'Rajesh & Alok (Star Hosts)',
+    hostAvatar: '/images/avatar_alex.jpg',
+    isZeroBroker: false,
+    isGuestFavorite: true,
+    isStarHost: true,
+    isFeatured: true,
+    amenities: ['Private Pool', 'High-Speed Wi-Fi', 'Air Conditioning', 'Kitchen', 'Ocean View'],
+    tags: ['Star Host', 'Verified Luxury', 'Private Pool'],
+    description: 'Private 3BHK luxury pool villa nestled amidst lush palm greens in Candolim, just 5 mins from the beach.',
+    lat: 15.5182,
+    lng: 73.7634,
+    maxGuests: 6,
+    bedrooms: 3,
+    beds: 3,
+    baths: 3,
+  },
+  {
+    id: 'stay-102',
+    title: 'Himalayan Alpine Glass Cabin',
+    location: 'Old Manali, Himachal Pradesh, India',
+    city: 'Manali',
+    state: 'Himachal Pradesh',
+    pricePerNight: 4200,
+    rating: 4.95,
+    reviewCount: 32,
+    imageUrls: ['/images/cabin_1.jpg', '/images/villa_3.jpg'],
+    category: 'Cabins',
+    propertyType: 'STAY',
+    hostName: 'Vikram Singh',
+    hostAvatar: '/images/avatar_alex.jpg',
+    isZeroBroker: false,
+    isGuestFavorite: true,
+    isStarHost: true,
+    isFeatured: true,
+    amenities: ['Mountain View', 'Fireplace', 'High-Speed Wi-Fi', 'Pet Friendly'],
+    tags: ['Snow Peaks', 'Fireplace', 'Heated Stays'],
+    description: 'Cozy glass-roof mountain cabin with unobstructed 360-degree snow peak views and wood-burning fireplace.',
+    lat: 32.2432,
+    lng: 77.1892,
+    maxGuests: 4,
+    bedrooms: 2,
+    beds: 2,
+    baths: 2,
+  },
+  {
+    id: 'stay-103',
+    title: 'Indiranagar Designer Loft (Zero Brokerage)',
+    location: '100ft Road, Indiranagar, Bengaluru, India',
+    city: 'Bengaluru',
+    state: 'Karnataka',
+    pricePerNight: 3200,
+    rating: 4.92,
+    reviewCount: 19,
+    imageUrls: ['/images/zb_1.jpg', '/images/villa_2.jpg'],
+    category: 'Zero Broker',
+    propertyType: 'ZERO_BROKER',
+    hostName: 'Sanjay Direct Owner',
+    hostAvatar: '/images/avatar_alex.jpg',
+    isZeroBroker: true,
+    depositAmount: 45000,
+    leaseTerm: '1 - 11 Months Flexible',
+    isGuestFavorite: true,
+    isStarHost: true,
+    isFeatured: true,
+    amenities: ['High-Speed Wi-Fi', 'Air Conditioning', 'Kitchen', 'Pet Friendly'],
+    tags: ['Zero Broker', 'Direct Owner', '11-Month Lease'],
+    description: 'Modern penthouse loft with high ceilings, workstation, and direct owner contract with ₹0 brokerage.',
+    lat: 12.9784,
+    lng: 77.6408,
+    maxGuests: 2,
+    bedrooms: 1,
+    beds: 1,
+    baths: 1,
+  },
+  {
+    id: 'stay-104',
+    title: 'Wayanad Rainforest Treehouse',
+    location: 'Meppadi, Wayanad, Kerala, India',
+    city: 'Wayanad',
+    state: 'Kerala',
+    pricePerNight: 6800,
+    rating: 4.96,
+    reviewCount: 27,
+    imageUrls: ['/images/treehouse_1.jpg', '/images/villa_1.jpg'],
+    category: 'Treehouses',
+    propertyType: 'STAY',
+    hostName: 'Ananya Nair',
+    hostAvatar: '/images/avatar_alex.jpg',
+    isZeroBroker: false,
+    isGuestFavorite: true,
+    isStarHost: true,
+    isFeatured: true,
+    amenities: ['Mountain View', 'High-Speed Wi-Fi', 'Kitchen', 'Private Pool'],
+    tags: ['Rainforest', 'Treehouse', 'Organic Meals'],
+    description: 'Elevated 45ft above the rainforest floor inside a 100-acre organic coffee plantation.',
+    lat: 11.5524,
+    lng: 76.1264,
+    maxGuests: 3,
+    bedrooms: 1,
+    beds: 2,
+    baths: 1,
+  },
+  {
+    id: 'stay-105',
+    title: 'Luxury Expedition Motorhome RV',
+    location: 'Leh Ladakh Valley, India',
+    city: 'Leh Ladakh',
+    state: 'Ladakh',
+    pricePerNight: 8500,
+    rating: 4.99,
+    reviewCount: 15,
+    imageUrls: ['/images/rv_1.jpg', '/images/camp_1.jpg'],
+    category: 'RV',
+    propertyType: 'RV',
+    hostName: 'Ladakh Expeditions Host',
+    hostAvatar: '/images/avatar_alex.jpg',
+    isZeroBroker: false,
+    isGuestFavorite: true,
+    isStarHost: true,
+    isFeatured: true,
+    amenities: ['Air Conditioning', 'Kitchen', 'Mountain View', 'High-Speed Wi-Fi'],
+    tags: ['4x4 Campervan', 'Solar Powered', 'Self-Drive / Chauffeur'],
+    description: 'Off-grid 4x4 campervan with plush queen bed, solar-powered kitchen, hot shower, and star-gazing sunroof.',
+    lat: 34.1526,
+    lng: 77.5771,
+    maxGuests: 4,
+    bedrooms: 1,
+    beds: 2,
+    baths: 1,
+  },
+  {
+    id: 'stay-106',
+    title: 'Udaipur Lakeside Heritage Haveli',
+    location: 'Lake Pichola, Udaipur, Rajasthan, India',
+    city: 'Udaipur',
+    state: 'Rajasthan',
+    pricePerNight: 7200,
+    rating: 4.97,
+    reviewCount: 41,
+    imageUrls: ['/images/villa_3.jpg', '/images/villa_1.jpg'],
+    category: 'Villas',
+    propertyType: 'STAY',
+    hostName: 'Maharana Heritage Host',
+    hostAvatar: '/images/avatar_alex.jpg',
+    isZeroBroker: false,
+    isGuestFavorite: true,
+    isStarHost: true,
+    isFeatured: true,
+    amenities: ['Private Pool', 'Ocean View', 'Air Conditioning', 'Kitchen', 'High-Speed Wi-Fi'],
+    tags: ['Royal Palace', 'Lake View', 'Star Host'],
+    description: 'Authentic 200-year-old royal haveli overlooking Lake Pichola with private jharokhas and courtyards.',
+    lat: 24.5764,
+    lng: 73.6835,
+    maxGuests: 6,
+    bedrooms: 3,
+    beds: 3,
+    baths: 3,
+  },
+];
 
 export const CURATED_EXPERIENCES: Experience[] = [];
 
@@ -120,12 +291,14 @@ export async function fetchStays(filters?: Partial<SearchFilters>): Promise<Stay
         category: categoryName,
         propertyType: isZb ? 'ZERO_BROKER' : (p.type || 'STAY'),
         isZeroBroker: isZb,
+        isSponsored: p.isSponsored === true || p.sponsoredTier != null,
+        sponsoredTier: p.sponsoredTier,
         depositAmount: Number(p.securityDeposit) || 50000,
         leaseTerm: p.leaseDurationMonths ? `${p.leaseDurationMonths} Months` : '1 - 11 Months Flexible',
         hostName: hostName || 'Verified Host',
         hostAvatar: p.hostAvatar || p.host?.avatarUrl || p.host?.photoUrl || '/images/avatar_alex.jpg',
         isGuestFavorite: true,
-        isSuperhost: true,
+        isStarHost: true,
         isFeatured: true,
         amenities: p.amenities?.length ? p.amenities : ['High-Speed Wi-Fi', 'Air Conditioning', 'Free Parking', 'Kitchen'],
         tags: isZb ? ['Zero Broker', 'Verified Lease', 'Direct Owner'] : ['Verified', 'Instant Book', 'Luxury'],
@@ -142,8 +315,8 @@ export async function fetchStays(filters?: Partial<SearchFilters>): Promise<Stay
     return applyFilters(realStays, filters);
   }
 
-  // Return empty list when no properties exist in database
-  return [];
+  // Return curated luxury stays fallback
+  return applyFilters(CURATED_STAYS, filters);
 }
 
 export async function fetchExperiences(category?: string): Promise<Experience[]> {
@@ -443,12 +616,12 @@ export function getStoredBookings(): Booking[] {
 }
 
 export function getStoredWishlist(): string[] {
-  if (typeof window === 'undefined') return ['stay-1', 'stay-4'];
+  if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem('stayq_user_wishlist');
-    return raw ? JSON.parse(raw) : ['stay-1', 'stay-4'];
+    return raw ? JSON.parse(raw) : [];
   } catch {
-    return ['stay-1', 'stay-4'];
+    return [];
   }
 }
 
@@ -537,7 +710,14 @@ export async function generateAadhaarOtpApi(aadhaarNumber: string): Promise<{
   status: string;
   message: string;
 }> {
-  const cleanAadhaar = aadhaarNumber.replace(/\s+/g, '');
+  const cleanAadhaar = aadhaarNumber.replace(/\D/g, '');
+  if (cleanAadhaar.length !== 12) {
+    return {
+      referenceId: '',
+      status: 'FAILED',
+      message: 'Please enter a valid 12-digit Aadhaar number',
+    };
+  }
   try {
     const res = await fetch(`${API_BASE_URL}/verification/aadhaar/generate-otp`, {
       method: 'POST',
@@ -545,19 +725,24 @@ export async function generateAadhaarOtpApi(aadhaarNumber: string): Promise<{
       body: JSON.stringify({ aadhaarNumber: cleanAadhaar }),
     });
     if (res.ok) {
-      return await res.json();
+      const data = await res.json();
+      return {
+        referenceId: data.referenceId || data.ref_id || '',
+        status: data.status || 'SUCCESS',
+        message: data.message || 'OTP sent successfully to Aadhaar registered mobile',
+      };
     }
     const err = await res.json().catch(() => ({}));
     return {
-      referenceId: 'REF_' + Date.now(),
+      referenceId: '',
       status: 'FAILED',
       message: err?.message || 'Could not generate Aadhaar OTP. Please check the 12-digit number.',
     };
-  } catch {
+  } catch (e: any) {
     return {
-      referenceId: 'REF_' + Date.now(),
-      status: 'SUCCESS',
-      message: 'OTP sent to mobile linked with Aadhaar ending in ' + cleanAadhaar.slice(-4),
+      referenceId: '',
+      status: 'ERROR',
+      message: e?.message || 'Failed to contact Aadhaar OTP verification server',
     };
   }
 }
@@ -577,18 +762,25 @@ export async function verifyAadhaarOtpApi(referenceId: string, otp: string): Pro
       body: JSON.stringify({ referenceId, otp: otp.trim() }),
     });
     if (res.ok) {
-      return await res.json();
+      const data = await res.json();
+      return {
+        status: data.status || 'VERIFIED',
+        name: data.name || 'Verified Aadhaar Resident',
+        gender: data.gender || 'M',
+        dob: data.dob || '',
+        address: data.address || 'India',
+        message: data.message,
+      };
     }
     const err = await res.json().catch(() => ({}));
     return {
       status: 'FAILED',
       message: err?.message || 'Invalid Aadhaar OTP',
     };
-  } catch {
+  } catch (e: any) {
     return {
-      status: 'VERIFIED',
-      name: 'Verified Aadhaar Resident',
-      address: 'India',
+      status: 'ERROR',
+      message: e?.message || 'Failed to contact Aadhaar verification server',
     };
   }
 }
@@ -605,17 +797,25 @@ export async function verifyBankAccountApi(params: {
   status: string;
   message?: string;
 }> {
+  const cleanPhone = params.phone ? params.phone.replace(/\D/g, '').slice(-10) : undefined;
+  const payload: any = {
+    accountNumber: params.accountNumber.trim(),
+    ifsc: params.ifsc.trim().toUpperCase(),
+  };
+  if (params.name && params.name.trim()) payload.name = params.name.trim();
+  if (cleanPhone && cleanPhone.length === 10) payload.phone = cleanPhone;
+
   try {
     const res = await fetch(`${API_BASE_URL}/verification/test-bank`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params),
+      body: JSON.stringify(payload),
     });
     if (res.ok) {
       const data = await res.json();
       return {
-        valid: data.valid !== false,
-        accountHolderName: data.accountHolderName || data.nameAtBank || params.name,
+        valid: data.accountStatus === 'VALID' || data.status === 'SUCCESS' || data.valid !== false,
+        accountHolderName: data.nameAtBank || data.accountHolderName || params.name,
         bankName: data.bankName || params.ifsc.slice(0, 4),
         status: data.status || 'SUCCESS',
       };
@@ -626,12 +826,68 @@ export async function verifyBankAccountApi(params: {
       status: 'FAILED',
       message: err?.message || 'Bank penny drop verification failed. Please check details.',
     };
-  } catch {
+  } catch (e: any) {
     return {
-      valid: true,
-      accountHolderName: params.name || 'Verified Account Holder',
-      bankName: params.ifsc.slice(0, 4),
-      status: 'SUCCESS',
+      valid: false,
+      status: 'ERROR',
+      message: e?.message || 'Failed to connect to Cashfree Secure ID verification server',
     };
   }
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// STAY Q REWARDS & LOYALTY API
+// ════════════════════════════════════════════════════════════════════════════
+
+export async function fetchLoyaltyProfileApi(): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE_URL}/loyalty/profile`, {
+    method: 'GET',
+    headers,
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch loyalty profile');
+  }
+  return res.json();
+}
+
+export async function redeemLoyaltyPointsApi(points: number): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE_URL}/loyalty/redeem`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ points }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || 'Failed to redeem points');
+  }
+  return res.json();
+}
+
+export async function upgradeLoyaltyTierApi(tier: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE_URL}/loyalty/upgrade-tier`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ tier }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || 'Failed to upgrade tier');
+  }
+  return res.json();
+}
+
+export async function fetchPointsHistoryApi(page: number = 1): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE_URL}/loyalty/history?page=${page}`, {
+    method: 'GET',
+    headers,
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch points history');
+  }
+  return res.json();
+}
+

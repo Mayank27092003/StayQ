@@ -234,7 +234,7 @@ export const EmailTemplates = {
       subject: `Booking Confirmed! 🎉 Stay at ${params.propertyTitle} (Ref: ${params.confirmationCode})`,
       html: wrapLuxuryCard(
         `Your Luxury Stay is Confirmed! 🌟`,
-        'Digital Cruise Ticket & Reservation Pass',
+        'Digital Stay Pass & Reservation Confirmation',
         `
         <p>Hi <b>${params.guestName}</b>,</p>
         <p>We're thrilled to confirm your reservation at <b>${params.propertyTitle}</b>.</p>
@@ -484,11 +484,96 @@ export const EmailTemplates = {
           <p style="margin:0; font-weight:700; color:#0f172a;">Your Member Privileges:</p>
           <div class="row"><span class="label">Zero Brokerage:</span><span class="val">Save 100% on Middlemen</span></div>
           <div class="row"><span class="label">Qube AI Concierge:</span><span class="val">24/7 Itinerary Planning</span></div>
+          <div class="row"><span class="label">Digital Stay Pass:</span><span class="val">Instant Access & Check-in</span></div>
           <div class="row"><span class="label">Verified Stays:</span><span class="val">100% Quality Audited</span></div>
         </div>
         `,
         'Explore Luxury Stays',
         `${BASE_URL}`
+      ),
+    };
+  },
+
+  guestWelcomeWithReferral(params: { guestName: string; referralCode: string; walletCredit?: number }) {
+    const credit = params.walletCredit || 100;
+    return {
+      subject: `Welcome to Stay Q, ${params.guestName}! 🎁 ₹${credit} Credited to Your Wallet`,
+      html: wrapLuxuryCard(
+        `Welcome to Stay Q, ${params.guestName}! 🎁`,
+        'Handcrafted Luxury Living & Rewards',
+        `
+        <p>Hi <b>${params.guestName}</b>,</p>
+        <p>Your Stay Q account is confirmed under <b>Quatalyst Private Limited</b>. Your exclusive welcome referral bonus is now live in your wallet!</p>
+        
+        <div class="box" style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border: 1.5px solid #9D00FF; padding: 20px;">
+          <div class="row" style="border-bottom: 1px dashed #d8b4fe; margin-bottom: 12px; padding-bottom: 10px;">
+            <span class="label" style="font-size: 15px; font-weight: 800; color: #581c87;">🎁 Welcome Referral Reward</span>
+            <span class="val" style="color: #9D00FF; font-size: 22px; font-weight: 900;">+₹${credit}</span>
+          </div>
+          <div class="row" style="background: #ffffff; padding: 10px 14px; border-radius: 10px; border: 1px solid #e9d5ff; margin-bottom: 10px;">
+            <span class="label" style="color: #6b21a8;">Your Referral Code:</span>
+            <span class="pill" style="background: #9D00FF; color: #fff; letter-spacing: 0.08em;">${params.referralCode}</span>
+          </div>
+          <p style="margin: 6px 0 0 0; font-size: 12.5px; color: #6b21a8;">
+            ⚡ <b>Share with friends:</b> Earn ₹100 per friend (₹250 on 5th referral!) when they complete their first stay.
+          </p>
+        </div>
+
+        <div class="box">
+          <p style="margin:0 0 8px 0; font-weight:700; color:#0f172a;">Your Member Privileges:</p>
+          <div class="row"><span class="label">💳 Wallet Checkout:</span><span class="val">Redeem Up to 10% on Every Booking</span></div>
+          <div class="row"><span class="label">🎟️ Digital Stay Pass:</span><span class="val">Keycode, Directions & Host Details</span></div>
+          <div class="row"><span class="label">🛡️ Zero Brokerage:</span><span class="val">100% Direct Transparent Pricing</span></div>
+          <div class="row"><span class="label">🤖 Qube AI Concierge:</span><span class="val">24/7 Smart Assistance</span></div>
+        </div>
+
+        <div style="background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px; font-size: 11.5px; color: #64748b; margin-top: 14px; line-height: 1.5;">
+          <strong>📜 Stay Q Wallet Terms:</strong> Max 10% of booking subtotal can be redeemed per checkout. Unused wallet rewards never expire while your account is active. Non-withdrawable. Operated by Quatalyst Private Limited.
+        </div>
+        `,
+        'Explore Handcrafted Stays',
+        `${BASE_URL}`
+      ),
+    };
+  },
+
+  hostWelcomeWithCode(params: { hostName: string; hostCode: string }) {
+    return {
+      subject: `Welcome to Stay Q Host Network, ${params.hostName}! 🌟 (Host Code: ${params.hostCode})`,
+      html: wrapLuxuryCard(
+        `Welcome to the Host Community, ${params.hostName}! 🌟`,
+        'Host Partnerships & Direct Settlements',
+        `
+        <p>Thank you for partnering with Stay Q. Your host account is active under <b>Quatalyst Private Limited</b>.</p>
+        
+        <div class="box" style="background: #f8fafc; border: 1.5px solid #cbd5e1; padding: 20px;">
+          <div class="row" style="border-bottom: 1px dashed #cbd5e1; margin-bottom: 12px; padding-bottom: 10px;">
+            <span class="label" style="font-size: 15px; font-weight: 800; color: #0f172a;">🔑 Assigned Host Identifier</span>
+            <span class="val" style="color: #059669; font-weight: 800;">ACTIVE ✅</span>
+          </div>
+          <div class="row" style="background: #ffffff; padding: 10px 14px; border-radius: 10px; border: 1px solid #cbd5e1; margin-bottom: 10px;">
+            <span class="label" style="color: #475569;">Host Access Code:</span>
+            <span class="pill" style="background: #0f172a; color: #fff; letter-spacing: 0.08em;">${params.hostCode}</span>
+          </div>
+          <p style="margin: 6px 0 0 0; font-size: 12.5px; color: #065f46; background: #ecfdf5; padding: 8px 12px; border-radius: 8px;">
+            ✅ <b>Guaranteed Terms:</b> Direct Bank Settlements. You receive 100% of your listed host payout on every confirmed guest reservation.
+          </p>
+        </div>
+
+        <div class="box">
+          <p style="margin:0 0 8px 0; font-weight:700; color:#0f172a;">Host Key Benefits:</p>
+          <div class="row"><span class="label">💳 Direct Payout Guarantee:</span><span class="val">Zero Marketplace Cuts</span></div>
+          <div class="row"><span class="label">⚡ Automated Payouts:</span><span class="val">Direct Cashfree Bank Settlements</span></div>
+          <div class="row"><span class="label">🪪 Verified Guest Network:</span><span class="val">Aadhaar/Phone Verified</span></div>
+          <div class="row"><span class="label">🗓️ Full Control:</span><span class="val">Custom Rates & House Rules</span></div>
+        </div>
+
+        <div style="background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px; font-size: 11.5px; color: #64748b; margin-top: 14px; line-height: 1.5;">
+          <strong>📜 Host Terms & Policies:</strong> Payouts settle directly to your verified bank account following guest check-in without platform deductions. Support desk: host-support@stayq.space.
+        </div>
+        `,
+        'Onboard Your First Property',
+        `${BASE_URL}/#/host-invite`
       ),
     };
   },

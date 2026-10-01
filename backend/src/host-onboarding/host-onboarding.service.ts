@@ -11,7 +11,7 @@ export class HostOnboardingService {
         hostId,
         title: data.title || 'Draft Property',
         description: data.description || '',
-        type: data.type || 'HOTEL',
+        type: data.type || 'VILLA',
         category: data.category || 'VILLA',
         address: data.address || '',
         city: data.city || '',

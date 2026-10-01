@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useAdminAuth } from "@/context/AdminAuthContext";
 
 interface AdminProfile {
   name: string;
@@ -18,6 +19,7 @@ const DEFAULT_ADMIN_PROFILE: AdminProfile = {
 };
 
 export default function Header() {
+  const { adminUser, logout } = useAdminAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
@@ -85,14 +87,14 @@ export default function Header() {
 
   return (
     <>
-      <header className="h-16 w-full sticky top-0 z-40 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_4px_30px_rgba(0,0,0,0.02)] flex justify-between items-center px-gutter mx-auto max-w-[1440px]">
-        {/* Search */}
+      <header className="h-14 w-full sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex justify-between items-center px-6">
+        {/* Search Bar */}
         <div className="flex-1 max-w-md">
-          <div className="relative flex items-center w-full h-10 rounded-full bg-surface-container-high/40 border border-transparent focus-within:bg-surface-container-lowest focus-within:border-outline-variant/50 focus-within:shadow-[0_4px_12px_rgba(0,0,0,0.04)] transition-all">
-            <span className="material-symbols-outlined absolute left-3 text-on-surface-variant/70 text-[20px]">search</span>
+          <div className="relative flex items-center w-full h-9 rounded-xl bg-slate-50 border border-slate-200/80 focus-within:bg-white focus-within:border-[#5A31F4]/50 focus-within:ring-2 focus-within:ring-[#5A31F4]/10 transition-all">
+            <span className="material-symbols-outlined absolute left-2.5 text-slate-400 text-[18px]">search</span>
             <input 
-              className="w-full h-full bg-transparent border-none focus:ring-0 pl-10 pr-4 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant" 
-              placeholder="Search Stay Q..." 
+              className="w-full h-full bg-transparent border-none focus:outline-none pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 font-medium" 
+              placeholder="Search listings, bookings, hosts, tickets..." 
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -101,71 +103,79 @@ export default function Header() {
         </div>
         
         {/* Trailing Actions */}
-        <div className="flex items-center gap-md">
-          <Link href="/notifications" className="text-on-surface-variant hover:bg-surface-container rounded-full p-2 transition-colors relative">
-            <span className="material-symbols-outlined">notifications</span>
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error border border-surface"></span>
+        <div className="flex items-center gap-3">
+          {/* Live System Status */}
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/60 text-[11px] font-bold text-emerald-700">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Platform Live</span>
+          </div>
+
+          <Link href="/notifications" className="text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg p-2 transition-colors relative" title="Notifications">
+            <span className="material-symbols-outlined text-[19px]">notifications</span>
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border-2 border-white"></span>
           </Link>
-          <button onClick={() => window.open('https://docs.stayq.com', '_blank')} className="text-on-surface-variant hover:bg-surface-container rounded-full p-2 transition-colors">
-            <span className="material-symbols-outlined">help_outline</span>
-          </button>
-          <div className="w-px h-6 bg-outline-variant mx-xs"></div>
-          <button onClick={() => setIsSupportOpen(true)} className="font-label-md text-label-md text-on-surface hover:text-primary transition-colors">
-            Support
+
+          <button onClick={() => setIsSupportOpen(true)} className="text-xs font-bold text-[#5A31F4] bg-[#5A31F4]/8 hover:bg-[#5A31F4]/15 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-[16px]">headset_mic</span>
+            <span>Support</span>
           </button>
           
           <div className="relative">
             <button 
               onClick={() => setIsProfileOpen(!isProfileOpen)} 
-              className="flex items-center gap-xs pl-sm pr-xs py-1.5 rounded-full border border-outline-variant/40 bg-surface-container-lowest shadow-[0_2px_8px_rgba(0,0,0,0.03)] hover:bg-surface-container transition-all ml-sm"
+              className="flex items-center gap-2 pl-2.5 pr-1.5 py-1 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 shadow-sm transition-all"
             >
-              <span className="font-label-md text-label-md font-bold text-on-surface ml-xs mr-xs max-w-[130px] truncate">
-                {adminProfile.name}
+              <span className="text-xs font-bold text-slate-800 max-w-[120px] truncate">
+                {adminUser?.fullName || adminProfile.name}
               </span>
-              <span className="material-symbols-outlined text-[28px] text-primary">account_circle</span>
+              <div className="w-6 h-6 rounded-lg bg-[#5A31F4] text-white flex items-center justify-center text-[10px] font-extrabold">
+                {(adminUser?.fullName || adminProfile.name).slice(0, 2).toUpperCase()}
+              </div>
             </button>
 
             {isProfileOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-surface rounded-2xl shadow-xl border border-outline-variant py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="px-4 py-2.5 border-b border-outline-variant/40">
-                  <strong className="block text-sm font-bold text-on-surface">{adminProfile.name}</strong>
-                  <span className="block text-xs text-primary font-medium">{adminProfile.role}</span>
-                  <span className="block text-xs text-on-surface-variant truncate">{adminProfile.email}</span>
+              <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-2xl border border-slate-200/90 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="px-4 py-2.5 border-b border-slate-100">
+                  <strong className="block text-sm font-bold text-slate-900 truncate">{adminUser?.fullName || adminProfile.name}</strong>
+                  <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-purple-50 text-[#5A31F4] text-[10px] font-extrabold uppercase">
+                    {adminUser?.role === 'MASTER_ADMIN' ? 'Super Administrator' : (adminUser?.role || adminProfile.role)}
+                  </span>
+                  <span className="block text-xs text-slate-400 mt-1 truncate">{adminUser?.email || adminProfile.email}</span>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => {
-                    setTempName(adminProfile.name);
-                    setTempEmail(adminProfile.email);
+                    setTempName(adminUser?.fullName || adminProfile.name);
+                    setTempEmail(adminUser?.email || adminProfile.email);
                     setTempRole(adminProfile.role);
                     setTempPhone(adminProfile.phone);
                     setIsEditProfileOpen(true);
                     setIsProfileOpen(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors flex items-center gap-2"
+                  className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-[18px] text-primary">edit</span>
+                  <span className="material-symbols-outlined text-[17px] text-[#5A31F4]">edit</span>
                   Edit Admin Profile
                 </button>
 
-                <Link href="/access" className="px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant">admin_panel_settings</span>
+                <Link href="/access" className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[17px] text-slate-400">admin_panel_settings</span>
                   Access &amp; Roles
                 </Link>
 
-                <Link href="/revenue" className="px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant">receipt_long</span>
-                  Billing &amp; Payouts
+                <Link href="/revenue" className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[17px] text-slate-400">payments</span>
+                  Revenue &amp; Payouts
                 </Link>
 
-                <div className="my-1 border-t border-outline-variant/40" />
+                <div className="my-1 border-t border-slate-100" />
 
                 <button 
-                  onClick={() => window.location.href = '/api/v1/auth/logout'} 
-                  className="w-full text-left px-4 py-2 text-sm text-secondary font-bold hover:bg-surface-container transition-colors flex items-center gap-2"
+                  onClick={() => logout()} 
+                  className="w-full text-left px-4 py-2 text-xs text-red-600 font-bold hover:bg-red-50 transition-colors flex items-center gap-2 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-[18px]">logout</span>
+                  <span className="material-symbols-outlined text-[17px]">logout</span>
                   Sign Out
                 </button>
               </div>

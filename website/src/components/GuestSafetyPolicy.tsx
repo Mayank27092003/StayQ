@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { ShieldCheck } from 'lucide-react';
 
@@ -31,7 +33,7 @@ export const GuestSafetyPolicy: React.FC = () => {
             Physical Safety &amp; Emergency Concierge
           </h3>
           <p>
-            Every Stay Q property must maintain operational first aid kits, emergency contact placards, and secure digital or deadbolt locks. Our 24/7 Safety Rapid Response Desk is reachable directly in-app or via <strong>grievance@stayq.space</strong>.
+            Every Stay Q property must maintain operational first aid kits, emergency contact placards, and secure digital or deadbolt locks. Our 24/7 Safety Rapid Response Desk is reachable directly in-app or via <strong>support@stayq.space</strong> (for statutory safety compliance: <strong>grievance@stayq.space</strong>).
           </p>
         </section>
       </div>

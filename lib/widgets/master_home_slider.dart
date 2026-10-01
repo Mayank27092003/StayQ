@@ -114,10 +114,10 @@ class MasterHomeSlider extends StatelessWidget {
         AnimatedDefaultTextStyle(
           duration: const Duration(milliseconds: 300),
           style: TextStyle(
-            fontFamily: 'Inter',
             fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
             fontSize: isActive ? 15 : 14,
             color: isActive ? Colors.white : AppColors.textSecondary,
+            letterSpacing: -0.2,
           ),
           child: Text(title),
         ),

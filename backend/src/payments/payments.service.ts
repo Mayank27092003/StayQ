@@ -1,5 +1,7 @@
 import { Injectable, Logger, BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '@prisma/client';
 import * as crypto from 'crypto';
 
 export interface CreateOrderParams {
@@ -21,7 +23,10 @@ export class PaymentsService {
   private readonly cashfreeSecretKey: string;
   private readonly cashfreePgBaseUrl: string;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {
     this.cashfreeAppId = process.env.CASHFREE_PG_APP_ID || process.env.CASHFREE_CLIENT_ID || '';
     this.cashfreeSecretKey = process.env.CASHFREE_PG_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || '';
     this.cashfreePgBaseUrl = process.env.CASHFREE_PG_BASE_URL || 'https://api.cashfree.com/pg';
@@ -203,6 +208,11 @@ export class PaymentsService {
         });
 
         if (payment) {
+          if (payment.status === 'CAPTURED') {
+            this.logger.log(`Payment for order ${orderId} is already CAPTURED. Idempotent skip.`);
+            return;
+          }
+
           await tx.payment.update({
             where: { id: payment.id },
             data: {
@@ -213,11 +223,34 @@ export class PaymentsService {
           });
 
           if (payment.bookingId) {
-            await tx.booking.update({
+            const confirmedBooking = await tx.booking.update({
               where: { id: payment.bookingId },
               data: { status: 'CONFIRMED' },
+              include: {
+                property: { select: { title: true, hostId: true } },
+              },
             });
             this.logger.log(`Booking ${payment.bookingId} confirmed successfully upon payment capture.`);
+
+            // Notify Guest
+            this.notificationsService.sendNotification(
+              confirmedBooking.guestId,
+              NotificationType.BOOKING_CONFIRMED,
+              'Booking Confirmed! 🎉',
+              `Your reservation for ${confirmedBooking.property?.title || 'your stay'} is confirmed!`,
+              { bookingId: confirmedBooking.id },
+            ).catch((err) => this.logger.error(`Failed to notify guest: ${err.message}`));
+
+            // Notify Host
+            if (confirmedBooking.property?.hostId) {
+              this.notificationsService.sendNotification(
+                confirmedBooking.property.hostId,
+                NotificationType.BOOKING_CONFIRMED,
+                'New Reservation! 🏡',
+                `You have a new confirmed booking for ${confirmedBooking.property?.title || 'your property'}.`,
+                { bookingId: confirmedBooking.id },
+              ).catch((err) => this.logger.error(`Failed to notify host: ${err.message}`));
+            }
           }
         }
       });
@@ -249,13 +282,15 @@ export class PaymentsService {
   async handleCashfreeWebhook(event: any, rawBody?: Buffer, signature?: string, timestamp?: string) {
     this.logger.log(`Received Cashfree Webhook: ${JSON.stringify(event?.type || event?.event)}`);
 
-    // Verify cryptographic signature if raw body and signature are provided
-    if (signature && rawBody) {
-      const isValid = this.verifyWebhookSignature(rawBody.toString('utf8'), signature, timestamp);
-      if (!isValid) {
-        this.logger.warn('Cashfree webhook signature verification failed. Rejecting untrusted payload.');
-        return { status: 'invalid_signature' };
-      }
+    // SECURITY: Require valid webhook signature — reject if missing or invalid
+    if (!signature || !rawBody) {
+      this.logger.warn('Missing Cashfree webhook signature or raw body. Rejecting.');
+      throw new UnauthorizedException('Missing webhook signature');
+    }
+    const isValid = this.verifyWebhookSignature(rawBody.toString('utf8'), signature, timestamp);
+    if (!isValid) {
+      this.logger.warn('Cashfree webhook signature verification failed. Rejecting untrusted payload.');
+      throw new UnauthorizedException('Invalid Cashfree webhook signature');
     }
 
     const orderId = event?.data?.order?.order_id || event?.order_id;

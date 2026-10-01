@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Rubik } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
+import { AdminAuthProvider } from "@/context/AdminAuthContext";
+import AdminAuthGuard from "@/components/AdminAuthGuard";
 
 const rubik = Rubik({
   weight: ['400', '500', '700'],
@@ -11,28 +11,24 @@ const rubik = Rubik({
 
 export const metadata: Metadata = {
   title: "Stay Q Admin - Command Center",
-  description: "Enterprise Control for Stay Q",
+  description: "Enterprise Control & Operations for Stay Q",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-        <style dangerouslySetInnerHTML={{__html: `
-          .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-          }
-        `}} />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
+        />
       </head>
-      <body className={`${rubik.className} bg-background text-on-background font-body-md text-body-md antialiased overflow-x-hidden flex min-h-screen`}>
-        <Sidebar />
-        <main className="flex-1 flex flex-col min-w-0 bg-background">
-          <Header />
-          <div className="flex-1 p-gutter max-w-[1440px] mx-auto w-full space-y-xl overflow-y-auto">
+      <body className={`${rubik.className} bg-[#f8fafc] text-[#0f172a] antialiased overflow-x-hidden min-h-screen`}>
+        <AdminAuthProvider>
+          <AdminAuthGuard>
             {children}
-          </div>
-        </main>
+          </AdminAuthGuard>
+        </AdminAuthProvider>
       </body>
     </html>
   );

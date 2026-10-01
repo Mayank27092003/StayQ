@@ -747,13 +747,18 @@ class _RVCheckoutScreenState extends State<RVCheckoutScreen> {
               ),
             ],
           ),
-          child: Center(
-            child: Text(
-              'Confirm RV Booking — ${_currencyFormat.format(_total)}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            alignment: Alignment.center,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'Confirm RV Booking — ${_currencyFormat.format(_total)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),

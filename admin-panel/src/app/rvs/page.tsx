@@ -218,7 +218,7 @@ export default function RVFleetManagementPage() {
       title,
       subtitle,
       description: `${description} | Vehicle: ${vehicleType}, Berths: ${berths}, Transmission: ${transmission}, Fuel: ${fuelType}, Mileage: ${mileageLimitKm}km/day, Solar: ${solarWattage}W, Water: ${waterTankLitres}L, Handover: ${pickupLocation}`,
-      type: "HOTEL",
+      type: "RV",
       category: "RV",
       city,
       address: pickupLocation,

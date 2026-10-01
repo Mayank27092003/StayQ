@@ -11,6 +11,8 @@ jobs:
   build-ios:
     runs-on: macos-15
     timeout-minutes: 60
+    permissions:
+      contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -56,3 +58,14 @@ jobs:
           name: StayQ-iOS-Release
           path: build/ios/iphoneos/StayQ-Release.ipa
           retention-days: 14
+
+      - name: Publish Direct Public Release Asset
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        with:
+          tag_name: v1.0.0-ios-latest
+          name: "Stay Q iOS Release IPA (Direct Download)"
+          body: "Official unsigned Stay Q iOS IPA build. Ready for AltStore, Sideloadly, 3uTools, and TestFlight."
+          files: build/ios/iphoneos/StayQ-Release.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -65,6 +65,7 @@ class AuthGatewayScreen extends StatelessWidget {
                   else ...[
                     ElevatedButton(
                       onPressed: () {
+                        provider.setHostMode(false);
                         Navigator.pushNamed(context, AppRoutes.phoneInput);
                       },
                       style: ElevatedButton.styleFrom(
@@ -81,6 +82,7 @@ class AuthGatewayScreen extends StatelessWidget {
                     
                     OutlinedButton(
                       onPressed: () async {
+                        provider.setHostMode(false);
                         final success = await provider.signInWithGoogle();
                         if (success && context.mounted) {
                           final isComplete = await provider.checkProfileComplete();
@@ -112,18 +114,24 @@ class AuthGatewayScreen extends StatelessWidget {
                   // Host Login Link
                   TextButton(
                     onPressed: () {
-                      if (!provider.isHostMode) {
-                        provider.toggleHostMode();
-                      }
+                      provider.setHostMode(true);
                       Navigator.pushNamed(context, AppRoutes.phoneInput);
                     },
-                    child: const Text(
-                      'List your property on Stay Q',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.home_work_outlined, size: 18, color: AppColors.primary),
+                        SizedBox(width: 6),
+                        Text(
+                          'List your property on Stay Q (Host Login)',
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
                     ),
                   ).animate().fadeIn(delay: 1000.ms).slideY(begin: 0.5),
                   const SizedBox(height: 24),

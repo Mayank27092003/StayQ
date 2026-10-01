@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -79,7 +81,7 @@ export const QubeDrawer: React.FC = () => {
           aria-label="Open Qube AI Assistant"
         >
           <div className="qube-float-trigger__avatar">
-            <img src="/images/qube_mascot.jpg" alt="Qube AI" />
+            <img src="/images/real_concierge.jpg" alt="Qube AI" />
             <span className="qube-float-trigger__online-dot" />
           </div>
           <div className="qube-float-trigger__text">
@@ -96,7 +98,7 @@ export const QubeDrawer: React.FC = () => {
           <div className="qube-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="qube-drawer__header">
               <div className="qube-drawer__avatar-wrap">
-                <img src="/images/qube_mascot.jpg" alt="Qube" className="qube-drawer__avatar" />
+                <img src="/images/real_concierge.jpg" alt="Qube" className="qube-drawer__avatar" />
                 <div>
                   <div className="qube-drawer__name">
                     Qube AI Companion <Sparkles size={14} className="text-gold" />
@@ -118,7 +120,7 @@ export const QubeDrawer: React.FC = () => {
               {messages.map((m) => (
                 <div key={m.id} className={`qube-msg qube-msg--${m.sender}`}>
                   {m.sender === 'qube' && (
-                    <img src="/images/qube_mascot.jpg" alt="Qube" className="qube-msg__avatar" />
+                    <img src="/images/real_concierge.jpg" alt="Qube" className="qube-msg__avatar" />
                   )}
                   <div className="qube-msg__bubble">
                     <div className="qube-msg__text" dangerouslySetInnerHTML={{ __html: formatMessage(m.text) }} />
@@ -129,7 +131,7 @@ export const QubeDrawer: React.FC = () => {
 
               {isTyping && (
                 <div className="qube-msg qube-msg--qube">
-                  <img src="/images/qube_mascot.jpg" alt="Qube" className="qube-msg__avatar" />
+                  <img src="/images/real_concierge.jpg" alt="Qube" className="qube-msg__avatar" />
                   <div className="qube-msg__bubble qube-msg__bubble--typing">
                     <span className="typing-dot" />
                     <span className="typing-dot" />

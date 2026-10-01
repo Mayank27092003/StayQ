@@ -7,6 +7,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import '../models/stay_model.dart';
 import '../models/booking_model.dart';
+import '../services/push_notification_service.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,7 +19,17 @@ class AppProvider extends ChangeNotifier {
   // User & Auth State
   bool _isLoggedIn = false;
   bool _isHostMode = false;
+  int _currentTabIndex = 0;
   bool _hasSeenWalkthrough = false;
+
+  int get currentTabIndex => _currentTabIndex;
+
+  void setTabIndex(int index) {
+    if (_currentTabIndex != index) {
+      _currentTabIndex = index;
+      notifyListeners();
+    }
+  }
   String _userName = '';
   String _userEmail = '';
   String _userAvatar = '';
@@ -27,12 +38,60 @@ class AppProvider extends ChangeNotifier {
   String _userGender = '';
   String _userDob = '';
   String? _userId;
+
+  // Verified Identity & KYC Credentials State
+  bool _isGovIdVerified = false;
+  String _verifiedGovIdType = '';
+  String _verifiedGovIdNumber = '';
+  String _verifiedFullName = '';
+  String _verifiedAddress = '';
+  String _verifiedDob = '';
+  bool _isBankVerified = false;
+  String _verifiedBankName = '';
+  String _verifiedAccountNumber = '';
+  bool _isUpiVerified = false;
+  String _verifiedUpiId = '';
+
+  bool get isGovIdVerified => _isGovIdVerified;
+  String get verifiedGovIdType => _verifiedGovIdType;
+  String get verifiedGovIdNumber => _verifiedGovIdNumber;
+  String get verifiedFullName => _verifiedFullName;
+  String get verifiedAddress => _verifiedAddress;
+  String get verifiedDob => _verifiedDob;
+  bool get isBankVerified => _isBankVerified;
+  String get verifiedBankName => _verifiedBankName;
+  String get verifiedAccountNumber => _verifiedAccountNumber;
+  bool get isUpiVerified => _isUpiVerified;
+  String get verifiedUpiId => _verifiedUpiId;
   
   // Phone Auth State
   String? _verificationId;
   bool _isLoadingAuth = false;
 
   bool get hasSeenWalkthrough => _hasSeenWalkthrough;
+
+  // ─── Stay Q Rewards & Loyalty State ───
+  int _loyaltyTotalPoints = 0;
+  int _loyaltyAvailablePoints = 0;
+  int _loyaltyRedeemedPoints = 0;
+  String _loyaltyTier = 'Q_STARTER';
+  String _loyaltyTierTitle = 'Q Starter';
+  double _loyaltyPointsMultiplier = 1.0;
+  DateTime? _loyaltyTierExpiresAt;
+  double _loyaltyCreditEquivalent = 0.0;
+  List<Map<String, dynamic>> _loyaltyTransactions = [];
+  bool _isLoadingLoyalty = false;
+
+  int get loyaltyTotalPoints => _loyaltyTotalPoints;
+  int get loyaltyAvailablePoints => _loyaltyAvailablePoints;
+  int get loyaltyRedeemedPoints => _loyaltyRedeemedPoints;
+  String get loyaltyTier => _loyaltyTier;
+  String get loyaltyTierTitle => _loyaltyTierTitle;
+  double get loyaltyPointsMultiplier => _loyaltyPointsMultiplier;
+  DateTime? get loyaltyTierExpiresAt => _loyaltyTierExpiresAt;
+  double get loyaltyCreditEquivalent => _loyaltyCreditEquivalent;
+  List<Map<String, dynamic>> get loyaltyTransactions => _loyaltyTransactions;
+  bool get isLoadingLoyalty => _isLoadingLoyalty;
 
   // Stays & Wishlist
   List<StayModel> _stays = [];
@@ -78,7 +137,112 @@ class AppProvider extends ChangeNotifier {
     _userId = _auth?.currentUser?.uid ?? prefs.getString('userId');
     _userName = _auth?.currentUser?.displayName ?? prefs.getString('userName') ?? '';
     _userEmail = _auth?.currentUser?.email ?? prefs.getString('userEmail') ?? '';
+    _userAvatar = prefs.getString('userAvatar') ?? _auth?.currentUser?.photoURL ?? '';
+
+    // Load persistent verified credentials
+    _isGovIdVerified = prefs.getBool('isGovIdVerified') ?? false;
+    _verifiedGovIdType = prefs.getString('verifiedGovIdType') ?? '';
+    _verifiedGovIdNumber = prefs.getString('verifiedGovIdNumber') ?? '';
+    _verifiedFullName = prefs.getString('verifiedFullName') ?? '';
+    _verifiedAddress = prefs.getString('verifiedAddress') ?? '';
+    _verifiedDob = prefs.getString('verifiedDob') ?? '';
+    _isBankVerified = prefs.getBool('isBankVerified') ?? false;
+    _verifiedBankName = prefs.getString('verifiedBankName') ?? '';
+    _verifiedAccountNumber = prefs.getString('verifiedAccountNumber') ?? '';
+    _isUpiVerified = prefs.getBool('isUpiVerified') ?? false;
+    _verifiedUpiId = prefs.getString('verifiedUpiId') ?? '';
+
     notifyListeners();
+  }
+
+  Future<void> setAadhaarVerified({
+    required String name,
+    required String aadhaarNumber,
+    required String address,
+    String? dob,
+  }) async {
+    _isGovIdVerified = true;
+    _verifiedGovIdType = 'AADHAAR';
+    _verifiedGovIdNumber = '••••••••' + (aadhaarNumber.length >= 4 ? aadhaarNumber.substring(aadhaarNumber.length - 4) : aadhaarNumber);
+    _verifiedFullName = name;
+    _verifiedAddress = address;
+    if (dob != null) _verifiedDob = dob;
+    if (_userName.isEmpty || _userName == 'Guest') {
+      _userName = name;
+    }
+    notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isGovIdVerified', true);
+    await prefs.setString('verifiedGovIdType', 'AADHAAR');
+    await prefs.setString('verifiedGovIdNumber', _verifiedGovIdNumber);
+    await prefs.setString('verifiedFullName', _verifiedFullName);
+    await prefs.setString('verifiedAddress', _verifiedAddress);
+    if (dob != null) await prefs.setString('verifiedDob', _verifiedDob);
+    await prefs.setString('userName', _userName);
+  }
+
+  Future<void> setPanVerified({
+    required String name,
+    required String panNumber,
+  }) async {
+    _isGovIdVerified = true;
+    _verifiedGovIdType = 'PAN';
+    _verifiedGovIdNumber = panNumber;
+    _verifiedFullName = name;
+    if (_userName.isEmpty || _userName == 'Guest') {
+      _userName = name;
+    }
+    notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isGovIdVerified', true);
+    await prefs.setString('verifiedGovIdType', 'PAN');
+    await prefs.setString('verifiedGovIdNumber', _verifiedGovIdNumber);
+    await prefs.setString('verifiedFullName', _verifiedFullName);
+    await prefs.setString('userName', _userName);
+  }
+
+  Future<void> setBankVerified({
+    required String bankName,
+    required String accountNumber,
+    required String ifsc,
+    String? accountHolderName,
+  }) async {
+    _isBankVerified = true;
+    _verifiedBankName = bankName;
+    _verifiedAccountNumber = '••••' + (accountNumber.length >= 4 ? accountNumber.substring(accountNumber.length - 4) : accountNumber);
+    if (accountHolderName != null && accountHolderName.isNotEmpty) {
+      _verifiedFullName = accountHolderName;
+    }
+    notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isBankVerified', true);
+    await prefs.setString('verifiedBankName', _verifiedBankName);
+    await prefs.setString('verifiedAccountNumber', _verifiedAccountNumber);
+    if (accountHolderName != null) {
+      await prefs.setString('verifiedFullName', _verifiedFullName);
+    }
+  }
+
+  Future<void> setUpiVerified({
+    required String upiId,
+    String? name,
+  }) async {
+    _isUpiVerified = true;
+    _verifiedUpiId = upiId;
+    if (name != null && name.isNotEmpty) {
+      _verifiedFullName = name;
+    }
+    notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isUpiVerified', true);
+    await prefs.setString('verifiedUpiId', _verifiedUpiId);
+    if (name != null) {
+      await prefs.setString('verifiedFullName', _verifiedFullName);
+    }
   }
 
   Future<void> completeWalkthrough() async {
@@ -88,6 +252,40 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateUserAvatar(String imagePath) async {
+    try {
+      _userAvatar = imagePath;
+      notifyListeners();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userAvatar', imagePath);
+
+      if (!imagePath.startsWith('http')) {
+        final file = File(imagePath);
+        if (await file.exists()) {
+          final uid = _userId ?? _auth?.currentUser?.uid ?? 'user_${DateTime.now().millisecondsSinceEpoch}';
+          final destination = 'users/$uid/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final ref = FirebaseStorage.instance.ref().child(destination);
+          final uploadTask = await ref.putFile(file);
+          final downloadUrl = await uploadTask.ref.getDownloadURL();
+
+          _userAvatar = downloadUrl;
+          await prefs.setString('userAvatar', downloadUrl);
+          if (_auth?.currentUser != null) {
+            await _auth!.currentUser!.updatePhotoURL(downloadUrl);
+          }
+          notifyListeners();
+        }
+      } else {
+        if (_auth?.currentUser != null) {
+          await _auth!.currentUser!.updatePhotoURL(imagePath);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error updating user avatar: $e');
+    }
+  }
+
   void _initAuth() {
     if (_auth == null) return;
     _auth!.authStateChanges().listen((user) async {
@@ -95,9 +293,9 @@ class AppProvider extends ChangeNotifier {
       if (user != null) {
         _isLoggedIn = true;
         _userId = user.uid;
-        _userName = user.displayName ?? 'Guest';
-        _userEmail = user.email ?? '';
-        _userAvatar = user.photoURL ?? '';
+        _userName = user.displayName ?? prefs.getString('userName') ?? 'Guest';
+        _userEmail = user.email ?? prefs.getString('userEmail') ?? '';
+        _userAvatar = prefs.getString('userAvatar') ?? user.photoURL ?? '';
         
         await prefs.setBool('isLoggedIn', true);
         await prefs.setString('userId', _userId!);
@@ -105,6 +303,8 @@ class AppProvider extends ChangeNotifier {
         
         fetchBookings();
         fetchWishlist();
+        fetchLoyaltyProfile();
+        PushNotificationService.syncTokenWithBackend();
       } else {
         _isLoggedIn = false;
         _userId = null;
@@ -208,6 +408,25 @@ class AppProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error fetching bookings: $e');
     }
+  }
+
+  // Referral & Wallet State (Ultra-real with 10% max checkout cap)
+  double _referralBalance = 500.0;
+  String _userReferralCode = 'SQ-GOA';
+
+  double get referralBalance => _referralBalance;
+  String get userReferralCode => _userReferralCode;
+
+  void deductReferralBalance(double amount) {
+    if (amount > 0) {
+      _referralBalance = (_referralBalance - amount).clamp(0.0, double.infinity);
+      notifyListeners();
+    }
+  }
+
+  void setReferralBalance(double amount) {
+    _referralBalance = amount;
+    notifyListeners();
   }
 
   // Getters
@@ -371,6 +590,17 @@ class AppProvider extends ChangeNotifier {
 
   void toggleHostMode() async {
     _isHostMode = !_isHostMode;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isHostMode', _isHostMode);
+    } catch (e) {
+      debugPrint('Error saving isHostMode: $e');
+    }
+  }
+
+  void setHostMode(bool isHost) async {
+    _isHostMode = isHost;
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -661,6 +891,10 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    try {
+      await PushNotificationService.removeTokenFromBackend();
+    } catch (_) {}
+
     if (_auth != null) {
       await _auth!.signOut();
       await GoogleSignIn.instance.signOut();
@@ -865,5 +1099,145 @@ class AppProvider extends ChangeNotifier {
       debugPrint('Error updating availability: $e');
       notifyListeners();
     }
+  }
+
+  // ─── Stay Q Rewards & Loyalty Operations ───
+
+  Future<void> fetchLoyaltyProfile() async {
+    if (!_isLoggedIn) return;
+    _isLoadingLoyalty = true;
+    notifyListeners();
+
+    try {
+      final token = await _getToken();
+      if (token == null) {
+        _isLoadingLoyalty = false;
+        notifyListeners();
+        return;
+      }
+
+      final response = await http.get(
+        Uri.parse('$_apiUrl/api/v1/loyalty/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['profile'] != null) {
+          final p = data['profile'];
+          _loyaltyTotalPoints = p['totalPoints'] ?? 0;
+          _loyaltyAvailablePoints = p['availablePoints'] ?? 0;
+          _loyaltyRedeemedPoints = p['redeemedPoints'] ?? 0;
+          _loyaltyTier = p['tier'] ?? 'Q_STARTER';
+          _loyaltyTierTitle = p['tierDetails']?['title'] ?? 'Q Starter';
+          _loyaltyPointsMultiplier = (p['pointsMultiplier'] as num?)?.toDouble() ?? 1.0;
+          _loyaltyCreditEquivalent = (p['creditEquivalent'] as num?)?.toDouble() ?? (_loyaltyAvailablePoints * 0.5);
+          if (p['tierExpiresAt'] != null) {
+            _loyaltyTierExpiresAt = DateTime.tryParse(p['tierExpiresAt']);
+          }
+
+          if (p['transactions'] != null) {
+            _loyaltyTransactions = List<Map<String, dynamic>>.from(p['transactions']);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching loyalty profile: $e');
+    } finally {
+      _isLoadingLoyalty = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> redeemLoyaltyPoints(int points) async {
+    if (points < 100 || points > _loyaltyAvailablePoints) return false;
+
+    try {
+      final token = await _getToken();
+      if (token == null) return false;
+
+      final response = await http.post(
+        Uri.parse('$_apiUrl/api/v1/loyalty/redeem'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({'points': points}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          _loyaltyAvailablePoints = data['remainingPoints'] ?? (_loyaltyAvailablePoints - points);
+          _loyaltyRedeemedPoints += points;
+          _loyaltyCreditEquivalent = _loyaltyAvailablePoints * 0.5;
+          _referralBalance += (data['creditEarned'] as num?)?.toDouble() ?? (points * 0.5);
+          await fetchLoyaltyProfile();
+          notifyListeners();
+          return true;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error redeeming loyalty points: $e');
+    }
+    return false;
+  }
+
+  Future<bool> upgradeLoyaltyTier(String tier) async {
+    try {
+      final token = await _getToken();
+      if (token == null) return false;
+
+      final response = await http.post(
+        Uri.parse('$_apiUrl/api/v1/loyalty/upgrade-tier'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({'tier': tier}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          _loyaltyTier = data['tier'] ?? tier;
+          _loyaltyTierTitle = data['tierTitle'] ?? 'Q Plus';
+          _loyaltyPointsMultiplier = (data['multiplier'] as num?)?.toDouble() ?? 1.5;
+          _loyaltyAvailablePoints = data['availablePoints'] ?? _loyaltyAvailablePoints;
+          await fetchLoyaltyProfile();
+          notifyListeners();
+          return true;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error upgrading loyalty tier: $e');
+    }
+    return false;
+  }
+
+  Future<bool> claimProfileCompletionBonus() async {
+    try {
+      final token = await _getToken();
+      if (token == null) return false;
+
+      final response = await http.post(
+        Uri.parse('$_apiUrl/api/v1/loyalty/claim-profile-bonus'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await fetchLoyaltyProfile();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Error claiming profile bonus: $e');
+    }
+    return false;
   }
 }

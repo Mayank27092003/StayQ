@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/app_provider.dart';
+import '../../providers/messaging_provider.dart';
 import '../../models/booking_model.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
 import '../../widgets/bouncing_widget.dart';
+import '../inbox/chat_detail_screen.dart';
 
 class HostReservationsScreen extends StatelessWidget {
+
   const HostReservationsScreen({super.key});
 
   @override
@@ -201,6 +204,43 @@ class _BookingList extends StatelessWidget {
                     ),
                   ],
                 ),
+              ] else ...[
+                const SizedBox(height: 14),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    AppMotion.tapSelection();
+                    final messaging = Provider.of<MessagingProvider>(context, listen: false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Opening chat with ${b.guestName}...'), duration: const Duration(seconds: 1)),
+                    );
+
+                    final convId = await messaging.createOrGetConversation(
+                      hostId: b.stay.hostId.isNotEmpty ? b.stay.hostId : b.stay.id,
+                      propertyId: b.stay.id,
+                      bookingId: b.id,
+                    );
+
+                    if (context.mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatDetailScreen(
+                            chatId: convId ?? 'conv_${b.id}',
+                            otherUserName: b.guestName.isNotEmpty ? b.guestName : 'Guest',
+                            otherUserAvatar: b.guestAvatar,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: AppColors.primary),
+                  label: Text('Message ${b.guestName.split(" ").first}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  ),
+                ),
               ],
             ],
           ),
@@ -209,3 +249,4 @@ class _BookingList extends StatelessWidget {
     );
   }
 }
+

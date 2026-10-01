@@ -35,7 +35,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         case 'Guest Favorite':
           return stay.isGuestFavorite;
         case 'Starhost':
-        case 'Superhost':
+        case 'Star Host':
           return stay.isStarHost;
         case 'Top Rated':
           return stay.rating >= 4.9;

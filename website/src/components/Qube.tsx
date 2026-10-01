@@ -1,3 +1,5 @@
+"use client";
+
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { Reveal } from './Reveal';
 
@@ -47,7 +49,7 @@ export function Qube() {
                 <div className="chat__head">
                   <img
                     className="chat__avatar"
-                    src="/images/qube_mascot.jpg"
+                    src="/images/real_concierge.jpg"
                     alt=""
                     aria-hidden="true"
                   />

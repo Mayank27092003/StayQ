@@ -107,7 +107,7 @@ class HostWelcomeScreen extends StatelessWidget {
                     _buildStepItem(
                       '1',
                       'Pick Your Property Category',
-                      'Hotels, Villas, Campsites, RVs, or Homes.',
+                      'Villas, Boutique Stays, Campsites, RVs, or Homes.',
                       const Color(0xFF6366F1),
                     ),
                     _buildStepItem(

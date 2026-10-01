@@ -17,6 +17,21 @@ export class PropertiesController {
     return this.propertiesService.create(createPropertyDto);
   }
 
+  @Post('onboarding/draft')
+  @UseGuards(FirebaseAuthGuard)
+  createDraft(@CurrentUser() user: any, @Body() createPropertyDto: any) {
+    if (user) {
+      createPropertyDto.hostId = user.id;
+    }
+    return this.propertiesService.create(createPropertyDto);
+  }
+
+  @Post(':id/submit')
+  @UseGuards(FirebaseAuthGuard)
+  submitListing(@Param('id') id: string) {
+    return this.propertiesService.update(id, { status: 'PENDING_REVIEW' });
+  }
+
   @Get()
   findAll(@Query('adminView') adminView?: string) {
     return this.propertiesService.findAll(adminView === 'true');
@@ -53,7 +68,8 @@ export class PropertiesController {
   }
 
   @Get(':id/exact-location')
-  getExactLocation(@Param('id') id: string, @Query('userId') userId?: string) {
+  @UseGuards(FirebaseAuthGuard)
+  getExactLocation(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.propertiesService.getExactLocation(id, userId);
   }
 
@@ -63,11 +79,13 @@ export class PropertiesController {
   }
 
   @Post(':id/incidents')
+  @UseGuards(FirebaseAuthGuard)
   createIncident(@Param('id') id: string, @Body() incidentDto: any) {
     return this.propertiesService.createIncident(id, incidentDto);
   }
 
   @Patch('incidents/:incidentId/status')
+  @UseGuards(FirebaseAuthGuard)
   updateIncidentStatus(
     @Param('incidentId') incidentId: string,
     @Body() body: { status: string; notes?: string }
@@ -82,22 +100,23 @@ export class PropertiesController {
 
   @Patch(':id')
   @UseGuards(FirebaseAuthGuard)
-  update(@Param('id') id: string, @Body() updatePropertyDto: any) {
-    return this.propertiesService.update(id, updatePropertyDto);
+  update(@CurrentUser() user: any, @Param('id') id: string, @Body() updatePropertyDto: any) {
+    return this.propertiesService.update(id, updatePropertyDto, user);
   }
 
   @Delete(':id')
   @UseGuards(FirebaseAuthGuard)
-  remove(@Param('id') id: string) {
-    return this.propertiesService.remove(id);
+  remove(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.propertiesService.remove(id, user);
   }
 
   @Post(':id/availability')
   @UseGuards(FirebaseAuthGuard)
   addAvailabilityBlocks(
+    @CurrentUser() user: any,
     @Param('id') id: string,
     @Body('blockedDates') blockedDates: { startDate: string; endDate: string }[]
   ) {
-    return this.propertiesService.addAvailabilityBlocks(id, blockedDates);
+    return this.propertiesService.addAvailabilityBlocks(id, blockedDates, user);
   }
 }

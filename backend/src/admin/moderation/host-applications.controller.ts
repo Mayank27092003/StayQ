@@ -6,9 +6,8 @@ import { AdminGuard } from '../guards/admin.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Host Applications')
-@ApiBearerAuth()
-@Controller('admin/moderation/host-applications')
 @UseGuards(FirebaseAuthGuard, AdminGuard)
+@Controller('admin/moderation/host-applications')
 export class HostApplicationsController {
   constructor(private readonly moderation: AdminModerationService) {}
 

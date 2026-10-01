@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stay Q — Luxury Email Templates Showcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,800;1,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #9D00FF;
+      --primary-dark: #6800AC;
+      --gold: #f59e0b;
+      --gold-light: #fef3c7;
+      --bg: #090614;
+      --surface: #120d24;
+      --surface-light: #1c1538;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: rgba(157, 0, 255, 0.25);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      overflow-x: hidden;
+    }
+
+    /* Ambient Background Glows */
+    .glow-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      z-index: 0;
+      pointer-events: none;
+      animation: floatGlow 12s ease-in-out infinite alternate;
+    }
+    .glow-1 { width: 450px; height: 450px; background: rgba(157, 0, 255, 0.25); top: -100px; left: -100px; }
+    .glow-2 { width: 500px; height: 500px; background: rgba(245, 158, 11, 0.15); bottom: -120px; right: -120px; animation-delay: -6s; }
+
+    @keyframes floatGlow {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(60px, 40px) scale(1.15); }
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header & Switcher */
+    .showcase-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: rgba(157, 0, 255, 0.15);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #c084fc;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      backdrop-filter: blur(8px);
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #a855f7;
+      box-shadow: 0 0 12px #a855f7;
+      animation: pulseDot 2s infinite;
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.75); }
+    }
+
+    .showcase-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .showcase-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Tab Switcher */
+    .tab-bar {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 28px;
+      background: var(--surface);
+      padding: 6px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      max-width: 460px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 12px 18px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #9D00FF 0%, #6800AC 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 20px rgba(157, 0, 255, 0.4);
+    }
+
+    /* Email Card Container */
+    .email-frame {
+      background: #ffffff;
+      border-radius: 28px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      color: #1e293b;
+      position: relative;
+      animation: fadeIn 0.4s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* EMAIL STYLES */
+    .email-header {
+      background: linear-gradient(135deg, #170d30 0%, #310d54 50%, #15092a 100%);
+      padding: 44px 32px;
+      text-align: center;
+      color: #ffffff;
+      position: relative;
+      border-bottom: 3px solid #f59e0b;
+      overflow: hidden;
+    }
+    .email-logo-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .email-logo-text {
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #ffffff 40%, #e9d5ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .email-subheading {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #fbbf24;
+      font-weight: 700;
+    }
+
+    .email-body {
+      padding: 36px 32px;
+      background: #ffffff;
+    }
+
+    .greeting-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 12px;
+      line-height: 1.25;
+    }
+    .greeting-desc {
+      font-size: 15px;
+      color: #475569;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    /* Luxury Reward Card */
+    .reward-box {
+      background: linear-gradient(135deg, #FAF5FF 0%, #F5F3FF 50%, #FAF5FF 100%);
+      border: 1.5px solid #D8B4FE;
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 24px;
+      position: relative;
+      box-shadow: 0 12px 30px -8px rgba(157, 0, 255, 0.14);
+    }
+    .reward-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px dashed #E9D5FF;
+    }
+    .reward-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #581C87;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: -0.01em;
+    }
+    .reward-amount {
+      font-size: 26px;
+      font-weight: 900;
+      color: #7E22CE;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      letter-spacing: -0.02em;
+    }
+
+    .code-pill-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #ffffff;
+      padding: 14px 18px;
+      border-radius: 14px;
+      border: 1px solid #E9D5FF;
+      margin-bottom: 14px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+    }
+    .code-label {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #7C3AED;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 2px;
+    }
+    .code-val {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 16px;
+      font-weight: 800;
+      color: #9D00FF;
+      letter-spacing: 0.12em;
+      background: #FAF5FF;
+      padding: 6px 14px;
+      border-radius: 10px;
+      border: 1.5px dashed #C084FC;
+    }
+
+    .rule-note {
+      font-size: 13px;
+      color: #6B21A8;
+      line-height: 1.5;
+      font-weight: 600;
+      background: rgba(157, 0, 255, 0.07);
+      padding: 12px 16px;
+      border-radius: 12px;
+      border-left: 3px solid #9D00FF;
+    }
+
+    /* Privilege Points */
+    .privilege-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .privilege-card {
+      background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+      border: 1px solid #E2E8F0;
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+      transition: all 0.2s ease;
+    }
+    .privilege-card:hover {
+      border-color: #CBD5E1;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+    }
+    .privilege-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+    .privilege-title {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #0F172A;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+    }
+    .privilege-text {
+      font-size: 12px;
+      color: #64748B;
+      line-height: 1.45;
+    }
+
+    /* CTA Button */
+    .cta-btn {
+      display: block;
+      background: linear-gradient(135deg, #9D00FF 0%, #6800AC 100%);
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 16px 32px;
+      border-radius: 16px;
+      font-weight: 800;
+      font-size: 15px;
+      text-align: center;
+      margin: 28px 0 16px 0;
+      box-shadow: 0 12px 30px rgba(157, 0, 255, 0.35);
+      letter-spacing: 0.02em;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .cta-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 36px rgba(157, 0, 255, 0.45);
+    }
+
+    /* Terms Section */
+    .terms-box {
+      background: #F8FAFC;
+      border-radius: 14px;
+      border: 1px solid #E2E8F0;
+      padding: 16px 20px;
+      margin-top: 24px;
+      font-size: 11.5px;
+      color: #64748B;
+      line-height: 1.55;
+    }
+    .terms-box strong {
+      color: #334155;
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+
+    /* Footer */
+    .email-footer {
+      background: #f1f5f9;
+      padding: 24px 32px;
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      border-top: 1px solid #e2e8f0;
+      line-height: 1.6;
+    }
+    .email-footer a {
+      color: #9D00FF;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="glow-orb glow-1"></div>
+  <div class="glow-orb glow-2"></div>
+
+  <div class="container">
+    <div class="showcase-header">
+      <div class="brand-badge">
+        <span class="pulse-dot"></span>
+        Stay Q Luxury Mailer Suite
+      </div>
+      <h1 class="showcase-title">Registration Email Templates</h1>
+      <p class="showcase-desc">Pixel-perfect luxury HTML email templates for New Guest & Host Onboarding.</p>
+    </div>
+
+    <!-- Switcher -->
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tabGuest" onclick="showTemplate('guest')">
+        <span>✨</span> Guest Registration
+      </button>
+      <button class="tab-btn" id="tabHost" onclick="showTemplate('host')">
+        <span>🏠</span> Host Registration
+      </button>
+    </div>
+
+    <!-- EMAIL CONTAINER -->
+    <div class="email-frame" id="emailFrame">
+      <!-- Content rendered by JavaScript -->
+    </div>
+  </div>
+
+  <script>
+    const guestTemplate = `
+      <div class="email-header" style="background: linear-gradient(135deg, #0B0F19 0%, #1E1035 50%, #0B0F19 100%); border-bottom: 3px solid #9D00FF;">
+        <div class="email-logo-wrap">
+          <span style="font-size: 26px;">✨</span>
+          <span class="email-logo-text">STAY Q</span>
+        </div>
+        <div class="email-subheading" style="color: #c084fc;">Handcrafted Luxury Stays &amp; Rewards</div>
+      </div>
+      <div class="email-body">
+        <h2 class="greeting-title">Welcome to Stay Q, Kabir! 🌿</h2>
+        <p class="greeting-desc">
+          Your account is active under <b>Quatalyst Private Limited</b>. Explore verified handpicked private villas, beachfront escapes, long-term designer homes, and outdoor camping with <b>100% Direct Rates</b>.
+        </p>
+
+        <!-- Referral & Wallet Reward Box -->
+        <div class="reward-box" style="background: linear-gradient(135deg, #FAF5FF 0%, #F5F3FF 50%, #FAF5FF 100%); border: 1.5px solid #D8B4FE; box-shadow: 0 12px 28px -6px rgba(157, 0, 255, 0.12);">
+          <div class="reward-top" style="border-bottom-color: #E9D5FF;">
+            <div class="reward-title" style="color: #581C87;">
+              <span>🎁</span> Welcome Referral Reward
+            </div>
+            <div class="reward-amount" style="color: #7E22CE; font-size: 26px;">+₹100</div>
+          </div>
+
+          <div class="code-pill-row" style="border-color: #E9D5FF; background: #ffffff;">
+            <div>
+              <div class="code-label" style="color: #7C3AED;">Your Exclusive Referral Code</div>
+              <div style="font-size: 11.5px; color: #64748B; font-weight: 500;">Share with friends to earn ₹100 per stay (₹250 on 5th referral!)</div>
+            </div>
+            <div class="code-val" style="color: #9D00FF; border-color: #C084FC; background: #FAF5FF;">SQ-KABIR</div>
+          </div>
+
+          <div class="rule-note" style="color: #6B21A8; background: rgba(157, 0, 255, 0.08); border-left: 3px solid #9D00FF;">
+            ⚡ <b>How It Works:</b> Your ₹100 welcome reward is credited to your Stay Q wallet. You can redeem <b>up to 10% of your booking subtotal</b> on every stay checkout!
+          </div>
+        </div>
+
+        <!-- Member Privileges Grid -->
+        <div class="privilege-grid">
+          <div class="privilege-card">
+            <div class="privilege-icon">🛡️</div>
+            <div class="privilege-title">Direct Transparent Rates</div>
+            <div class="privilege-text">Zero broker markups. Pay authentic host rates on verified stays.</div>
+          </div>
+
+          <div class="privilege-card">
+            <div class="privilege-icon">🎫</div>
+            <div class="privilege-title">Digital Stay Pass</div>
+            <div class="privilege-text">Instant smart keycode, live navigation routes, and host contacts.</div>
+          </div>
+
+          <div class="privilege-card">
+            <div class="privilege-icon">🤖</div>
+            <div class="privilege-title">Qube AI Concierge</div>
+            <div class="privilege-text">24/7 personalized itinerary curator and instant stay assistance.</div>
+          </div>
+
+          <div class="privilege-card">
+            <div class="privilege-icon">🎁</div>
+            <div class="privilege-title">Refer &amp; Earn (₹100 / ₹250)</div>
+            <div class="privilege-text">Earn ₹100 per friend + ₹250 mega milestone bonus on your 5th referral.</div>
+          </div>
+        </div>
+
+        <a href="https://stayq.space" class="cta-btn" style="background: linear-gradient(135deg, #9D00FF 0%, #6800AC 100%);">
+          Explore Handcrafted Stays &rarr;
+        </a>
+
+        <!-- Wallet Terms & Conditions Notice -->
+        <div class="terms-box">
+          <strong>📜 Stay Q Wallet &amp; Referral Terms:</strong>
+          • Referral reward balance can be redeemed for a maximum of 10% of the booking subtotal per checkout.<br>
+          • Unused credits stay saved in your wallet and never expire while your account is active.<br>
+          • Promotional and referral credits cannot be withdrawn to bank accounts or transferred between users.<br>
+          • Quatalyst Private Limited reserves the right to review and forfeit credits in cases of suspected fraud.
+        </div>
+      </div>
+
+      <div class="email-footer">
+        &copy; 2026 Quatalyst Private Limited &bull; Operating Stay Q<br>
+        24/7 Concierge: <a href="mailto:support@stayq.space">support@stayq.space</a> &bull; <a href="https://stayq.space">stayq.space</a><br>
+        Verified Secure Transaction Network &bull; Developed with ❤️ by <a href="https://www.classifieditservice.com/" target="_blank" style="color: #c084fc; text-decoration: underline;">Classified IT Service</a>
+      </div>
+    `;
+
+    const hostTemplate = `
+      <div class="email-header" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); border-bottom: 3px solid #9D00FF;">
+        <div class="email-logo-wrap">
+          <span style="font-size: 26px;">👑</span>
+          <span class="email-logo-text">STAY Q HOST</span>
+        </div>
+        <div class="email-subheading" style="color: #c084fc;">Host Partnership &amp; Direct Settlements</div>
+      </div>
+      <div class="email-body">
+        <h2 class="greeting-title">Welcome to the Host Community, Vikram! 🌟</h2>
+        <p class="greeting-desc">
+          Thank you for joining Stay Q as a verified Property Host. Your host account is active under <b>Quatalyst Private Limited</b>.
+        </p>
+
+        <!-- Host Verification Card -->
+        <div class="reward-box" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-color: #cbd5e1;">
+          <div class="reward-top" style="border-bottom-color: #cbd5e1;">
+            <div class="reward-title" style="color: #0f172a;">
+              <span>🔑</span> Assigned Host Identifier
+            </div>
+            <div class="reward-amount" style="color: #059669; font-size: 20px;">ACTIVE ✅</div>
+          </div>
+
+          <div class="code-pill-row">
+            <div>
+              <div class="code-label" style="color: #475569;">Your Unique Host Code</div>
+              <div style="font-size: 11px; color: #64748b;">Use for priority host desk and direct lead routing</div>
+            </div>
+            <div class="code-val" style="color: #0f172a; border-color: #0f172a; background: #ffffff;">ST-HOST-819</div>
+          </div>
+
+          <div class="rule-note" style="color: #065f46; background: #ecfdf5; border-left: 3px solid #059669;">
+            ✅ <b>Guaranteed Terms:</b> Direct Bank Settlements. You receive 100% of your listed host payout on every confirmed guest reservation.
+          </div>
+        </div>
+
+        <!-- Host Value Pillars -->
+        <div class="privilege-grid">
+          <div class="privilege-card">
+            <div class="privilege-icon">💳</div>
+            <div class="privilege-title">Direct Payout Guarantee</div>
+            <div class="privilege-text">Zero marketplace deductions. Direct bank settlements on guest check-in via Cashfree.</div>
+          </div>
+
+          <div class="privilege-card">
+            <div class="privilege-icon">⚡</div>
+            <div class="privilege-title">Automated Check-in Payouts</div>
+            <div class="privilege-text">Earnings settle directly to your registered bank account on guest arrival.</div>
+          </div>
+
+          <div class="privilege-card">
+            <div class="privilege-icon">🪪</div>
+            <div class="privilege-title">Verified Guests Network</div>
+            <div class="privilege-text">All guests complete mobile and ID verification before arrival.</div>
+          </div>
+
+          <div class="privilege-card">
+            <div class="privilege-icon">🗓️</div>
+            <div class="privilege-title">Full Calendar Control</div>
+            <div class="privilege-text">Set custom pricing, house rules, and security deposit requirements.</div>
+          </div>
+        </div>
+
+        <a href="https://stayq.space/#/host-invite" class="cta-btn" style="background: linear-gradient(135deg, #0f172a 0%, #9D00FF 100%);">
+          Onboard Your First Property &rarr;
+        </a>
+
+        <!-- Host Terms & Policies -->
+        <div class="terms-box">
+          <strong>📜 Stay Q Host Terms &amp; Conditions:</strong>
+          • Hosts retain 100% of their base nightly / monthly rent without platform deductions.<br>
+          • Payouts are transferred automatically to verified bank accounts following guest check-in.<br>
+          • Hosts agree to maintain safety standards, valid electricity/tax proofs, and honor confirmed bookings.<br>
+          • Managed under Quatalyst Private Limited hospitality agreement. Support: support@stayq.space.
+        </div>
+      </div>
+
+      <div class="email-footer">
+        &copy; 2026 Quatalyst Private Limited &bull; Operating Stay Q<br>
+        Host Support Desk: <a href="mailto:host-support@stayq.space">host-support@stayq.space</a> &bull; <a href="https://stayq.space">stayq.space</a><br>
+        Official Verified Partner Network &bull; Developed with ❤️ by <a href="https://www.classifieditservice.com/" target="_blank" style="color: #c084fc; text-decoration: underline;">Classified IT Service</a>
+      </div>
+    `;
+
+    function showTemplate(type) {
+      const frame = document.getElementById('emailFrame');
+      const tabGuest = document.getElementById('tabGuest');
+      const tabHost = document.getElementById('tabHost');
+
+      if (type === 'guest') {
+        frame.innerHTML = guestTemplate;
+        tabGuest.classList.add('active');
+        tabHost.classList.remove('active');
+      } else {
+        frame.innerHTML = hostTemplate;
+        tabHost.classList.add('active');
+        tabGuest.classList.remove('active');
+      }
+    }
+
+    // Default view
+    showTemplate('guest');
+  </script>
+</body>
+</html>

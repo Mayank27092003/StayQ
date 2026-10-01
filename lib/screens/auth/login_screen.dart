@@ -44,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
               );
             },
             child: Text(
-              widget.isHostLogin ? 'Switch to Guest' : 'Host Portal',
+              widget.isHostLogin ? 'Explore Stays' : 'Host Portal',
               style: const TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.bold,

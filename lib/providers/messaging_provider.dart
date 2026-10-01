@@ -56,10 +56,45 @@ class MessagingProvider with ChangeNotifier {
     _socket = null;
   }
 
+  Future<String?> createOrGetConversation({
+    required String hostId,
+    String? propertyId,
+    String? bookingId,
+  }) async {
+    try {
+      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      if (token == null) return null;
+
+      final response = await http.post(
+        Uri.parse('$_apiUrl/api/v1/messaging/conversations'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'hostId': hostId,
+          if (propertyId != null) 'propertyId': propertyId,
+          if (bookingId != null) 'bookingId': bookingId,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final convId = data['id'];
+        fetchConversations();
+        return convId;
+      }
+    } catch (e) {
+      debugPrint('createOrGetConversation error: $e');
+    }
+    return null;
+  }
+
   Future<void> fetchConversations() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
+
 
     try {
       final token = await FirebaseAuth.instance.currentUser?.getIdToken();

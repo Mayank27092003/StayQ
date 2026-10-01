@@ -108,4 +108,42 @@ class VerificationApi {
     final response = await _client.get('/verification/status');
     return response as Map<String, dynamic>;
   }
+
+  /// 8. Face Match — Live Selfie vs ID Card (Cashfree SecureID)
+  Future<Map<String, dynamic>> verifyFaceMatch({
+    required String selfieImageUrl,
+    required String idCardImageUrl,
+    double threshold = 0.6,
+    String? userId,
+  }) async {
+    final response = await _client.post(
+      '/verification/face-match',
+      body: {
+        'selfieImageUrl': selfieImageUrl,
+        'idCardImageUrl': idCardImageUrl,
+        'threshold': threshold,
+        if (userId != null) 'userId': userId,
+      },
+    );
+    return response as Map<String, dynamic>;
+  }
+
+  /// 9. Cashfree Face Liveness Check (Single-image real human anti-spoofing)
+  Future<Map<String, dynamic>> verifyFaceLiveness({
+    String? imageUrl,
+    String? imageBase64,
+    String? verificationId,
+    String? userId,
+  }) async {
+    final response = await _client.post(
+      '/verification/face-liveness',
+      body: {
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (imageBase64 != null) 'imageBase64': imageBase64,
+        if (verificationId != null) 'verificationId': verificationId,
+        if (userId != null) 'userId': userId,
+      },
+    );
+    return response as Map<String, dynamic>;
+  }
 }

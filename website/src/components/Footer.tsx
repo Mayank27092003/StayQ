@@ -1,4 +1,7 @@
-import { Mail, Globe, ShieldCheck, Lock, Scale, CheckCircle2, HeartHandshake } from 'lucide-react';
+"use client";
+
+import { navigateTo } from '../utils/navigation';
+import { Mail, Globe, ShieldCheck, Lock, Scale, CheckCircle2, HeartHandshake, MessageSquare } from 'lucide-react';
 
 export function Footer() {
   return (
@@ -17,10 +20,10 @@ export function Footer() {
           <div style={{ gridColumn: 'span 1' }}>
             <a
               className="nav__brand"
-              href="#/"
+              href="/"
               onClick={(e) => {
                 e.preventDefault();
-                window.location.hash = '#/';
+                navigateTo('/', e);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.65rem', marginBottom: '1rem', textDecoration: 'none' }}
@@ -35,7 +38,7 @@ export function Footer() {
 
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <a
-                href="mailto:grievance@stayq.space"
+                href="mailto:support@stayq.space"
                 style={{
                   width: '36px',
                   height: '36px',
@@ -47,13 +50,33 @@ export function Footer() {
                   color: '#ffffff',
                   textDecoration: 'none',
                 }}
-                aria-label="Email Stay Q Official Desk"
-                title="Email Stay Q (grievance@stayq.space)"
+                aria-label="Email Stay Q Support Desk"
+                title="Email Stay Q Support (support@stayq.space)"
               >
                 <Mail size={16} />
               </a>
               <a
-                href="#/"
+                href="https://wa.me/919225270718?text=Hi%20Stay%20Q%20Support"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: 'rgba(37, 211, 102, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#25D366',
+                  textDecoration: 'none',
+                }}
+                aria-label="WhatsApp Stay Q 24/7 Support Desk"
+                title="WhatsApp Support (+91 9225270718)"
+              >
+                <MessageSquare size={16} />
+              </a>
+              <a
+                href="/"
                 style={{
                   width: '36px',
                   height: '36px',
@@ -79,12 +102,12 @@ export function Footer() {
               Explore Stays
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-              <a href="#/stays" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Luxury Private Villas</a>
-              <a href="#/stays" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Himalayan Cabins &amp; Cottages</a>
-              <a href="#/stays" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Rainforest Treehouses</a>
-              <a href="#/stays" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Heritage Havelis &amp; Palaces</a>
-              <a href="#/experiences" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Curated Travel Experiences</a>
-              <a href="#/stays" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Off-Grid RVs &amp; Stargazing</a>
+              <a href="/stays" onClick={(e) => navigateTo("/stays", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Luxury Private Villas</a>
+              <a href="/stays" onClick={(e) => navigateTo("/stays", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Himalayan Cabins &amp; Cottages</a>
+              <a href="/stays" onClick={(e) => navigateTo("/stays", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Rainforest Treehouses</a>
+              <a href="/stays" onClick={(e) => navigateTo("/stays", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Heritage Havelis &amp; Palaces</a>
+              <a href="/experiences" onClick={(e) => navigateTo("/experiences", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Curated Travel Experiences</a>
+              <a href="/stays" onClick={(e) => navigateTo("/stays", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Off-Grid RVs &amp; Stargazing</a>
             </div>
           </div>
 
@@ -94,11 +117,11 @@ export function Footer() {
               Zero-Broker Living
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-              <a href="#/zero-broker" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>11-Month Long Term Rentals</a>
-              <a href="#/zero-broker" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Verified Owner Direct Connect</a>
-              <a href="#/policy/zero-brokerage" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Zero Brokerage Fair Charter</a>
-              <a href="#/zero-broker" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Digital Tenancy Agreements</a>
-              <a href="#/zero-broker" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Tenant Identity Vetting</a>
+              <a href="/zero-broker" onClick={(e) => navigateTo("/zero-broker", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>11-Month Long Term Rentals</a>
+              <a href="/zero-broker" onClick={(e) => navigateTo("/zero-broker", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Verified Owner Direct Connect</a>
+              <a href="/policy/zero-brokerage" onClick={(e) => navigateTo("/policy/zero-brokerage", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Zero Brokerage Fair Charter</a>
+              <a href="/zero-broker" onClick={(e) => navigateTo("/zero-broker", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Digital Tenancy Agreements</a>
+              <a href="/zero-broker" onClick={(e) => navigateTo("/zero-broker", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Tenant Identity Vetting</a>
             </div>
           </div>
 
@@ -108,11 +131,11 @@ export function Footer() {
               Host &amp; Partner Hub
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-              <a href="#/partner" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>List Your Property (Host Onboarding)</a>
-              <a href="#/partner" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Earnings &amp; Payout Terms</a>
-              <a href="#/policy/host-protection" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Host Protection &amp; Standards</a>
-              <a href="#/partner" style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Automated Payout Settlements</a>
-              <a href="/StayQ-Release.apk" download style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Download Host Mobile APK</a>
+              <a href="/partner" onClick={(e) => navigateTo("/partner", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>List Your Property (Host Onboarding)</a>
+              <a href="/partner" onClick={(e) => navigateTo("/partner", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Earnings &amp; Payout Terms</a>
+              <a href="/policy/host-protection" onClick={(e) => navigateTo("/policy/host-protection", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Host Protection &amp; Standards</a>
+              <a href="/partner" onClick={(e) => navigateTo("/partner", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Automated Payout Settlements</a>
+              <a href="/StayQ-Release.apk" onClick={(e) => navigateTo("/StayQ-Release.apk", e)} download style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Download Host Mobile APK</a>
             </div>
           </div>
 
@@ -122,15 +145,15 @@ export function Footer() {
               <Scale size={15} /> Legal &amp; Policies
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-              <a href="#/about" style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>About Stay Q (Quatalyst Pvt. Ltd.)</a>
-              <a href="#/guest-rules" style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Guest House Rules (39 Articles)</a>
-              <a href="#/privacy" style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Privacy Policy (13 Sections)</a>
-              <a href="#/terms" style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Terms of Service</a>
-              <a href="#/policy/refunds" style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Cancellation &amp; Refund Policy</a>
-              <a href="#/policy/disruptive-events" style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Disruptive Events &amp; Force Majeure</a>
-              <a href="#/policy/host-protection" style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Host Property Protection Policy</a>
-              <a href="#/policy/guest-safety" style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Guest Safety &amp; Anti-Discrimination</a>
-              <a href="#/legal-contact" style={{ color: '#A78BFA', fontWeight: 700, fontSize: '0.82rem', textDecoration: 'none' }}>Contact &amp; Grievance Desk</a>
+              <a href="/about" onClick={(e) => navigateTo("/about", e)} style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>About Stay Q (Quatalyst Pvt. Ltd.)</a>
+              <a href="/guest-rules" onClick={(e) => navigateTo("/guest-rules", e)} style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Guest House Rules (39 Articles)</a>
+              <a href="/privacy" onClick={(e) => navigateTo("/privacy", e)} style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Privacy Policy (13 Sections)</a>
+              <a href="/terms" onClick={(e) => navigateTo("/terms", e)} style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Terms of Service</a>
+              <a href="/policy/refunds" onClick={(e) => navigateTo("/policy/refunds", e)} style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Cancellation &amp; Refund Policy</a>
+              <a href="/policy/disruptive-events" onClick={(e) => navigateTo("/policy/disruptive-events", e)} style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Disruptive Events &amp; Force Majeure</a>
+              <a href="/policy/host-protection" onClick={(e) => navigateTo("/policy/host-protection", e)} style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Host Property Protection Policy</a>
+              <a href="/policy/guest-safety" onClick={(e) => navigateTo("/policy/guest-safety", e)} style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Guest Safety &amp; Anti-Discrimination</a>
+              <a href="/legal-contact" onClick={(e) => navigateTo("/legal-contact", e)} style={{ color: '#A78BFA', fontWeight: 700, fontSize: '0.82rem', textDecoration: 'none' }}>Contact &amp; Grievance Desk</a>
             </div>
           </div>
         </div>
@@ -199,7 +222,7 @@ export function Footer() {
           </p>
 
           <p style={{ margin: 0 }}>
-            <strong>Support &amp; Grievances:</strong> For assistance, bookings, inquiries, or legal grievances, reach out directly to our official desk at <a href="mailto:grievance@stayq.space" style={{ color: '#A78BFA', fontWeight: 600 }}>grievance@stayq.space</a>.
+            <strong>Official Desks:</strong> For 24/7 customer assistance, bookings, and inquiries, message us on WhatsApp at <a href="https://wa.me/919225270718?text=Hi%20Stay%20Q%20Support" target="_blank" rel="noopener noreferrer" style={{ color: '#25D366', fontWeight: 600 }}>+91 9225270718</a> or email <a href="mailto:support@stayq.space" style={{ color: '#A78BFA', fontWeight: 600 }}>support@stayq.space</a>. For statutory compliance &amp; legal grievances, contact our Grievance Officer at <a href="mailto:grievance@stayq.space" style={{ color: '#A78BFA', fontWeight: 600 }}>grievance@stayq.space</a>. For host partnerships &amp; brand outreach, email <a href="mailto:hello@stayq.space" style={{ color: '#A78BFA', fontWeight: 600 }}>hello@stayq.space</a>.
           </p>
 
           <div
@@ -212,12 +235,14 @@ export function Footer() {
               paddingTop: '0.75rem',
             }}
           >
-            <span>&copy; {new Date().getFullYear()} Quatalyst Private Limited (Stay Q). All rights reserved.</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <span>&copy; {new Date().getFullYear()} Quatalyst Private Limited (Stay Q). All rights reserved.</span>
+            </div>
             <div style={{ display: 'flex', gap: '1.25rem' }}>
-              <a href="#/privacy" style={{ color: '#A1A1AA', textDecoration: 'none' }}>Privacy Policy</a>
-              <a href="#/terms" style={{ color: '#A1A1AA', textDecoration: 'none' }}>Terms of Service</a>
-              <a href="#/policy/refunds" style={{ color: '#A1A1AA', textDecoration: 'none' }}>Refund Policy</a>
-              <a href="#/legal-contact" style={{ color: '#A1A1AA', textDecoration: 'none' }}>Contact &amp; Grievance</a>
+              <a href="/privacy" onClick={(e) => navigateTo("/privacy", e)} style={{ color: '#A1A1AA', textDecoration: 'none' }}>Privacy Policy</a>
+              <a href="/terms" onClick={(e) => navigateTo("/terms", e)} style={{ color: '#A1A1AA', textDecoration: 'none' }}>Terms of Service</a>
+              <a href="/policy/refunds" onClick={(e) => navigateTo("/policy/refunds", e)} style={{ color: '#A1A1AA', textDecoration: 'none' }}>Refund Policy</a>
+              <a href="/legal-contact" onClick={(e) => navigateTo("/legal-contact", e)} style={{ color: '#A1A1AA', textDecoration: 'none' }}>Contact &amp; Grievance</a>
             </div>
           </div>
         </div>

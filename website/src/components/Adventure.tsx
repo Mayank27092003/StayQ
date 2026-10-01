@@ -1,4 +1,7 @@
-import { Check } from 'lucide-react';
+"use client";
+
+import { navigateTo } from '../utils/navigation';
+import { Check, Compass, Flame } from 'lucide-react';
 import { Reveal } from './Reveal';
 
 /** Fields mirror the RV and camping columns on the real `Property` model. */
@@ -23,13 +26,18 @@ export function Adventure() {
         <div className="duo">
           <Reveal>
             <article className="duo__card duo__card--rv">
-              <img
-                className="duo__mascot float"
-                src="/images/mascot_rv.png"
-                alt=""
-                loading="lazy"
-                aria-hidden="true"
-              />
+              <div className="duo__photo-wrap">
+                <img
+                  className="duo__photo"
+                  src="/images/real_rv.jpg"
+                  alt="Luxury Overland Campervan by Alpine Lake"
+                  loading="lazy"
+                />
+                <span className="duo__photo-badge">
+                  <Compass size={13} color="#a78bfa" />
+                  All-Terrain Campervans
+                </span>
+              </div>
               <h3 className="h3">RV rentals</h3>
               <p className="muted" style={{ fontSize: 'var(--t-sm)' }}>
                 Take the whole trip with you. Pick up a caravan, drive the route you want, park
@@ -45,13 +53,13 @@ export function Adventure() {
                   </li>
                 ))}
               </ul>
-              <div style={{ marginTop: '1.75rem' }}>
+              <div style={{ marginTop: 'auto', width: '100%', paddingTop: '1rem' }}>
                 <a
-                  href="#/rvs"
+                  href="/rvs"
                   className="btn btn--primary"
                   style={{ width: '100%', justifyContent: 'center', fontWeight: 700 }}
-                  onClick={() => {
-                    window.location.hash = '#/rvs';
+                  onClick={(e) => {
+                    navigateTo('/rvs', e);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                 >
@@ -63,13 +71,18 @@ export function Adventure() {
 
           <Reveal delay={0.1}>
             <article className="duo__card duo__card--camp">
-              <img
-                className="duo__mascot float--slow"
-                src="/images/mascot_camping.png"
-                alt=""
-                loading="lazy"
-                aria-hidden="true"
-              />
+              <div className="duo__photo-wrap">
+                <img
+                  className="duo__photo"
+                  src="/images/real_camping.jpg"
+                  alt="Stargazing Glamping Geodesic Dome"
+                  loading="lazy"
+                />
+                <span className="duo__photo-badge" style={{ background: 'rgba(6, 95, 70, 0.85)' }}>
+                  <Flame size={13} color="#34d399" />
+                  Stargazing &amp; Campfires
+                </span>
+              </div>
               <h3 className="h3">Camping sites</h3>
               <p className="muted" style={{ fontSize: 'var(--t-sm)' }}>
                 Pitch a tent by a river or high on a ridge. Every site lists its terrain and
@@ -85,13 +98,13 @@ export function Adventure() {
                   </li>
                 ))}
               </ul>
-              <div style={{ marginTop: '1.75rem' }}>
+              <div style={{ marginTop: 'auto', width: '100%', paddingTop: '1rem' }}>
                 <a
-                  href="#/camping"
+                  href="/camping"
                   className="btn btn--primary"
                   style={{ width: '100%', justifyContent: 'center', fontWeight: 700 }}
-                  onClick={() => {
-                    window.location.hash = '#/camping';
+                  onClick={(e) => {
+                    navigateTo('/camping', e);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                 >

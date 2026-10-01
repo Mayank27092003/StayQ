@@ -30,14 +30,14 @@ export class ExperiencesController {
 
   @Patch(':id')
   @UseGuards(FirebaseAuthGuard)
-  update(@Param('id') id: string, @Body() updateExperienceDto: any) {
-    return this.experiencesService.update(id, updateExperienceDto);
+  update(@CurrentUser() user: any, @Param('id') id: string, @Body() updateExperienceDto: any) {
+    return this.experiencesService.update(id, updateExperienceDto, user);
   }
 
   @Delete(':id')
   @UseGuards(FirebaseAuthGuard)
-  remove(@Param('id') id: string) {
-    return this.experiencesService.remove(id);
+  remove(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.experiencesService.remove(id, user);
   }
 
   @Get(':id/slots')

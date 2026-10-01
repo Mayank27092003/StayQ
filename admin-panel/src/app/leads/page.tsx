@@ -13,7 +13,7 @@ export interface HostLead {
   instagramHandle: string;
   phone: string;
   email?: string;
-  channel: "INSTAGRAM" | "WHATSAPP" | "DIRECT_CALL" | "AIRBNB" | "GOOGLE_MAPS" | "WEBSITE_FORM" | "OFFLINE_EVENT";
+  channel: "INSTAGRAM" | "WHATSAPP" | "DIRECT_CALL" | "OTA_PORTAL" | "GOOGLE_MAPS" | "WEBSITE_FORM" | "OFFLINE_EVENT";
   status: "NEW" | "INVITED" | "CONTACTED" | "FORM_SUBMITTED" | "NEGOTIATING" | "ONBOARDED" | "REJECTED";
   expectedPrice?: number;
   notes?: string;
@@ -222,24 +222,30 @@ export default function HostLeadsPage() {
 
   const getEmailSubject = (lead?: HostLead | null) => {
     const prop = lead?.propertyName ? ` for ${lead.propertyName}` : "";
-    return `Partnership Invitation from Stay Q${prop} (0% Commission)`;
+    return `Invitation to List on Stay Q${prop} (0% Host Commission)`;
   };
 
   const getEmailBody = (lead?: HostLead | null) => {
     const host = lead?.hostName || "Host";
-    const prop = lead?.propertyName ? ` "${lead.propertyName}"` : " your boutique property";
-    return `Hi ${host},\n\nWe came across${prop} and are truly impressed by the architecture and guest experience.\n\nWe would love to feature your listing on Stay Q — India's premier luxury villa & curated stay collection.\n\nWhy Partner with Stay Q:\n• 0% Host Commission (Keep 100% of your earnings)\n• ₹10,00,000 Verified Damage Protection\n• Direct Guest-to-Host Verification & Instant Payouts\n• Automated Calendar Sync (Airbnb, VRBO, Direct)\n\nYou can onboard your property directly in 2 minutes here:\n${publicInviteUrl}\n\nFeel free to reply directly to this email or reach out on WhatsApp at +91 98765 43210.\n\nWarm regards,\nShayan Mandal\nSuper Administrator, Stay Q\nhttps://stayq.space`;
+    const prop = lead?.propertyName ? ` "${lead.propertyName}"` : " your property";
+    return `Hi ${host},\n\nWe came across${prop} and would like to invite you to list on Stay Q (https://stayq.space).\n\nStay Q is an Indian accommodation marketplace operated by Quatalyst Private Limited connecting verified property owners directly with verified guests.\n\nKey Host Terms & Features:\n• 0% Host Listing Commission: We do not deduct 15–20% marketplace commissions. You receive 100% of your listed base payout.\n• Direct Bank Payouts: Automated settlements directly to your registered bank account via Cashfree Banking.\n• Verified Guests: Guests complete mobile number / ID verification prior to booking confirmation.\n• Full Operational Control: You set your own nightly pricing, minimum stay length, house rules, and security deposit terms.\n• Multi-Category Support: Villas, Homestays, Long-term 11-month zero-broker homes, RV Campervans, and Camping sites.\n\nYou can review details and complete onboarding directly here (takes ~3 minutes):\n${publicInviteUrl}\n\nIf you have any questions or want to discuss terms, feel free to reply directly to this email or reach us at support@stayq.space.\n\nBest regards,\nHost Relations Team\nStay Q (Quatalyst Private Limited)\nhttps://stayq.space`;
   };
 
   const getWhatsAppPitch = (lead?: HostLead | null) => {
     const host = lead?.hostName || "Host";
     const prop = lead?.propertyName ? ` for *${lead.propertyName}*` : "";
-    return `Hi ${host}! ✨ We love your property${prop} and would love to partner with you on Stay Q (India's premier luxury stay collection).\n\nKey Host Benefits:\n✅ 0% Host Commission\n✅ ₹10,00,000 Damage Protection\n✅ Automated Direct Bank Payouts\n\nSubmit your property in 1 minute here:\n${publicInviteUrl}\n\nLooking forward to partnering! 🚀`;
+    return `Hi ${host},\n\nWe came across your listing${prop}.\n\nWe would like to invite you to list on Stay Q (https://stayq.space), operated by Quatalyst Private Limited.\n\nWhat Stay Q provides to hosts:\n1. 0% Host Commission — No 15-20% OTA commission deduction from your payout.\n2. Direct Bank Payouts — Automated payouts directly to your bank account via Cashfree.\n3. Verified Guests — Verified phone & ID guest network.\n4. Complete Pricing & Calendar Control — Set your own rates, rules, and security deposit.\n\nYou can onboard your property in 2 minutes here:\n${publicInviteUrl}\n\nFeel free to reply if you'd like to discuss anything!`;
   };
 
   const getInstagramPitch = (lead?: HostLead | null) => {
-    const prop = lead?.propertyName ? ` "${lead.propertyName}"` : " your property";
-    return `Hey! Loved${prop} ✨ We are onboarding exclusive handpicked stays on Stay Q with 0% brokerage fee and ₹10,00,000 damage protection. You can submit details directly in 1 minute here: ${publicInviteUrl}`;
+    const prop = lead?.propertyName ? ` "${lead.propertyName}"` : " your space";
+    return `Hi! We came across${prop}. We operate Stay Q (https://stayq.space), a property booking platform with 0% host commission and direct bank payouts for verified stays & villas. You can review details and list your property directly in 2 minutes here: ${publicInviteUrl} — let us know if you have any questions!`;
+  };
+
+  const getPhoneCallScript = (lead?: HostLead | null) => {
+    const host = lead?.hostName || "Sir/Ma'am";
+    const prop = lead?.propertyName ? ` regarding "${lead.propertyName}"` : "";
+    return `"Hello ${host}, I am calling from Stay Q (stayq.space)${prop}. We are an Indian stay marketplace operated by Quatalyst Private Limited. Unlike traditional OTAs that charge 15% to 20% host commission, Stay Q charges 0% host commission and settles guest payouts directly into your bank via Cashfree Banking. You have 100% control over pricing, calendar, and house rules. May I share the direct 2-minute onboarding link with you on WhatsApp?"`;
   };
 
   const filteredLeads = leads.filter((l) => {
@@ -627,6 +633,58 @@ export default function HostLeadsPage() {
                   style={{ width: "100%", padding: "0.6rem", fontSize: "0.8rem", borderRadius: "10px", border: "1px solid #cbd5e1", background: "#f8fafc", color: "#334155" }}
                 />
               </div>
+
+              {/* Instagram DM */}
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>
+                    📸 Instagram DM Pitch
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(getInstagramPitch(selectedLeadForShare));
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    style={{ fontSize: "0.75rem", fontWeight: 700, color: "#e11d48", background: "none", border: "none", cursor: "pointer" }}
+                  >
+                    Copy Instagram Text
+                  </button>
+                </div>
+                <textarea
+                  readOnly
+                  rows={3}
+                  value={getInstagramPitch(selectedLeadForShare)}
+                  style={{ width: "100%", padding: "0.6rem", fontSize: "0.8rem", borderRadius: "10px", border: "1px solid #cbd5e1", background: "#f8fafc", color: "#334155" }}
+                />
+              </div>
+
+              {/* Phone Calling Script */}
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>
+                    📞 Direct Phone Call Script
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(getPhoneCallScript(selectedLeadForShare));
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    style={{ fontSize: "0.75rem", fontWeight: 700, color: "#2563eb", background: "none", border: "none", cursor: "pointer" }}
+                  >
+                    Copy Call Script
+                  </button>
+                </div>
+                <textarea
+                  readOnly
+                  rows={3}
+                  value={getPhoneCallScript(selectedLeadForShare)}
+                  style={{ width: "100%", padding: "0.6rem", fontSize: "0.8rem", borderRadius: "10px", border: "1px solid #cbd5e1", background: "#f8fafc", color: "#334155" }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -768,7 +826,7 @@ export default function HostLeadsPage() {
                     <option value="INSTAGRAM">📸 Instagram DM / Reel</option>
                     <option value="WHATSAPP">💬 WhatsApp Outreach</option>
                     <option value="DIRECT_CALL">📞 Direct Phone Call</option>
-                    <option value="AIRBNB">🏠 Airbnb Host Reachout</option>
+                    <option value="OTA_PORTAL">🏠 Property Host Outreach</option>
                     <option value="GOOGLE_MAPS">🗺️ Google Maps / Web</option>
                     <option value="WEBSITE_FORM">🌐 Website Inbound Form</option>
                     <option value="OFFLINE_EVENT">🤝 In-Person / Field</option>

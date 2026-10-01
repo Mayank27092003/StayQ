@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { Scale } from 'lucide-react';
 
@@ -53,6 +55,26 @@ export const TermsOfService: React.FC = () => {
           <p>
             Stay Q facilitates trusted marketplace connections and underwrites verified host protection. Any disputes arising under this agreement shall be governed by the laws of India and subject to the exclusive jurisdiction of the courts of Bengaluru, Karnataka.
           </p>
+        </section>
+
+        <section style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: '18px', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--ink)', marginBottom: '0.6rem' }}>
+            5. Official Communication Channels &amp; Legal Notices
+          </h3>
+          <p style={{ marginBottom: '0.75rem' }}>
+            Users must direct inquiries and formal notices strictly to the designated official Stay Q communication channels:
+          </p>
+          <ul style={{ paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <li>
+              <strong>24/7 Customer Support &amp; Guest Concierge:</strong> For booking issues, cancellations, keybox pins, and general messages, email <a href="mailto:support@stayq.space" style={{ color: 'var(--violet)', fontWeight: 700 }}>support@stayq.space</a>.
+            </li>
+            <li>
+              <strong>Grievance Redressal Officer &amp; Legal Notices:</strong> For statutory disputes under the IT Rules 2021, consumer grievances, and copyright notices, email <a href="mailto:grievance@stayq.space" style={{ color: '#10B981', fontWeight: 700 }}>grievance@stayq.space</a>.
+            </li>
+            <li>
+              <strong>Brand, Community &amp; Host Partnerships:</strong> For prospective host acquisition, press inquiries, and business partnerships, email <a href="mailto:hello@stayq.space" style={{ color: '#D97706', fontWeight: 700 }}>hello@stayq.space</a>.
+            </li>
+          </ul>
         </section>
       </div>
     </div>

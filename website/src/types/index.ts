@@ -29,10 +29,12 @@ export interface Stay {
   hostName: string;
   hostAvatar: string;
   isGuestFavorite?: boolean;
-  isSuperhost?: boolean;
+  isStarHost?: boolean;
   isNew?: boolean;
   isFeatured?: boolean;
   isZeroBroker?: boolean;
+  isSponsored?: boolean;
+  sponsoredTier?: string;
   depositAmount?: number;
   leaseTerm?: string;
   amenities: string[];
@@ -133,3 +135,41 @@ export interface UserProfile {
   phone?: string;
   avatarUrl?: string;
 }
+
+export type LoyaltyTier = 'Q_STARTER' | 'Q_PLUS' | 'Q_PREMIUM';
+
+export interface TierBenefit {
+  tier: LoyaltyTier;
+  title: string;
+  price: number;
+  multiplier: number;
+  badge: string;
+  perks: string[];
+}
+
+export interface PointsTransaction {
+  id: string;
+  points: number;
+  type: string;
+  reason: string;
+  referenceId?: string;
+  createdAt: string;
+}
+
+export interface LoyaltyProfile {
+  id: string;
+  userId: string;
+  totalPoints: number;
+  availablePoints: number;
+  redeemedPoints: number;
+  tier: LoyaltyTier;
+  tierExpiresAt?: string | null;
+  tierPurchasedAt?: string | null;
+  pointsMultiplier: number;
+  profileCompletionRewarded: boolean;
+  creditEquivalent: number;
+  tierDetails: TierBenefit;
+  transactions?: PointsTransaction[];
+  allTiers?: TierBenefit[];
+}
+

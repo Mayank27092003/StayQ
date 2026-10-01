@@ -1,3 +1,5 @@
+"use client";
+
 import { ArrowRight, Check } from 'lucide-react';
 import { Reveal } from './Reveal';
 
@@ -17,12 +19,27 @@ export function Host() {
         <div className="split">
           <div className="split__visual">
             <Reveal>
-              <img
-                className="split__mascot float"
-                src="/images/human_host.png"
-                alt="A Stay Q host ready to welcome guests"
-                loading="lazy"
-              />
+              <div className="split__host-card float">
+                <img
+                  className="split__host-img"
+                  src="/images/real_host.jpg"
+                  alt="Verified Stay Q Star Host welcoming guests"
+                  loading="lazy"
+                />
+                <div className="split__host-gradient" aria-hidden="true" />
+                <span className="split__host-earning-badge">
+                  <Check size={13} strokeWidth={3} />
+                  Avg ₹1.4L / mo Earned
+                </span>
+                <div className="split__host-overlay">
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0 0 0.2rem 0', color: '#fff' }}>
+                    Priya &amp; Rohan Sharma
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>
+                    Star Host in Goa · 3 Villas Listed · 96% Occupancy
+                  </p>
+                </div>
+              </div>
             </Reveal>
           </div>
 

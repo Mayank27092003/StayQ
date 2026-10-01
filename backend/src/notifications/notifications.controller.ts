@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -14,6 +14,11 @@ export class NotificationsController {
     return this.notificationsService.getUserNotifications(userId);
   }
 
+  @Patch('read-all')
+  markAllAsRead(@CurrentUser('id') userId: string) {
+    return this.notificationsService.markAllAsRead(userId);
+  }
+
   @Patch(':id/read')
   markAsRead(@CurrentUser('id') userId: string, @Param('id') id: string) {
     return this.notificationsService.markAsRead(userId, id);
@@ -26,6 +31,14 @@ export class NotificationsController {
     @Body('platform') platform: string
   ) {
     return this.notificationsService.saveDeviceToken(userId, token, platform);
+  }
+
+  @Delete('device-token')
+  deleteDeviceToken(
+    @CurrentUser('id') userId: string,
+    @Body('token') token: string
+  ) {
+    return this.notificationsService.deleteDeviceToken(userId, token);
   }
 
   @Get('preferences')

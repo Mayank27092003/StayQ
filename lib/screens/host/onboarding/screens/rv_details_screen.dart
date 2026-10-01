@@ -38,9 +38,16 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
   ];
   final Set<int> _uploadedPhotos = {};
 
-  // 5. Pickup & Delivery
+  // 5. Pickup & Drop Locations
   final _pickupController = TextEditingController();
+  final _dropController = TextEditingController();
+  bool _sameDropLocation = true;
   bool _deliveryAvailable = false;
+
+  // Pricing & Km Allowance (Per Day)
+  String _kmPackage = '100 Km/day';
+  final _extraKmRateController = TextEditingController(text: '18');
+  final _perDayRateController = TextEditingController(text: '8500');
 
   // 6. Driving Rules
   double _minAge = 21;
@@ -69,6 +76,9 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
     _modelController.dispose();
     _yearController.dispose();
     _pickupController.dispose();
+    _dropController.dispose();
+    _extraKmRateController.dispose();
+    _perDayRateController.dispose();
     _insuranceController.dispose();
     _mileageController.dispose();
     _conditionNotesController.dispose();
@@ -416,18 +426,69 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
                     ),
                   ),
 
-                  // 5. Pickup & Delivery
+                  // 5. Pickup & Drop Locations & Km Allowance
                   ExpansionPanel(
                     isExpanded: _isExpanded[4],
                     canTapOnHeader: true,
                     backgroundColor: Colors.transparent,
-                    headerBuilder: (context, isExpanded) => _buildSectionHeader('Pickup & Delivery', Icons.location_on),
+                    headerBuilder: (context, isExpanded) => _buildSectionHeader('Pickup, Drop & Km Allowance', Icons.location_on),
                     body: Padding(
                       padding: const EdgeInsets.only(bottom: 24),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildTextField('Default Pickup Location', _pickupController),
-                          _buildToggleCard('Offer Delivery?', _deliveryAvailable, (v) => setState(() => _deliveryAvailable = v), Icons.local_shipping),
+                          _buildTextField('RV Pickup Location * (e.g. Goa Airport / Panaji Hub)', _pickupController),
+                          const SizedBox(height: 12),
+                          _buildToggleCard(
+                            'Drop Location same as Pickup?',
+                            _sameDropLocation,
+                            (v) => setState(() => _sameDropLocation = v),
+                            Icons.swap_horiz_rounded,
+                          ),
+                          if (!_sameDropLocation) ...[
+                            const SizedBox(height: 12),
+                            _buildTextField('Designated Drop Location / Hubs *', _dropController),
+                          ],
+                          const SizedBox(height: 12),
+                          _buildToggleCard('Doorstep RV Delivery & Handover Available?', _deliveryAvailable, (v) => setState(() => _deliveryAvailable = v), Icons.local_shipping),
+                          const SizedBox(height: 20),
+
+                          const Text('Daily Included Kilometer Allowance *', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary)),
+                          const SizedBox(height: 4),
+                          const Text('Select the driving allowance included in your daily base rate:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          const SizedBox(height: 10),
+
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: ['80 Km/day', '100 Km/day', '150 Km/day', '250 Km/day', 'Unlimited'].map((pkg) {
+                              final isSel = _kmPackage == pkg;
+                              return ChoiceChip(
+                                label: Text(pkg, style: TextStyle(color: isSel ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
+                                selected: isSel,
+                                selectedColor: AppColors.primary,
+                                backgroundColor: AppColors.surfaceLight,
+                                onSelected: (sel) {
+                                  if (sel) setState(() => _kmPackage = pkg);
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 16),
+
+                          Row(
+                            children: [
+                              if (_kmPackage != 'Unlimited') ...[
+                                Expanded(
+                                  child: _buildTextField('Extra Km Charge (₹/km)', _extraKmRateController, type: TextInputType.number),
+                                ),
+                                const SizedBox(width: 14),
+                              ],
+                              Expanded(
+                                child: _buildTextField('Per Day Rental (₹/day)', _perDayRateController, type: TextInputType.number),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),

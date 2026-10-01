@@ -1,3 +1,5 @@
+"use client";
+
 import { Reveal } from './Reveal';
 
 /** Real category names from the `PropertyCategory` enum, paired with real photos. */

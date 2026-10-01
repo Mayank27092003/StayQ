@@ -25,6 +25,34 @@ export class WalletController {
     return this.walletService.getWalletHistory(userId);
   }
 
+  @Get('referral-info')
+  async getReferralInfo(@CurrentUser() user: any) {
+    return this.walletService.getUserReferralDetails(user.id);
+  }
+
+  @Post('apply-referral')
+  async applyReferral(@Body() body: { referralCode: string }, @CurrentUser() user: any) {
+    return this.walletService.applyReferralCode(user.id, body.referralCode);
+  }
+
+  @Post('calculate-discount')
+  async calculateDiscount(@Body() body: { subtotal: number }, @CurrentUser() user: any) {
+    return this.walletService.calculateReferralDiscount(user.id, Number(body.subtotal) || 0);
+  }
+
+  @Post('redeem-discount')
+  async redeemDiscount(
+    @Body() body: { bookingId: string; subtotal: number; requestedDiscount: number },
+    @CurrentUser() user: any,
+  ) {
+    return this.walletService.redeemReferralDiscount(
+      user.id,
+      body.bookingId,
+      Number(body.subtotal),
+      Number(body.requestedDiscount),
+    );
+  }
+
   @Post('credit')
   @UseGuards(AdminGuard)
   async addCredit(@Body() body: { userId: string; amount: number; reason: string; referenceId?: string }) {
@@ -40,8 +68,11 @@ export class WalletController {
   }
 
   @Post('topup')
-  async topUp(@Body() body: { userId: string; amount: number; paymentId: string }, @CurrentUser() user: any) {
-    return this.walletService.topUp(body.userId || user.id, body.amount, body.paymentId);
+  async topUp(@Body() body: { amount: number; paymentId: string }, @CurrentUser() user: any) {
+    if (!body.paymentId) {
+      throw new UnauthorizedException('Payment ID is required for wallet topup');
+    }
+    return this.walletService.topUp(user.id, body.amount, body.paymentId);
   }
 
   @Post('referral/:id/claim')

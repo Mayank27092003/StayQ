@@ -451,78 +451,112 @@ export class AdminModerationService {
   // ---- Host Applications --------------------------------------------------
 
   async getHostApplications() {
-    // Find users who are NOT hosts yet, but have properties in PENDING_REVIEW
     const users = await this.prisma.user.findMany({
       where: {
-        roles: {
-          hasSome: ['GUEST'] // Basic check, we'll refine below
-        },
         properties: {
           some: {
-            status: 'PENDING_REVIEW'
+            status: { in: ['PENDING_REVIEW', 'DRAFT'] as any }
           }
         }
       },
       include: {
-        payoutAccount: true, // Includes KYC Docs (govIdType, govIdDocUrl, etc.)
+        payoutAccount: true,
         properties: {
-          where: { status: 'PENDING_REVIEW' },
-          take: 1, // Just get the first one for the application view
+          where: { status: { in: ['PENDING_REVIEW', 'DRAFT'] as any } },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
           include: {
-            images: true, // Property Photos
+            images: true,
             roomTypes: true
           }
         }
       }
     });
 
-    // Filter out users who are already hosts
-    return users.filter(u => !u.roles.includes('HOST')).map(u => ({
-      userId: u.id,
-      displayName: u.displayName,
-      email: u.email,
-      phone: u.phone,
-      photoUrl: u.photoUrl,
-      payoutAccount: u.payoutAccount,
-      property: u.properties[0]
-    }));
+    return users
+      .map(u => ({
+        userId: u.id,
+        displayName: u.displayName || u.email || 'Host Applicant',
+        email: u.email,
+        phone: u.phone,
+        photoUrl: u.photoUrl,
+        payoutAccount: u.payoutAccount,
+        property: u.properties[0]
+      }))
+      .filter(app => !!app.property);
   }
 
   async approveHostApplication(userId: string, adminId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { properties: { where: { status: 'PENDING_REVIEW' } } } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        payoutAccount: true,
+        properties: {
+          where: { status: { in: ['PENDING_REVIEW', 'DRAFT'] as any } },
+        },
+      },
+    });
     if (!user) throw new NotFoundException('User not found');
     
     return this.prisma.$transaction(async (tx) => {
-      // 1. Make user a HOST
+      // 1. Make user a verified HOST
       const updatedRoles = [...new Set([...user.roles, 'HOST' as any])];
       await tx.user.update({
         where: { id: userId },
-        data: { roles: updatedRoles }
+        data: {
+          roles: updatedRoles,
+          isHostVerified: true,
+          hostVerifiedAt: new Date(),
+          hostStatus: 'APPROVED' as any,
+        },
       });
 
-      // 2. Approve all pending properties
-      for (const prop of user.properties) {
-        await tx.property.update({
-          where: { id: prop.id },
-          data: { status: 'ACTIVE' }
+      // 2. Verify payout account if present
+      if (user.payoutAccount) {
+        await tx.hostPayoutAccount.update({
+          where: { userId },
+          data: {
+            verified: true,
+            verifiedAt: new Date(),
+            verifiedBy: adminId || 'admin',
+          },
         });
       }
 
-      await tx.adminAuditLog.create({
-        data: {
-          adminId,
-          action: 'APPROVE_HOST_APP',
-          targetType: 'USER',
-          targetId: userId,
-          details: { approvedProperties: user.properties.length },
-        },
-      });
-      return { success: true };
+      // 3. Approve all pending & draft properties → ACTIVE
+      for (const prop of user.properties) {
+        await tx.property.update({
+          where: { id: prop.id },
+          data: {
+            status: 'ACTIVE',
+            propertyDocsVerified: true,
+            propertyDocsVerifiedAt: new Date(),
+          },
+        });
+      }
+
+      // 4. Audit Log (safely executed, does not block approval if adminId is not a valid User FK)
+      try {
+        const adminUser = adminId ? await tx.user.findUnique({ where: { id: adminId } }) : null;
+        if (adminUser) {
+          await tx.adminAuditLog.create({
+            data: {
+              adminId,
+              action: 'APPROVE_HOST_APP',
+              targetType: 'USER',
+              targetId: userId,
+              details: { approvedProperties: user.properties.length },
+            },
+          });
+        }
+      } catch (_) {}
+
+      return { success: true, approvedPropertiesCount: user.properties.length };
     });
   }
 
   async rejectHostApplication(userId: string, adminId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { properties: { where: { status: 'PENDING_REVIEW' } } } });
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { properties: { where: { status: { in: ['PENDING_REVIEW', 'DRAFT'] as any } } } } });
     if (!user) throw new NotFoundException('User not found');
     
     return this.prisma.$transaction(async (tx) => {
@@ -534,15 +568,21 @@ export class AdminModerationService {
         });
       }
 
-      await tx.adminAuditLog.create({
-        data: {
-          adminId,
-          action: 'REJECT_HOST_APP',
-          targetType: 'USER',
-          targetId: userId,
-          details: { rejectedProperties: user.properties.length },
-        },
-      });
+      try {
+        const adminUser = adminId ? await tx.user.findUnique({ where: { id: adminId } }) : null;
+        if (adminUser) {
+          await tx.adminAuditLog.create({
+            data: {
+              adminId,
+              action: 'REJECT_HOST_APP',
+              targetType: 'USER',
+              targetId: userId,
+              details: { rejectedProperties: user.properties.length },
+            },
+          });
+        }
+      } catch (_) {}
+
       return { success: true };
     });
   }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, Experience, ExperienceCategory, PropertyStatus } from '@prisma/client';
 
@@ -97,7 +97,13 @@ export class ExperiencesService {
     });
   }
 
-  async update(id: string, updateDto: any): Promise<Experience> {
+  async update(id: string, updateDto: any, user?: any): Promise<Experience> {
+    const existing = await this.prisma.experience.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Experience not found');
+    if (user && existing.hostId !== user.id && !user.isAdmin) {
+      throw new ForbiddenException('Only the experience host or admin can update this experience');
+    }
+
     const data: any = {};
     if (updateDto.title !== undefined) data.title = updateDto.title;
     if (updateDto.description !== undefined) data.description = updateDto.description;
@@ -130,7 +136,12 @@ export class ExperiencesService {
     });
   }
 
-  async remove(id: string): Promise<Experience> {
+  async remove(id: string, user?: any): Promise<Experience> {
+    const existing = await this.prisma.experience.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Experience not found');
+    if (user && existing.hostId !== user.id && !user.isAdmin) {
+      throw new ForbiddenException('Only the experience host or admin can delete this experience');
+    }
     return this.prisma.experience.delete({ where: { id } });
   }
 

@@ -1,3 +1,5 @@
+"use client";
+
 import { Apple, Smartphone } from 'lucide-react';
 import { Reveal } from './Reveal';
 

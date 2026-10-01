@@ -76,12 +76,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             try {
               final prefs = await SharedPreferences.getInstance();
               
-              // 1. Check for persistent KYC Lock
+              // 1. Check for persistent KYC Lock / Pending Review (ONLY if currently in Host Mode)
               final kycStatus = prefs.getString('kyc_status');
-              if (kycStatus == 'pending_review' && mounted) {
-                hostProvider.jumpToVerification();
-                Navigator.pushReplacementNamed(context, AppRoutes.addListing);
-                return;
+              if (provider.isHostMode && kycStatus == 'pending_review' && mounted) {
+                if (provider.isLoggedIn) {
+                  Navigator.pushReplacementNamed(context, AppRoutes.mainShell);
+                  return;
+                }
               }
 
               // 2. Strict Authentication Check: No unauthenticated/guest bypass allowed
@@ -94,9 +95,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 return;
               }
 
-              // 3. Check for in-progress Host Onboarding
+              // 3. Check for in-progress Host Onboarding (ONLY if user is in Host Mode)
               final hostOnboardingInProgress = prefs.getBool('host_onboarding_in_progress') ?? false;
-              if (hostOnboardingInProgress && mounted) {
+              if (provider.isHostMode && hostOnboardingInProgress && mounted) {
                 await hostProvider.restoreDraftFromPrefs();
                 Navigator.pushReplacement(
                   context,

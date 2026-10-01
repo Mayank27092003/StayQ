@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
@@ -8,6 +10,7 @@ import {
   Clock,
   ShieldCheck,
   Loader2,
+  MessageSquare,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -84,11 +87,13 @@ const GUIDED_TOPICS: GuidedTopic[] = [
   },
 ];
 
-export const SupportModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
-  isOpen,
-  onClose,
+export const SupportModal: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({
+  isOpen: propIsOpen,
+  onClose: propOnClose,
 }) => {
-  const { user } = useApp();
+  const { user, isSupportOpen, setIsSupportOpen } = useApp();
+  const isOpen = propIsOpen !== undefined ? propIsOpen : isSupportOpen;
+  const onClose = propOnClose || (() => setIsSupportOpen(false));
 
   const [activeTab, setActiveTab] = useState<'chat' | 'ticket' | 'status'>('chat');
   const [selectedTopic, setSelectedTopic] = useState<GuidedTopic | null>(null);
@@ -206,7 +211,7 @@ export const SupportModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
       const aiMsg: SupportMessage = {
         id: `ai-${Date.now()}`,
         sender: 'ai',
-        text: `✨ I understand! If this requires specific account or host assistance, click **"Transfer to Human Executive"** below and our senior support operations team will call or WhatsApp you directly.`,
+        text: `✨ I understand! If this requires specific account or host assistance, click **"Transfer to Human Executive"** below, or chat directly with our operations desk on WhatsApp at **+91 9225270718**.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, aiMsg]);
@@ -817,6 +822,69 @@ export const SupportModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
                   </p>
                 </div>
 
+                {/* Direct 1-Click WhatsApp Support Card */}
+                <div
+                  style={{
+                    background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                    border: '1px solid #86efac',
+                    borderRadius: '16px',
+                    padding: '1rem 1.25rem',
+                    marginBottom: '1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '1rem',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '50%',
+                        background: '#22c55e',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 10px rgba(34, 197, 94, 0.25)',
+                      }}
+                    >
+                      <MessageSquare size={20} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#14532d' }}>
+                        Chat Directly on WhatsApp
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#166534' }}>
+                        Official Support: <strong>+91 9225270718</strong> (Average reply &lt; 2 mins)
+                      </div>
+                    </div>
+                  </div>
+                  <a
+                    href="https://wa.me/919225270718?text=Hi%20Stay%20Q%20Support%2C%20I%20need%20assistance%20with%20my%20stay"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      background: '#15803d',
+                      color: '#ffffff',
+                      padding: '0.55rem 1.1rem',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      boxShadow: '0 2px 6px rgba(21, 128, 61, 0.2)',
+                    }}
+                  >
+                    <span>Open WhatsApp</span>
+                    <span>&rarr;</span>
+                  </a>
+                </div>
+
                 <form onSubmit={handleCreateTicket} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                     <div>
@@ -1009,6 +1077,42 @@ export const SupportModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
             )}
           </div>
         )}
+
+        {/* Support Modal Footer Strip with Official Desks */}
+        <div
+          style={{
+            padding: '0.65rem 1.25rem',
+            background: '#f8fafc',
+            borderTop: '1px solid #e2e8f0',
+            fontSize: '0.74rem',
+            color: '#64748b',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+          }}
+        >
+          <div>
+            <strong>WhatsApp:</strong>{' '}
+            <a href="https://wa.me/919225270718?text=Hi%20Stay%20Q%20Support" target="_blank" rel="noopener noreferrer" style={{ color: '#16a34a', fontWeight: 700, textDecoration: 'none' }}>
+              +91 9225270718
+            </a>{' '}
+            &bull; <strong>Support Desk:</strong>{' '}
+            <a href="mailto:support@stayq.space" style={{ color: '#9D00FF', fontWeight: 700, textDecoration: 'none' }}>
+              support@stayq.space
+            </a>{' '}
+            &bull; <strong>Grievances:</strong>{' '}
+            <a href="mailto:grievance@stayq.space" style={{ color: '#059669', fontWeight: 700, textDecoration: 'none' }}>
+              grievance@stayq.space
+            </a>{' '}
+            &bull; <strong>Partnerships:</strong>{' '}
+            <a href="mailto:hello@stayq.space" style={{ color: '#d97706', fontWeight: 700, textDecoration: 'none' }}>
+              hello@stayq.space
+            </a>
+          </div>
+          <div style={{ color: '#94a3b8' }}>Quatalyst Private Limited</div>
+        </div>
       </div>
     </div>
   );

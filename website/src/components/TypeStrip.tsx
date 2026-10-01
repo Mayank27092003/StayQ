@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Property-type marquee. Every entry maps to a real `PropertyType` in the
  * Prisma schema, so nothing here is invented.
