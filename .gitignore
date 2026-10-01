@@ -17,7 +17,7 @@
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-pubspec.lock
+# pubspec.lock  <-- We want to track this for reproducible CI builds
 /build/
 /coverage/
 
