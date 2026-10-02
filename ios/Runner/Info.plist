@@ -27,6 +27,23 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	
+	<!-- Bypass Export Compliance Questionnaire -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
+	<!-- URL Types for Google Sign-In & Firebase Phone Auth (reCAPTCHA callback) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.608570851336-jn6gg8mf9qqdu9hdp3cdrdub638cet7a</string>
+			</array>
+		</dict>
+	</array>
+	
 	<!-- Privacy Permissions for iOS -->
 	<key>NSCameraUsageDescription</key>
 	<string>Stay Q requires camera access to scan Government ID documents (PAN/Aadhaar) for host KYC verification and capture property photos.</string>
