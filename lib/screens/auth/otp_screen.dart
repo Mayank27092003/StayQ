@@ -19,36 +19,45 @@ class OtpScreen extends StatefulWidget {
 class _OtpScreenState extends State<OtpScreen> {
   final TextEditingController _otpController = TextEditingController();
 
+  Future<void> _handleSuccess(AppProvider provider) async {
+    final isComplete = await provider.checkProfileComplete();
+    if (!mounted) return;
+    if (provider.isHostMode) {
+      final prefs = await SharedPreferences.getInstance();
+      final kycStatus = prefs.getString('kyc_status');
+      final hostOnboardingInProgress = prefs.getBool('host_onboarding_in_progress') ?? false;
+
+      if (kycStatus == 'pending_review' || !hostOnboardingInProgress) {
+        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HostOnboardingScreen()),
+          (route) => false,
+        );
+      }
+    } else if (isComplete) {
+      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);
+    } else {
+      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.completeProfile, (route) => false);
+    }
+  }
+
   void _verifyOTP(String code) async {
     final provider = context.read<AppProvider>();
     try {
       final success = await provider.verifyOTP(code);
       if (!mounted) return;
       if (success) {
-        final isComplete = await provider.checkProfileComplete();
-        if (!mounted) return;
-        if (provider.isHostMode) {
-          final prefs = await SharedPreferences.getInstance();
-          final kycStatus = prefs.getString('kyc_status');
-          final hostOnboardingInProgress = prefs.getBool('host_onboarding_in_progress') ?? false;
-
-          if (kycStatus == 'pending_review' || !hostOnboardingInProgress) {
-            Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);
-          } else {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (_) => const HostOnboardingScreen()),
-              (route) => false,
-            );
-          }
-        } else if (isComplete) {
-          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);
-        } else {
-          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.completeProfile, (route) => false);
-        }
+        await _handleSuccess(provider);
       }
     } catch (e) {
       if (!mounted) return;
+      // If user got verified in background during the error, still succeed:
+      if (provider.isLoggedIn) {
+        await _handleSuccess(provider);
+        return;
+      }
       CustomToast.show(context: context, message: e.toString(), isError: true);
       _otpController.clear();
     }

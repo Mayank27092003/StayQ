@@ -760,10 +760,12 @@ class AppProvider extends ChangeNotifier {
     try {
       await _auth!.verifyPhoneNumber(
         phoneNumber: phoneNumber,
+        timeout: const Duration(seconds: 120),
         verificationCompleted: (PhoneAuthCredential credential) async {
           try {
             await _auth!.signInWithCredential(credential);
-            // After successful sign in, the authStateChanges stream will handle the rest
+            _isLoadingAuth = false;
+            notifyListeners();
           } catch (e) {
             debugPrint('Auto-verification failed: $e');
           }
@@ -795,7 +797,15 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (_verificationId == null) throw Exception('No verification ID found');
+      // If user is already authenticated (e.g., via Android SMS auto-retrieval):
+      if (_auth != null && _auth!.currentUser != null) {
+        debugPrint('User is already verified and authenticated!');
+        _isLoadingAuth = false;
+        notifyListeners();
+        return true;
+      }
+
+      if (_verificationId == null) throw Exception('No verification ID found. Please go back and request OTP again.');
 
       PhoneAuthCredential credential = PhoneAuthProvider.credential(
         verificationId: _verificationId!,
@@ -838,12 +848,23 @@ class AppProvider extends ChangeNotifier {
       debugPrint('Firebase Auth Error: ${e.code}');
       _isLoadingAuth = false;
       notifyListeners();
+      // If user is already authenticated despite error:
+      if (_auth != null && _auth!.currentUser != null) {
+        return true;
+      }
+      if (e.code == 'session-expired') {
+        throw 'The code has expired. Please request a new code.';
+      } else if (e.code == 'invalid-verification-code') {
+        throw 'Invalid verification code. Please check and try again.';
+      }
       throw e.message ?? 'Authentication failed';
     } catch (e) {
       debugPrint('OTP Error: $e');
       _isLoadingAuth = false;
       notifyListeners();
-      // Throw the exact error so the UI can display it
+      if (_auth != null && _auth!.currentUser != null) {
+        return true;
+      }
       throw e.toString();
     }
   }
