@@ -323,16 +323,30 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('24/7 Help & Support', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppColors.primary,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
-          tabs: const [
-            Tab(icon: Icon(Icons.auto_awesome, size: 18), text: 'AI & Live Chat'),
-            Tab(icon: Icon(Icons.support_agent, size: 18), text: 'Transfer to Agent'),
-            Tab(icon: Icon(Icons.confirmation_number_outlined, size: 18), text: 'My Tickets'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: AppColors.background,
+              border: Border(
+                bottom: BorderSide(color: AppColors.borderLight, width: 1),
+              ),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: AppColors.primary,
+              indicatorWeight: 3,
+              labelColor: AppColors.primary,
+              unselectedLabelColor: AppColors.textSecondary,
+              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              unselectedLabelStyle: const TextStyle(fontSize: 12),
+              tabs: const [
+                Tab(icon: Icon(Icons.auto_awesome, size: 18), text: 'AI & Live Chat'),
+                Tab(icon: Icon(Icons.support_agent, size: 18), text: 'Transfer to Agent'),
+                Tab(icon: Icon(Icons.confirmation_number_outlined, size: 18), text: 'My Tickets'),
+              ],
+            ),
+          ),
         ),
       ),
       body: TabBarView(
@@ -382,7 +396,7 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
         if (_selectedTopic != null) ...[
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            color: AppColors.primary.withOpacity(0.06),
+            color: AppColors.primary.withValues(alpha: 0.06),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -420,7 +434,7 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                     color: isUser ? AppColors.primary : Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 2)),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2)),
                     ],
                   ),
                   child: Column(
@@ -521,9 +535,9 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.green.withOpacity(0.3)),
+            border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
             boxShadow: [
-              BoxShadow(color: Colors.green.withOpacity(0.05), blurRadius: 16, offset: const Offset(0, 4)),
+              BoxShadow(color: Colors.green.withValues(alpha: 0.05), blurRadius: 16, offset: const Offset(0, 4)),
             ],
           ),
           child: Column(
@@ -532,7 +546,7 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 36),
@@ -611,62 +625,75 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
           const SizedBox(height: 16),
 
           // 1-Click WhatsApp Support Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [const Color(0xFF25D366).withValues(alpha: 0.12), const Color(0xFF128C7E).withValues(alpha: 0.08)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () async {
+                final uri = Uri.parse(AppConfig.whatsappSupportUrl);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.35)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF25D366),
-                    shape: BoxShape.circle,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [const Color(0xFF25D366).withValues(alpha: 0.12), const Color(0xFF128C7E).withValues(alpha: 0.08)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  child: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 22),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.35)),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'WhatsApp Priority Desk',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF075E54)),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF25D366),
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Instant reply • ${AppConfig.whatsappSupportNumber}',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                      child: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'WhatsApp Priority Desk',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF075E54)),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Instant reply • ${AppConfig.whatsappSupportNumber}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF25D366),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text(
+                        'Chat',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ],
                 ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final uri = Uri.parse(AppConfig.whatsappSupportUrl);
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text('Chat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                ),
-              ],
+              ),
             ),
           ),
           const SizedBox(height: 14),
@@ -803,17 +830,28 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
       child: GestureDetector(
         onTap: () => setState(() => _urgency = id),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: isSelected ? AppColors.primary : AppColors.borderLight, width: isSelected ? 2 : 1),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isSelected ? AppColors.primary : AppColors.textPrimary)),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isSelected ? AppColors.primary : AppColors.textPrimary),
+              ),
               const SizedBox(height: 2),
-              Text(subtitle, style: const TextStyle(fontSize: 9, color: AppColors.textMuted)),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
+              ),
             ],
           ),
         ),
@@ -844,8 +882,15 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
               const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: _fetchTickets,
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-                child: const Text('Search'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(80, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: const Text('Search', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
