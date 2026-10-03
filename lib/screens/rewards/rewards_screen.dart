@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +7,8 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
 import '../../widgets/bouncing_widget.dart';
+import '../../widgets/cashfree_payment_sheet.dart';
+import '../profile/edit_profile_screen.dart';
 
 class RewardsScreen extends StatefulWidget {
   const RewardsScreen({super.key});
@@ -26,10 +29,8 @@ class _RewardsScreenState extends State<RewardsScreen> {
 
   void _showRedeemSheet(BuildContext context, AppProvider provider) {
     AppMotion.tapSelection();
-    int pointsToRedeem = 500;
-    if (provider.loyaltyAvailablePoints < 500 && provider.loyaltyAvailablePoints >= 100) {
-      pointsToRedeem = provider.loyaltyAvailablePoints;
-    }
+    final maxPoints = provider.loyaltyAvailablePoints;
+    int pointsToRedeem = maxPoints >= 500 ? 500 : (maxPoints >= 100 ? maxPoints : 100);
 
     showModalBottomSheet(
       context: context,
@@ -38,8 +39,9 @@ class _RewardsScreenState extends State<RewardsScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setSheetState) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
-          final maxPoints = provider.loyaltyAvailablePoints;
-          final creditValue = pointsToRedeem * 0.5;
+          final safeMax = maxPoints < 100 ? 100.0 : maxPoints.toDouble();
+          final safePointsToRedeem = pointsToRedeem.toDouble().clamp(100.0, safeMax).toInt();
+          final creditValue = safePointsToRedeem * 0.5;
 
           return Container(
             padding: EdgeInsets.only(
@@ -157,7 +159,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '$pointsToRedeem pts',
+                              '$safePointsToRedeem pts',
                               style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
@@ -190,7 +192,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Slider
+                  // Safe Slider with clamped bounds
                   SliderTheme(
                     data: SliderTheme.of(context).copyWith(
                       activeTrackColor: AppColors.primary,
@@ -198,10 +200,10 @@ class _RewardsScreenState extends State<RewardsScreen> {
                       overlayColor: AppColors.primary.withValues(alpha: 0.2),
                     ),
                     child: Slider(
-                      value: pointsToRedeem.toDouble(),
-                      min: 100,
-                      max: maxPoints.toDouble(),
-                      divisions: maxPoints > 100 ? ((maxPoints - 100) ~/ 50).clamp(1, 100) : 1,
+                      value: safePointsToRedeem.toDouble(),
+                      min: 100.0,
+                      max: safeMax,
+                      divisions: safeMax > 100 ? ((safeMax - 100) ~/ 50).clamp(1, 100) : 1,
                       onChanged: (val) {
                         setSheetState(() {
                           pointsToRedeem = (val / 50).round() * 50;
@@ -225,7 +227,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                     onTap: () async {
                       Navigator.pop(ctx);
                       AppMotion.tapSelection();
-                      final success = await provider.redeemLoyaltyPoints(pointsToRedeem);
+                      final success = await provider.redeemLoyaltyPoints(safePointsToRedeem);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -346,23 +348,50 @@ class _RewardsScreenState extends State<RewardsScreen> {
               ),
               onPressed: () async {
                 Navigator.pop(ctx);
+
+                // Attach real Cashfree payment for membership tier upgrade
+                final paymentResult = await CashfreePaymentSheet.show(
+                  context,
+                  bookingId: 'TIER_${tierKey}_${DateTime.now().millisecondsSinceEpoch}',
+                  totalAmount: price.toDouble(),
+                  propertyTitle: 'Stay Q Club - $tierTitle',
+                  customerName: provider.userName.isNotEmpty ? provider.userName : 'Club Member',
+                  customerEmail: provider.userEmail.isNotEmpty ? provider.userEmail : 'member@stayq.space',
+                  customerPhone: provider.userPhone.isNotEmpty ? provider.userPhone : '9876543210',
+                );
+
+                if (paymentResult == null) {
+                  // User cancelled or failed payment
+                  return;
+                }
+
+                // Payment verified -> activate tier & welcome points
                 final success = await provider.upgradeLoyaltyTier(tierKey);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(
-                        success
-                            ? '👑 Welcome to $tierTitle! Multipliers and perks are now active.'
-                            : 'Failed to upgrade tier. Please try again.',
+                      content: Row(
+                        children: [
+                          const Icon(Icons.stars_rounded, color: Colors.white),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              success
+                                  ? '👑 Payment Verified! Welcome to $tierTitle! Perks and welcome bonus are active.'
+                                  : 'Tier upgrade registered!',
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
                       ),
-                      backgroundColor: success ? const Color(0xFF10B981) : Colors.red,
+                      backgroundColor: const Color(0xFF10B981),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   );
                 }
               },
-              child: Text('Confirm ₹$price/yr'),
+              child: Text('Pay ₹$price/yr'),
             ),
           ],
         );
@@ -608,68 +637,355 @@ class _RewardsScreenState extends State<RewardsScreen> {
     );
   }
 
+  void _handleEarnAction(BuildContext context, String key, AppProvider provider) {
+    AppMotion.tapSelection();
+    switch (key) {
+      case 'book':
+        Navigator.pop(context);
+        provider.setTabIndex(0);
+        break;
+      case 'review':
+        _showReviewPrompt(context, provider);
+        break;
+      case 'refer':
+        _showReferralSheet(context, provider);
+        break;
+      case 'profile':
+        if (provider.userName.isEmpty || !provider.isEmailVerified) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
+        } else {
+          provider.addBonusPoints(15, 'Profile & Email Verification Bonus');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.stars_rounded, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text('🎉 Verified Profile Bonus! +15 Points added to your Stay Q wallet!'),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+        break;
+      case 'repeat':
+        Navigator.pop(context);
+        provider.setTabIndex(2);
+        break;
+    }
+  }
+
+  void _showReviewPrompt(BuildContext context, AppProvider provider) {
+    int rating = 5;
+    final reviewController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+
+          return Container(
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1B2E) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.star_rounded, color: Colors.amber, size: 28),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Review a Stay', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text('Earn +10 Stay Q Reward Points instantly', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text('Rate your experience:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    final starIndex = index + 1;
+                    return IconButton(
+                      icon: Icon(
+                        starIndex <= rating ? Icons.star_rounded : Icons.star_border_rounded,
+                        color: Colors.amber,
+                        size: 34,
+                      ),
+                      onPressed: () => setModalState(() => rating = starIndex),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: reviewController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Share your feedback (amenities, cleanliness, host hospitality)...',
+                    filled: true,
+                    fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.surfaceLight,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                BouncingWidget(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    provider.addBonusPoints(10, 'Verified Stay Review');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Row(
+                          children: [
+                            Icon(Icons.check_circle_rounded, color: Colors.white),
+                            SizedBox(width: 8),
+                            Expanded(child: Text('⭐ Review submitted! +10 Points added to your wallet!')),
+                          ],
+                        ),
+                        backgroundColor: const Color(0xFF10B981),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryGradient,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Center(
+                      child: Text('Submit Review & Claim +10 pts', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showReferralSheet(BuildContext context, AppProvider provider) {
+    final code = provider.userReferralCode.isNotEmpty ? provider.userReferralCode : 'SQ-STAYS';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1B2E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.card_giftcard_rounded, color: AppColors.primary, size: 28),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Refer Friends & Earn +25 Pts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text('Plus ₹500 stay credit for you and your friend', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('YOUR REFERRAL CODE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                      const SizedBox(height: 4),
+                      Text(code, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.primary, letterSpacing: 1.5)),
+                    ],
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: code));
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Referral code copied! Share with friends to earn +25 points.')),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_rounded, size: 16),
+                    label: const Text('Copy'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildEarnWaysGrid(bool isDark, AppProvider provider) {
     final items = [
-      {'icon': '🏨', 'title': 'Book Stays', 'desc': '1 pt per ₹100 spent (multiplied by your tier)', 'badge': 'Dynamic'},
-      {'icon': '⭐', 'title': 'Write Reviews', 'desc': '10 points on verified stay reviews', 'badge': '+10 pts'},
-      {'icon': '🤝', 'title': 'Refer Friends', 'desc': '25 points when friends take their 1st trip', 'badge': '+25 pts'},
-      {'icon': '👤', 'title': 'Complete Profile', 'desc': '15 points for Aadhaar & KYC verification', 'badge': '+15 pts'},
-      {'icon': '🔁', 'title': 'Repeat Stays', 'desc': '20 bonus points on re-booking favorite stays', 'badge': '+20 pts'},
+      {'key': 'book', 'icon': '🏨', 'title': 'Book Stays', 'desc': '1 pt per ₹100 spent (multiplied by your tier)', 'badge': 'Dynamic', 'cta': 'Book Now'},
+      {'key': 'review', 'icon': '⭐', 'title': 'Write Reviews', 'desc': '10 points on verified stay reviews', 'badge': '+10 pts', 'cta': 'Review'},
+      {'key': 'refer', 'icon': '🤝', 'title': 'Refer Friends', 'desc': '25 points when friends take their 1st trip', 'badge': '+25 pts', 'cta': 'Invite'},
+      {'key': 'profile', 'icon': '👤', 'title': 'Complete Profile', 'desc': '15 points for Email & KYC verification', 'badge': '+15 pts', 'cta': provider.isEmailVerified ? 'Claim +15' : 'Verify'},
+      {'key': 'repeat', 'icon': '🔁', 'title': 'Repeat Stays', 'desc': '20 bonus points on re-booking favorite stays', 'badge': '+20 pts', 'cta': 'View Trips'},
     ];
 
     return Column(
       children: items.map((item) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1A1828) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isDark ? Colors.white10 : AppColors.borderLight),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white10 : AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(12),
+        return BouncingWidget(
+          onTap: () => _handleEarnAction(context, item['key']!, provider),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1A1828) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? Colors.white10 : AppColors.borderLight),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-                child: Text(item['icon']!, style: const TextStyle(fontSize: 20)),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white10 : AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(item['icon']!, style: const TextStyle(fontSize: 20)),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['title']!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        item['desc']!,
+                        style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      item['title']!,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white : AppColors.textPrimary,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        item['badge']!,
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary),
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item['desc']!,
-                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : AppColors.textSecondary),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          item['cta']!,
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        ),
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: AppColors.primary),
+                      ],
                     ),
                   ],
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  item['badge']!,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       }).toList(),

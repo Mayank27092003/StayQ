@@ -23,7 +23,12 @@ import 'screens/host_success_passport_screen.dart';
 
 class HostOnboardingScreen extends StatefulWidget {
   final bool isAddingNewProperty;
-  const HostOnboardingScreen({Key? key, this.isAddingNewProperty = false}) : super(key: key);
+  final bool startAtBeginning;
+  const HostOnboardingScreen({
+    Key? key,
+    this.isAddingNewProperty = false,
+    this.startAtBeginning = true,
+  }) : super(key: key);
 
   @override
   State<HostOnboardingScreen> createState() => _HostOnboardingScreenState();
@@ -96,6 +101,10 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
           _currentIndex = 0;
         });
         hostProvider.resetForNewProperty();
+      } else if (widget.startAtBeginning) {
+        setState(() {
+          _currentIndex = 0;
+        });
       } else if (hostProvider.currentPage > 0) {
         final safeIdx = hostProvider.currentPage.clamp(0, total > 0 ? total - 1 : 0);
         setState(() {
@@ -221,6 +230,22 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
                     children: [
                       Row(
                         children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back_rounded),
+                            tooltip: 'Back',
+                            onPressed: () {
+                              if (safeIndex > 0) {
+                                _previousPage(provider);
+                              } else {
+                                if (Navigator.canPop(context)) {
+                                  Navigator.pop(context);
+                                } else {
+                                  Navigator.pushReplacementNamed(context, AppRoutes.mainShell);
+                                }
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 4),
                           Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
@@ -231,7 +256,9 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Step ${safeIndex + 1} of ${currentScreens.length}',
+                            isWelcomeScreen
+                                ? 'Host Onboarding'
+                                : 'Step ${safeIndex + 1} of ${currentScreens.length}',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -250,7 +277,11 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
                                 duration: Duration(seconds: 2),
                               ),
                             );
-                            Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);
+                            if (Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            } else {
+                              Navigator.pushReplacementNamed(context, AppRoutes.mainShell);
+                            }
                           }
                         },
                         icon: const Icon(Icons.bookmark_outline_rounded, size: 18, color: AppColors.primary),

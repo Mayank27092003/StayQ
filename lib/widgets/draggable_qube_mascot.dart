@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../screens/qube/qube_planner_screen.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_motion.dart';
+import 'qube_robot_avatar.dart';
 
 class DraggableQubeMascot extends StatefulWidget {
   const DraggableQubeMascot({super.key});
@@ -104,51 +104,25 @@ class _DraggableQubeMascotState extends State<DraggableQubeMascot> with SingleTi
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 62,
-                    height: 62,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary, Color(0xFF7C3AED)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: _isDragging ? 0.2 : 0.35),
-                          blurRadius: _isDragging ? 8 : 14,
-                          spreadRadius: _isDragging ? 0 : 1,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                      border: Border.all(color: Colors.white, width: 2.2),
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/images/qube_real_human.jpg',
-                        fit: BoxFit.cover,
-                        alignment: const Alignment(0, -0.65),
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.travel_explore_rounded,
-                          color: Colors.white,
-                          size: 30,
-                        ),
-                      ),
-                    ),
+                  QubeRobotAvatar(
+                    size: 58,
+                    animate: !_isDragging,
+                    showBadge: true,
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.88),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 0.7),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1E1B4B), Color(0xFF312E81)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF818CF8).withValues(alpha: 0.6), width: 1.0),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.35),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
@@ -156,14 +130,14 @@ class _DraggableQubeMascotState extends State<DraggableQubeMascot> with SingleTi
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.auto_awesome, color: Colors.amber, size: 10),
-                        SizedBox(width: 3.5),
+                        SizedBox(width: 4),
                         Text(
-                          'Trip Planner',
+                          'Ask Qube',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.2,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       ],

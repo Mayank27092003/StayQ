@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/app_provider.dart';
 import '../screens/explore/category_view_screen.dart';
 import '../screens/explore/rv_overland_screen.dart';
+import '../screens/host/onboarding/host_onboarding_screen.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_motion.dart';
 
@@ -354,6 +355,16 @@ class _WelcomePopupContent extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => const CategoryViewScreen(categoryTitle: 'RVs'),
+                              ),
+                            );
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const HostOnboardingScreen(
+                                  isAddingNewProperty: false,
+                                  startAtBeginning: true,
+                                ),
                               ),
                             );
                           }

@@ -14,6 +14,7 @@ import 'host_availability_screen.dart';
 import 'manage_listings_screen.dart';
 import 'host_reservations_screen.dart';
 import 'onboarding/screens/bank_details_screen.dart';
+import 'widgets/host_pro_paywall_sheet.dart';
 import '../profile/security_screen.dart';
 import '../profile/support_screen.dart';
 
@@ -942,6 +943,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
   // ══════════════════════════════════════════════════════════════════════════
   Widget _buildQuickActionHub(BuildContext context, HostDashboardProvider dashboard, bool isDark) {
     final isApproved = dashboard.isApproved;
+    final provider = Provider.of<AppProvider>(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1087,6 +1089,16 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
               isDark: isDark,
               isLocked: false,
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BankDetailsScreen())),
+            ),
+            _buildActionTile(
+              icon: Icons.bolt_rounded,
+              title: 'StayQ Host Pro',
+              subtitle: provider.isHostPro ? 'Active Pro VIP Host' : 'Unlock Price Radar & 2x Views',
+              badge: provider.isHostPro ? 'PRO ACTIVE' : 'Upgrade',
+              badgeColor: provider.isHostPro ? const Color(0xFF10B981) : const Color(0xFF6366F1),
+              isDark: isDark,
+              isLocked: false,
+              onTap: () => HostProPaywallSheet.show(context),
             ),
           ],
         ),
@@ -1473,7 +1485,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
               ],
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }

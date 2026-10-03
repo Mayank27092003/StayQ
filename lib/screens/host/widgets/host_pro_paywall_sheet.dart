@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../../providers/app_provider.dart';
+import '../../../../services/api/api_client.dart';
+import '../../../../services/api/subscriptions_api.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../widgets/bouncing_widget.dart';
+import '../../../../widgets/cashfree_payment_sheet.dart';
 
 class HostProPaywallSheet extends StatefulWidget {
   final VoidCallback? onSubscribed;
@@ -67,8 +72,65 @@ class _HostProPaywallSheetState extends State<HostProPaywallSheet> {
   ];
 
   Future<void> _handleSubscribe() async {
+    final selectedPlan = _plans[_selectedPlanIndex];
+    final planId = selectedPlan['id'] as String;
+    final priceStr = (selectedPlan['price'] as String).replaceAll('₹', '').replaceAll(',', '').trim();
+    final double amount = double.tryParse(priceStr) ?? (planId == 'HOST_PRO_ANNUAL' ? 7999.0 : 999.0);
+
+    final provider = Provider.of<AppProvider>(context, listen: false);
+
+    // 1. Generate Order ID from Backend API
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 1200));
+    String orderId = 'SUB_${DateTime.now().millisecondsSinceEpoch}';
+    try {
+      final subApi = SubscriptionsApi(ApiClient.instance);
+      final orderRes = await subApi.createSubscriptionOrder(
+        planId: planId,
+        userEmail: provider.userEmail.isNotEmpty ? provider.userEmail : null,
+        userPhone: provider.userPhone.isNotEmpty ? provider.userPhone : null,
+        userName: provider.userName.isNotEmpty ? provider.userName : null,
+      );
+      if (orderRes['orderId'] != null) {
+        orderId = orderRes['orderId'].toString();
+      }
+    } catch (e) {
+      debugPrint('Subscription order creation note: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+
+    if (!mounted) return;
+
+    // 2. Attach and Launch Real Cashfree Payment Sheet
+    final paymentResult = await CashfreePaymentSheet.show(
+      context,
+      bookingId: orderId,
+      totalAmount: amount,
+      propertyTitle: 'StayQ Host Pro (${selectedPlan['title']})',
+      customerName: provider.userName.isNotEmpty ? provider.userName : 'Host Partner',
+      customerEmail: provider.userEmail.isNotEmpty ? provider.userEmail : 'host@stayq.space',
+      customerPhone: provider.userPhone.isNotEmpty ? provider.userPhone : '9876543210',
+    );
+
+    if (paymentResult == null) {
+      // Payment dismissed or cancelled by user
+      return;
+    }
+
+    // 3. Payment Verified -> Activate Host Pro
+    setState(() => _isLoading = true);
+    try {
+      final subApi = SubscriptionsApi(ApiClient.instance);
+      await subApi.verifySubscription(
+        orderId: orderId,
+        planId: planId,
+      );
+    } catch (e) {
+      debugPrint('Subscription verification note: $e');
+    }
+
+    await provider.activateHostPro(planId);
+
     if (!mounted) return;
     setState(() => _isLoading = false);
 

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
@@ -17,9 +16,28 @@ import 'notifications_screen.dart';
 import 'security_screen.dart';
 import 'support_screen.dart';
 import '../rewards/rewards_screen.dart';
+import '../host/onboarding/host_onboarding_screen.dart';
+import '../../services/email_verification_service.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _verifyEmail(BuildContext context, AppProvider provider) async {
+    final email = provider.userEmail.trim();
+    if (email.isEmpty) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
+      return;
+    }
+    final verified = await EmailVerificationService.showOtpDialog(
+      context,
+      email: email,
+      userName: provider.userName,
+      userId: provider.userId,
+    );
+    if (verified == true) {
+      provider.setEmailVerified(true, email: email);
+    }
+  }
 
   ImageProvider? _getAvatarImage(String avatar) {
     if (avatar.isEmpty) return null;
@@ -167,79 +185,245 @@ class ProfileScreen extends StatelessWidget {
                     color: isDark ? Colors.white.withValues(alpha: 0.1) : AppColors.borderLight,
                   ),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Interactive Avatar with Camera Badge
-                    GestureDetector(
-                      onTap: () => _showPhotoPickerSheet(context, provider),
-                      child: Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 36,
-                            backgroundColor: AppColors.primary.withOpacity(0.2),
-                            backgroundImage: _getAvatarImage(provider.userAvatar),
-                            child: provider.userAvatar.isEmpty
-                                ? Text(
-                                    provider.userName.isNotEmpty ? provider.userName[0].toUpperCase() : 'U',
-                                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary),
-                                  )
-                                : null,
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
-                              ),
-                              child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                    Row(
+                      children: [
+                        // Interactive Avatar with Camera Badge
+                        GestureDetector(
+                          onTap: () => _showPhotoPickerSheet(context, provider),
+                          child: Stack(
                             children: [
-                              Flexible(
-                                child: Text(
-                                  provider.userName.isNotEmpty ? provider.userName : 'Stay Q User',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(context).textTheme.titleLarge?.color,
+                              CircleAvatar(
+                                radius: 36,
+                                backgroundColor: AppColors.primary.withOpacity(0.2),
+                                backgroundImage: _getAvatarImage(provider.userAvatar),
+                                child: provider.userAvatar.isEmpty
+                                    ? Text(
+                                        provider.userName.isNotEmpty ? provider.userName[0].toUpperCase() : 'U',
+                                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                      )
+                                    : null,
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                  child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
                                 ),
                               ),
-                              if (provider.isGovIdVerified) ...[
-                                const SizedBox(width: 6),
-                                const Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 20),
-                              ],
                             ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            provider.userEmail.isNotEmpty ? provider.userEmail : 'No Email Added',
-                            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      provider.userName.isNotEmpty ? provider.userName : 'Stay Q User',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(context).textTheme.titleLarge?.color,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (provider.isGovIdVerified) ...[
+                                    const SizedBox(width: 6),
+                                    const Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 20),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              // Email Row with status
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      provider.userEmail.isNotEmpty ? provider.userEmail : 'No Email Added',
+                                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  if (provider.isEmailVerified)
+                                    const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 14),
+                                        SizedBox(width: 2),
+                                        Text('Verified', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w800)),
+                                      ],
+                                    )
+                                  else if (provider.userEmail.isNotEmpty)
+                                    GestureDetector(
+                                      onTap: () => _verifyEmail(context, provider),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: Colors.amber.shade700, width: 0.8),
+                                        ),
+                                        child: Text(
+                                          'Verify OTP',
+                                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.amber.shade900),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              if (provider.userPhone.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.phone_rounded, size: 12, color: AppColors.textMuted),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        provider.userPhone,
+                                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
                           ),
-                          if (provider.userPhone.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, color: AppColors.primary, size: 20),
+                          tooltip: 'Edit Profile',
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // User Bio if available
+                    if (provider.userBio.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.format_quote_rounded, size: 16, color: AppColors.primary),
+                            const SizedBox(width: 6),
+                            Expanded(
                               child: Text(
-                                provider.userPhone,
-                                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                provider.userBio,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontStyle: FontStyle.italic,
+                                  color: isDark ? Colors.white70 : AppColors.textSecondary,
+                                  height: 1.3,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // Info chips row (Location, Gender, DOB)
+                    if (provider.userLocation.isNotEmpty || provider.userGender.isNotEmpty || provider.userDob.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          if (provider.userLocation.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.location_on_rounded, size: 12, color: AppColors.primary),
+                                  const SizedBox(width: 4),
+                                  Text(provider.userLocation, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                                ],
+                              ),
+                            ),
+                          if (provider.userGender.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white10 : Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(provider.userGender, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                            ),
+                          if (provider.userDob.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white10 : Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.cake_rounded, size: 12, color: AppColors.textMuted),
+                                  const SizedBox(width: 4),
+                                  Text(provider.userDob, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                                ],
                               ),
                             ),
                         ],
+                      ),
+                    ],
+
+                    // Edit Personal Details Banner Action
+                    BouncingWidget(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                      ),
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.badge_rounded, color: AppColors.primary, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'Edit Personal Details & Email',
+                              style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            Spacer(),
+                            Icon(Icons.arrow_forward_ios_rounded, color: AppColors.primary, size: 12),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -249,161 +433,285 @@ class ProfileScreen extends StatelessWidget {
               // ══════════════════════════════════════════════════════════════
               // VERIFIED IDENTITY & TRUST SHOWCASE CARD
               // ══════════════════════════════════════════════════════════════
-              if (provider.isGovIdVerified || provider.isBankVerified || provider.isUpiVerified) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.3),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF10B981),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.shield_rounded, color: Colors.white, size: 16),
-                          ),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Text(
-                              'Stay Q Verified Identity',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF047857),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              '100% VERIFIED',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      if (provider.isGovIdVerified)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.badge_rounded, color: Color(0xFF10B981), size: 16),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'UIDAI / Govt ID: ${provider.verifiedGovIdType} (${provider.verifiedGovIdNumber}) • ${provider.verifiedFullName}',
-                                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (provider.isBankVerified)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.account_balance_rounded, color: Color(0xFF10B981), size: 16),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Bank A/C: ${provider.verifiedBankName} (${provider.verifiedAccountNumber}) • Cashfree Penny Drop Verified',
-                                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (provider.isUpiVerified)
-                        Row(
-                          children: [
-                            const Icon(Icons.flash_on_rounded, color: Color(0xFF10B981), size: 16),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'UPI ID: ${provider.verifiedUpiId} • Active Payout VPA',
-                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 20),
-
-              // Switch to Host Mode Card Banner
+              const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+                  color: (provider.isGovIdVerified || provider.isEmailVerified)
+                      ? const Color(0xFF10B981).withValues(alpha: 0.08)
+                      : Colors.amber.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: (provider.isGovIdVerified || provider.isEmailVerified)
+                        ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                        : Colors.amber.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 28),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: (provider.isGovIdVerified || provider.isEmailVerified)
+                                ? const Color(0xFF10B981)
+                                : Colors.amber.shade700,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.shield_rounded, color: Colors.white, size: 16),
+                        ),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Stay Q Trust & Verification Hub',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF047857),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: (provider.isGovIdVerified && provider.isEmailVerified)
+                                ? const Color(0xFF10B981)
+                                : Colors.amber.shade700,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            (provider.isGovIdVerified && provider.isEmailVerified) ? '100% VERIFIED' : 'ACTION REQUIRED',
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 12),
+
+                    // 1. Email Verification Item
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
                         children: [
-                          Text(
-                            provider.isHostMode ? 'Host Portal Active' : 'Become a Host',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                          Icon(
+                            provider.isEmailVerified ? Icons.mark_email_read_rounded : Icons.mail_outline_rounded,
+                            color: provider.isEmailVerified ? const Color(0xFF10B981) : Colors.amber.shade700,
+                            size: 16,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            provider.isHostMode ? 'Manage listings and earnings' : 'Earn income by hosting your space',
-                            style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              provider.isEmailVerified
+                                  ? 'Email: ${provider.userEmail} • Verified via hello@stayq.space'
+                                  : 'Email: ${provider.userEmail.isNotEmpty ? provider.userEmail : "Unverified"} • Tap to verify with OTP',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: provider.isEmailVerified ? AppColors.textPrimary : Colors.amber.shade900,
+                              ),
+                            ),
                           ),
+                          if (!provider.isEmailVerified && provider.userEmail.isNotEmpty)
+                            GestureDetector(
+                              onTap: () => _verifyEmail(context, provider),
+                              child: const Text('Verify', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                            ),
                         ],
                       ),
                     ),
-                    Switch(
-                      value: provider.isHostMode,
-                      activeThumbColor: Colors.white,
-                      activeTrackColor: AppColors.primaryDark,
-                      onChanged: (value) {
-                        AppMotion.tapSelection();
-                        provider.toggleHostMode();
-                      },
+
+                    // 2. Govt ID / KYC Item
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Icon(
+                            provider.isGovIdVerified ? Icons.badge_rounded : Icons.security_rounded,
+                            color: provider.isGovIdVerified ? const Color(0xFF10B981) : AppColors.textMuted,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              provider.isGovIdVerified
+                                  ? 'Govt ID: ${provider.verifiedGovIdType} (${provider.verifiedGovIdNumber}) • ${provider.verifiedFullName}'
+                                  : 'SecureID KYC: Tap to verify Aadhaar / PAN for verified badges',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: provider.isGovIdVerified ? AppColors.textPrimary : AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                          if (!provider.isGovIdVerified)
+                            GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KycVerificationScreen())),
+                              child: const Text('Complete', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    // 3. Bank / Payout Item
+                    Row(
+                      children: [
+                        Icon(
+                          (provider.isBankVerified || provider.isUpiVerified) ? Icons.account_balance_rounded : Icons.payment_rounded,
+                          color: (provider.isBankVerified || provider.isUpiVerified) ? const Color(0xFF10B981) : AppColors.textMuted,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            provider.isBankVerified
+                                ? 'Bank A/C: ${provider.verifiedBankName} (${provider.verifiedAccountNumber}) • Penny Drop Verified'
+                                : provider.isUpiVerified
+                                    ? 'UPI ID: ${provider.verifiedUpiId} • Active VPA'
+                                    : 'Payout Method: Add Bank A/C or UPI for instant refunds & hosting payouts',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: (provider.isBankVerified || provider.isUpiVerified) ? AppColors.textPrimary : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        if (!provider.isBankVerified && !provider.isUpiVerified)
+                          GestureDetector(
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentsScreen())),
+                            child: const Text('Add', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                          ),
+                      ],
                     ),
                   ],
                 ),
               ),
+
+              const SizedBox(height: 20),
+
+              // Switch to Host Mode / Become a Host Card Banner
+              BouncingWidget(
+                onTap: () {
+                  AppMotion.tapSelection();
+                  if (provider.isHostMode) {
+                    provider.setHostMode(false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Switched to Guest Mode'),
+                        duration: Duration(seconds: 1),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  } else {
+                    // Navigate directly to Host Onboarding start!
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const HostOnboardingScreen(isAddingNewProperty: false),
+                      ),
+                    );
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          provider.isHostMode ? Icons.swap_horiz_rounded : Icons.add_home_work_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              provider.isHostMode ? 'Host Portal Active' : 'Become a Host',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              provider.isHostMode
+                                  ? 'Tap to switch back to Guest Mode'
+                                  : 'Earn income by hosting • Start onboarding',
+                              style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (provider.isHostMode)
+                        Switch(
+                          value: true,
+                          activeThumbColor: Colors.white,
+                          activeTrackColor: AppColors.primaryDark,
+                          onChanged: (_) {
+                            AppMotion.tapSelection();
+                            provider.setHostMode(false);
+                          },
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Start',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_forward_rounded, color: AppColors.primary, size: 16),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+
+              if (!provider.isHostMode && provider.hostListings.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      AppMotion.tapSelection();
+                      provider.setHostMode(true);
+                    },
+                    icon: const Icon(Icons.dashboard_outlined, size: 16),
+                    label: const Text('Open Existing Host Dashboard'),
+                  ),
+                ),
+              ],
 
 
 
@@ -874,7 +1182,7 @@ class ProfileScreen extends StatelessWidget {
                 icon: const Icon(Icons.share_rounded, size: 18),
                 label: const Text('Share Code with Friends', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                 onPressed: () {
-                  final text = 'Hey! Use my referral code $code on Stay Q (https://stayq.space) to get ₹300 welcome credit with 0% brokerage luxury stays!';
+                  final text = 'Hey! Use my referral code $code on Stay Q ($shareUrl) to get ₹300 welcome credit with 0% brokerage luxury stays!';
                   Clipboard.setData(ClipboardData(text: text));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Share link & text copied to clipboard!')),

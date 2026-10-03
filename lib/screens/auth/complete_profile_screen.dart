@@ -8,6 +8,7 @@ import 'package:intl_phone_field/intl_phone_field.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../navigation/app_router.dart';
+import '../../services/email_verification_service.dart';
 
 class CompleteProfileScreen extends StatefulWidget {
   const CompleteProfileScreen({Key? key}) : super(key: key);
@@ -25,6 +26,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   
   bool _isEmailLocked = false;
   bool _isPhoneLocked = false;
+  bool _isEmailVerified = false;
   String _fullNumber = '';
   File? _pickedImage;
 
@@ -48,21 +50,72 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     
     if (_emailController.text.isNotEmpty) {
       _isEmailLocked = true;
+      _isEmailVerified = true;
     }
     if (_phoneController.text.isNotEmpty) {
       _isPhoneLocked = true;
     }
   }
 
+  Future<void> _verifyEmail() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address first')),
+      );
+      return;
+    }
+    final verified = await EmailVerificationService.showOtpDialog(
+      context,
+      email: email,
+      userName: _nameController.text.trim(),
+      userId: context.read<AppProvider>().userId,
+    );
+    if (verified == true) {
+      setState(() {
+        _isEmailVerified = true;
+      });
+      if (mounted) {
+        context.read<AppProvider>().setEmailVerified(true, email: email);
+      }
+    }
+  }
+
   void _saveProfile() async {
     if (_formKey.currentState!.validate()) {
+      final email = _emailController.text.trim();
+      
+      // If email entered manually and not yet verified, require OTP verification via hello@stayq.space
+      if (!_isEmailVerified && !_isEmailLocked && email.isNotEmpty) {
+        final verified = await EmailVerificationService.showOtpDialog(
+          context,
+          email: email,
+          userName: _nameController.text.trim(),
+          userId: context.read<AppProvider>().userId,
+        );
+        if (verified != true) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please enter the 6-digit verification code sent from hello@stayq.space to proceed'),
+                backgroundColor: AppColors.errorRed,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+          return;
+        }
+        _isEmailVerified = true;
+      }
+
       final provider = context.read<AppProvider>();
       
       await provider.saveProfileDetails(
         name: _nameController.text.trim(),
-        email: _isEmailLocked ? null : _emailController.text.trim(),
-        phone: _isPhoneLocked ? null : _fullNumber,
+        email: email,
+        phone: _fullNumber.isNotEmpty ? _fullNumber : _phoneController.text.trim(),
         profileImage: _pickedImage,
+        isEmailVerified: _isEmailVerified,
       );
       
       if (!mounted) return;
@@ -85,6 +138,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     required String label,
     required IconData icon,
     bool isLocked = false,
+    Widget? customSuffix,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) {
@@ -118,7 +172,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
               labelText: label,
               labelStyle: TextStyle(fontSize: 14, color: AppColors.textSecondary.withValues(alpha: 0.8)),
               prefixIcon: Icon(icon, color: isLocked ? Colors.green.shade400 : AppColors.primary),
-              suffixIcon: isLocked ? Icon(Icons.verified_user, color: Colors.green.shade400) : null,
+              suffixIcon: customSuffix ?? (isLocked ? Icon(Icons.verified_user, color: Colors.green.shade400) : null),
               filled: true,
               fillColor: Colors.transparent,
               border: InputBorder.none,
@@ -242,6 +296,32 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                             icon: Icons.email_rounded,
                             isLocked: _isEmailLocked,
                             keyboardType: TextInputType.emailAddress,
+                            customSuffix: _isEmailVerified
+                                ? const Padding(
+                                    padding: EdgeInsets.only(right: 14),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 18),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Verified',
+                                          style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 12),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: TextButton.icon(
+                                      onPressed: _verifyEmail,
+                                      icon: const Icon(Icons.mark_email_read_rounded, size: 16, color: AppColors.primary),
+                                      label: const Text(
+                                        'Verify OTP',
+                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                      ),
+                                    ),
+                                  ),
                             validator: (val) {
                               if (val == null || val.isEmpty) return "Please enter your email";
                               if (!val.contains('@')) return "Enter a valid email";

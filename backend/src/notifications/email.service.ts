@@ -17,7 +17,7 @@ export class EmailService {
     const host = this.configService.get<string>('SMTP_HOST') || process.env.SMTP_HOST || 'smtp.hostinger.com';
     const port = parseInt(this.configService.get<string>('SMTP_PORT') || process.env.SMTP_PORT || '465', 10);
     const secure = (this.configService.get<string>('SMTP_SECURE') || process.env.SMTP_SECURE || 'true') === 'true' || port === 465;
-    const user = this.configService.get<string>('SMTP_USER') || process.env.SMTP_USER || 'grievance@stayq.space';
+    const user = this.configService.get<string>('SMTP_USER') || process.env.SMTP_USER || 'hello@stayq.space';
     const pass = this.configService.get<string>('SMTP_PASS') || process.env.SMTP_PASS || 'vgnt-fjmh-apbz-zy87';
 
     if (user && pass) {
@@ -46,7 +46,7 @@ export class EmailService {
   async sendEmail(to: string, subject: string, body: string, isHtml = true): Promise<boolean> {
     if (!to) return false;
 
-    const fromAddress = this.configService.get<string>('SMTP_FROM') || process.env.SMTP_FROM || 'Stay Q <grievance@stayq.space>';
+    const fromAddress = this.configService.get<string>('SMTP_FROM') || process.env.SMTP_FROM || 'Stay Q <hello@stayq.space>';
 
     // 1. Try sending via direct Hostinger SSL SMTP
     if (this.transporter) {
@@ -196,5 +196,64 @@ export class EmailService {
       message: params.message,
     });
     return this.sendEmail(params.to, tpl.subject, tpl.html, true);
+  }
+
+  /**
+   * 10. Email Verification OTP sent from hello@stayq.space
+   */
+  async sendOtpEmail(params: { to: string; otp: string; userName?: string }): Promise<boolean> {
+    const subject = `Your Stay Q Verification Code: ${params.otp}`;
+    const name = params.userName || 'Traveler';
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Stay Q Verification Code</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 30px 10px; color: #1e293b; }
+        .card { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px rgba(109,40,217,0.06); }
+        .header { background: linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%); padding: 32px 24px; text-align: center; color: #ffffff; }
+        .logo { font-size: 26px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }
+        .subtext { font-size: 13px; opacity: 0.9; }
+        .content { padding: 32px 28px; }
+        .greeting { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 0; }
+        .otp-box { background: #f5f3ff; border: 2px dashed #7C3AED; border-radius: 16px; padding: 20px; margin: 24px 0; text-align: center; }
+        .otp-code { font-family: 'Courier New', Courier, monospace; font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #6D28D9; }
+        .note { font-size: 13px; color: #64748b; line-height: 1.6; margin-top: 16px; }
+        .footer { background: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <div class="logo">✨ STAY Q</div>
+          <div class="subtext">Secure Account Verification</div>
+        </div>
+        <div class="content">
+          <h2 class="greeting">Verify Your Email Address</h2>
+          <p style="font-size: 15px; color: #334155; line-height: 1.5;">
+            Hi <b>${name}</b>,
+          </p>
+          <p style="font-size: 14px; color: #475569; line-height: 1.5;">
+            Please use the one-time verification code below to verify your email address on Stay Q:
+          </p>
+          <div class="otp-box">
+            <div style="font-size: 12px; font-weight: 700; color: #6D28D9; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Your 6-Digit Code</div>
+            <div class="otp-code">${params.otp}</div>
+            <div style="font-size: 12px; color: #7C3AED; margin-top: 8px; font-weight: 600;">Valid for 10 minutes</div>
+          </div>
+          <p class="note">
+            If you did not request this verification code, please ignore this email or reach us at <a href="mailto:hello@stayq.space" style="color: #7C3AED;">hello@stayq.space</a>.
+          </p>
+        </div>
+        <div class="footer">
+          © 2026 Stay Q • Quatalyst Private Limited • Sent from hello@stayq.space
+        </div>
+      </div>
+    </body>
+    </html>
+    `;
+    return this.sendEmail(params.to, subject, html, true);
   }
 }

@@ -9,7 +9,15 @@ import { SyncProfileDto } from './dto/sync-profile.dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Post('send-email-otp')
+  async sendEmailOtp(@Body() body: { email: string; userName?: string }) {
+    return this.authService.sendEmailOtp(body.email, body.userName);
+  }
 
+  @Post('verify-email-otp')
+  async verifyEmailOtp(@Body() body: { email: string; otp: string; userId?: string }) {
+    return this.authService.verifyEmailOtp(body.email, body.otp, body.userId);
+  }
 
   @Put('sync-profile')
   @UseGuards(FirebaseAuthGuard)

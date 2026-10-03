@@ -5,6 +5,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
 import '../../widgets/bouncing_widget.dart';
 import '../../widgets/custom_toast.dart';
+import '../../services/email_verification_service.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
@@ -17,26 +18,39 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _nameController;
+  late TextEditingController _emailController;
+  late TextEditingController _phoneController;
   late TextEditingController _bioController;
   late TextEditingController _locationController;
   late TextEditingController _genderController;
   late TextEditingController _dobController;
   File? _imageFile;
 
+  late String _initialEmail;
+  bool _isEmailVerified = false;
+  bool _isSaving = false;
+
   @override
   void initState() {
     super.initState();
     final provider = Provider.of<AppProvider>(context, listen: false);
     _nameController = TextEditingController(text: provider.userName);
-    _bioController = TextEditingController(text: provider.userBio.isEmpty ? 'Lover of sunsets, beaches, and hidden gems.' : provider.userBio);
+    _emailController = TextEditingController(text: provider.userEmail);
+    _phoneController = TextEditingController(text: provider.userPhone);
+    _bioController = TextEditingController(text: provider.userBio.isEmpty ? 'Lover of sunsets, boutique stays, and roadtrips.' : provider.userBio);
     _locationController = TextEditingController(text: provider.userLocation);
     _genderController = TextEditingController(text: provider.userGender);
     _dobController = TextEditingController(text: provider.userDob);
+
+    _initialEmail = provider.userEmail.trim().toLowerCase();
+    _isEmailVerified = provider.isEmailVerified;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
     _bioController.dispose();
     _locationController.dispose();
     _genderController.dispose();
@@ -44,25 +58,110 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+  bool get _hasEmailChanged =>
+      _emailController.text.trim().toLowerCase() != _initialEmail;
+
+  Future<void> _verifyEmail() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      CustomToast.show(context: context, message: 'Please enter a valid email address first', isError: true);
+      return;
+    }
+
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final verified = await EmailVerificationService.showOtpDialog(
+      context,
+      email: email,
+      userName: _nameController.text.trim(),
+      userId: provider.userId,
+    );
+
+    if (verified == true) {
+      setState(() {
+        _isEmailVerified = true;
+        _initialEmail = email.toLowerCase();
+      });
+      if (mounted) {
+        provider.setEmailVerified(true, email: email);
+        CustomToast.show(context: context, message: 'Email verified successfully via hello@stayq.space!', isError: false);
+      }
+    }
+  }
+
+  Future<void> _handleSave() async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final email = _emailController.text.trim();
+
+    // If user changed their email or it's unverified, require OTP verification before saving!
+    if (_hasEmailChanged || (!_isEmailVerified && email.isNotEmpty)) {
+      final verified = await EmailVerificationService.showOtpDialog(
+        context,
+        email: email,
+        userName: _nameController.text.trim(),
+        userId: provider.userId,
+      );
+
+      if (verified != true) {
+        if (mounted) {
+          CustomToast.show(
+            context: context,
+            message: 'Email change requires 6-digit OTP verification from hello@stayq.space',
+            isError: true,
+          );
+        }
+        return;
+      }
+      _isEmailVerified = true;
+      _initialEmail = email.toLowerCase();
+    }
+
+    setState(() => _isSaving = true);
+    AppMotion.tapSelection();
+
+    await provider.saveProfileDetails(
+      name: _nameController.text.trim(),
+      email: email,
+      phone: _phoneController.text.trim(),
+      bio: _bioController.text.trim(),
+      location: _locationController.text.trim(),
+      gender: _genderController.text.trim(),
+      dob: _dobController.text.trim(),
+      profileImage: _imageFile,
+      isEmailVerified: _isEmailVerified,
+    );
+
+    if (mounted) {
+      setState(() => _isSaving = false);
+      CustomToast.show(context: context, message: 'Profile updated successfully!', isError: false);
+      Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? const Color(0xFF0F0E17) : AppColors.background,
       appBar: AppBar(
-        title: const Text('Edit Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Edit Personal Information', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            // Avatar picker
             Center(
               child: Stack(
                 alignment: Alignment.bottomRight,
                 children: [
                   CircleAvatar(
-                    radius: 50,
+                    radius: 52,
                     backgroundColor: AppColors.primary.withValues(alpha: 0.15),
                     backgroundImage: _imageFile != null 
                         ? FileImage(_imageFile!) as ImageProvider
@@ -72,13 +171,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     child: (_imageFile == null && (provider.userAvatar.isEmpty || !provider.userAvatar.startsWith('http')))
                         ? Text(
                             provider.userName.isNotEmpty ? provider.userName[0].toUpperCase() : 'U',
-                            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            style: const TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: AppColors.primary),
                           )
                         : null,
                   ),
                   GestureDetector(
                     onTap: () async {
-                      final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+                      final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
                       if (pickedFile != null) {
                         setState(() => _imageFile = File(pickedFile.path));
                       }
@@ -89,71 +188,189 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         color: AppColors.primary,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.edit, color: Colors.white, size: 20),
+                      child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 18),
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 28),
+
+            // Full Name
+            _buildTextField('Full Name', _nameController, icon: Icons.person_rounded),
+            const SizedBox(height: 16),
+
+            // Email Address with OTP Status
+            _buildEmailField(isDark),
+            const SizedBox(height: 16),
+
+            // Phone Number
+            _buildTextField('Phone Number', _phoneController, icon: Icons.phone_rounded, keyboardType: TextInputType.phone),
+            const SizedBox(height: 16),
+
+            // Bio
+            _buildTextField('Bio', _bioController, icon: Icons.format_quote_rounded, maxLines: 3),
+            const SizedBox(height: 16),
+
+            // Location
+            _buildTextField('City / Location', _locationController, icon: Icons.location_on_rounded),
+            const SizedBox(height: 16),
+
+            // Gender & DOB Row
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField('Gender', _genderController, icon: Icons.wc_rounded),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildTextField('Date of Birth', _dobController, icon: Icons.cake_rounded),
+                ),
+              ],
+            ),
             const SizedBox(height: 32),
-            _buildTextField('Full Name', _nameController),
-            const SizedBox(height: 16),
-            _buildTextField('Bio', _bioController, maxLines: 4),
-            const SizedBox(height: 16),
-            _buildTextField('Location', _locationController),
-            const SizedBox(height: 16),
-            _buildTextField('Gender', _genderController),
-            const SizedBox(height: 16),
-            _buildTextField('Date of Birth', _dobController),
-            const SizedBox(height: 32),
+
+            // Save Button
             BouncingWidget(
-              onTap: () {
-                AppMotion.tapSelection();
-                provider.saveProfileDetails(
-                  name: _nameController.text,
-                  bio: _bioController.text,
-                  location: _locationController.text,
-                  gender: _genderController.text,
-                  dob: _dobController.text,
-                );
-                CustomToast.show(context: context, message: 'Profile updated successfully', isError: false);
-                Navigator.pop(context);
-              },
+              onTap: _isSaving ? () {} : _handleSave,
               child: Container(
                 width: double.infinity,
                 height: 56,
                 decoration: BoxDecoration(
                   gradient: AppColors.primaryGradient,
                   borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 14,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
                 ),
-                child: const Center(child: Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                child: Center(
+                  child: _isSaving
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                      : const Text(
+                          'Save Changes',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                ),
               ),
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1}) {
+  Widget _buildEmailField(bool isDark) {
+    final isEmailClean = !_hasEmailChanged && _isEmailVerified;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Email Address',
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 13),
+            ),
+            if (isEmailClean)
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 16),
+                  SizedBox(width: 4),
+                  Text(
+                    'Verified via hello@stayq.space',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF10B981)),
+                  ),
+                ],
+              )
+            else
+              TextButton.icon(
+                style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
+                onPressed: _verifyEmail,
+                icon: const Icon(Icons.mark_email_read_rounded, size: 15, color: AppColors.primary),
+                label: const Text(
+                  'Verify with OTP',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
         TextField(
-          controller: controller,
-          maxLines: maxLines,
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.email_rounded, color: AppColors.primary, size: 20),
+            suffixIcon: isEmailClean
+                ? const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 20)
+                : TextButton(
+                    onPressed: _verifyEmail,
+                    child: const Text('Verify', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary)),
+                  ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: isDark ? const Color(0xFF1A1828) : Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppColors.borderLight),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppColors.borderLight),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+          ),
+        ),
+        if (_hasEmailChanged)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4),
+            child: Text(
+              '⚠️ Email modified. A 6-digit verification code from hello@stayq.space will be required on save.',
+              style: TextStyle(fontSize: 11, color: Colors.amber[800], fontWeight: FontWeight.w600),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    required IconData icon,
+    int maxLines = 1,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 13)),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
+            filled: true,
+            fillColor: isDark ? const Color(0xFF1A1828) : Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),

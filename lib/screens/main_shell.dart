@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/bottom_nav_bar.dart';
@@ -24,6 +25,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   bool _hasTriggeredWelcome = false;
+  DateTime? _lastBackPressTime;
 
   @override
   void didChangeDependencies() {
@@ -67,10 +69,26 @@ class _MainShellState extends State<MainShell> {
       final safeIndex = activeTabIndex < hostPages.length ? activeTabIndex : 0;
 
       return PopScope(
-        canPop: safeIndex == 0,
+        canPop: false,
         onPopInvokedWithResult: (didPop, result) {
-          if (!didPop) {
+          if (didPop) return;
+          if (safeIndex > 0) {
             provider.setTabIndex(0);
+          } else {
+            // Double-tap to exit on Host Dashboard tab
+            final now = DateTime.now();
+            if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+              _lastBackPressTime = now;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Press back again to exit'),
+                  duration: Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            } else {
+              SystemNavigator.pop();
+            }
           }
         },
         child: Scaffold(
@@ -109,10 +127,27 @@ class _MainShellState extends State<MainShell> {
     final safeGuestIndex = activeTabIndex < guestPages.length ? activeTabIndex : 0;
 
     return PopScope(
-      canPop: safeGuestIndex == 0,
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) {
+        if (didPop) return;
+        if (safeGuestIndex > 0) {
+          // Return to Home tab from any other tab
           provider.setTabIndex(0);
+        } else {
+          // Double-tap to exit on Home tab
+          final now = DateTime.now();
+          if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+            _lastBackPressTime = now;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Press back again to exit'),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          } else {
+            SystemNavigator.pop();
+          }
         }
       },
       child: Scaffold(
