@@ -33,7 +33,7 @@ export class PropertiesService {
         const newHost = await this.prisma.user.create({
           data: {
             firebaseUid: `admin-host-${Date.now()}`,
-            email: data.host?.email || data.email || 'admin@stayq.space',
+            email: data.host?.email || data.email || 'hello@stayq.space',
             displayName: data.host?.firstName ? `${data.host.firstName} ${data.host.lastName || ''}`.trim() : (data.firstName ? `${data.firstName} ${data.lastName || ''}`.trim() : 'Stay Q Host'),
             phone: data.host?.phone || data.phone || '+919999999999',
             roles: ['HOST', 'GUEST'],

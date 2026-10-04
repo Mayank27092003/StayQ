@@ -16,7 +16,7 @@ export class ExperiencesService {
         const newHost = await this.prisma.user.create({
           data: {
             firebaseUid: `admin-exp-host-${Date.now()}`,
-            email: 'host@stayq.space',
+            email: 'hello@stayq.space',
             displayName: 'Stay Q Experience Host',
             roles: ['HOST'],
             isAdmin: true,

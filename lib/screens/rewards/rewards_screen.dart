@@ -356,7 +356,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                   totalAmount: price.toDouble(),
                   propertyTitle: 'Stay Q Club - $tierTitle',
                   customerName: provider.userName.isNotEmpty ? provider.userName : 'Club Member',
-                  customerEmail: provider.userEmail.isNotEmpty ? provider.userEmail : 'member@stayq.space',
+                  customerEmail: provider.userEmail.isNotEmpty ? provider.userEmail : 'hello@stayq.space',
                   customerPhone: provider.userPhone.isNotEmpty ? provider.userPhone : '9876543210',
                 );
 

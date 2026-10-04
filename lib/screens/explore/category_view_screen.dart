@@ -18,6 +18,54 @@ class CategoryViewScreen extends StatefulWidget {
 class _CategoryViewScreenState extends State<CategoryViewScreen> {
   String _selectedFilter = 'All';
 
+  List<String> _getFilterChipsForCategory(String categoryTitle) {
+    final cat = categoryTitle.toLowerCase();
+    if (cat == 'rvs' || cat == 'rv' || cat.contains('campervan')) {
+      return [
+        'All',
+        'Self-Drive',
+        'With Captain',
+        '220V Shore Power',
+        'AC & Shower',
+        '4x4 / AWD',
+        'Pet Friendly',
+        'Under ₹10k/day',
+      ];
+    } else if (cat.contains('zero broker') || cat == 'zero brokerage' || cat.contains('long term')) {
+      return [
+        'All',
+        '0% Brokerage',
+        '1-Month Deposit',
+        'Furnished',
+        'High-Speed WiFi',
+        'Pet Friendly',
+        'Under ₹35k/mo',
+        'Bengaluru',
+        'Goa',
+      ];
+    } else if (cat == 'camping' || cat == 'glamping' || cat.contains('camp')) {
+      return [
+        'All',
+        'Luxury Glamping',
+        'Riverside / Lake',
+        'Campfire & BBQ',
+        'Washroom & Power',
+        'Pet Friendly',
+        'Rating 4.9+',
+      ];
+    } else {
+      return [
+        'All',
+        'Private Pool',
+        'Entire Place',
+        'With Host',
+        'Guest Favorite',
+        'Starhost',
+        'Rating 4.9+',
+      ];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
@@ -51,11 +99,64 @@ class _CategoryViewScreenState extends State<CategoryViewScreen> {
           return stay.isStarHost;
         case 'Rating 4.9+':
           return stay.rating >= 4.9;
+        // RV / Campervan Filters
+        case 'Self-Drive':
+          return stay.amenities.any((a) => a.toLowerCase().contains('self') || a.toLowerCase().contains('drive')) ||
+              stay.title.toLowerCase().contains('self-drive') ||
+              stay.description.toLowerCase().contains('self-drive') ||
+              !stay.isStayingWithHost;
+        case 'With Captain':
+          return stay.amenities.any((a) => a.toLowerCase().contains('captain') || a.toLowerCase().contains('driver')) ||
+              stay.title.toLowerCase().contains('captain') ||
+              stay.isStayingWithHost;
+        case '220V Shore Power':
+          return stay.amenities.any((a) => a.toLowerCase().contains('power') || a.toLowerCase().contains('shore') || a.toLowerCase().contains('220v') || a.toLowerCase().contains('electric'));
+        case 'AC & Shower':
+          return stay.amenities.any((a) => a.toLowerCase().contains('ac') || a.toLowerCase().contains('air') || a.toLowerCase().contains('shower') || a.toLowerCase().contains('water'));
+        case '4x4 / AWD':
+          return stay.amenities.any((a) => a.toLowerCase().contains('4x4') || a.toLowerCase().contains('awd')) ||
+              stay.title.toLowerCase().contains('4x4') ||
+              stay.description.toLowerCase().contains('4x4');
+        // Zero Brokerage / Long Term Filters
+        case '0% Brokerage':
+          return stay.isZeroBroker;
+        case '1-Month Deposit':
+          return stay.isZeroBroker || stay.description.toLowerCase().contains('deposit');
+        case 'Furnished':
+          return stay.amenities.any((a) => a.toLowerCase().contains('furnish') || a.toLowerCase().contains('kitchen') || a.toLowerCase().contains('bed')) || stay.isZeroBroker;
+        case 'High-Speed WiFi':
+          return stay.amenities.any((a) => a.toLowerCase().contains('wifi') || a.toLowerCase().contains('fiber') || a.toLowerCase().contains('internet'));
+        case 'Under ₹35k/mo':
+          return stay.pricePerNight <= 1800 || (stay.pricePerNight * 30) <= 50000;
+        case 'Bengaluru':
+          return stay.city.toLowerCase().contains('bangalore') || stay.city.toLowerCase().contains('bengaluru') || stay.location.toLowerCase().contains('bengaluru') || stay.location.toLowerCase().contains('bangalore');
+        case 'Goa':
+          return stay.city.toLowerCase().contains('goa') || stay.location.toLowerCase().contains('goa');
+        // Camping / Glamping Filters
+        case 'Luxury Glamping':
+          return stay.category.toLowerCase().contains('glamp') || stay.title.toLowerCase().contains('glamp') || stay.description.toLowerCase().contains('glamp');
+        case 'Riverside / Lake':
+          return stay.amenities.any((a) => a.toLowerCase().contains('river') || a.toLowerCase().contains('lake') || a.toLowerCase().contains('water')) ||
+              stay.title.toLowerCase().contains('river') ||
+              stay.title.toLowerCase().contains('lake');
+        case 'Campfire & BBQ':
+          return stay.amenities.any((a) => a.toLowerCase().contains('fire') || a.toLowerCase().contains('bbq') || a.toLowerCase().contains('bonfire'));
+        case 'Washroom & Power':
+          return stay.amenities.any((a) => a.toLowerCase().contains('washroom') || a.toLowerCase().contains('power') || a.toLowerCase().contains('toilet') || a.toLowerCase().contains('electricity'));
+        // Shared Filters
+        case 'Pet Friendly':
+          return stay.amenities.any((a) => a.toLowerCase().contains('pet')) || stay.tags.any((t) => t.toLowerCase().contains('pet'));
+        case 'Under ₹10k/day':
+          return stay.pricePerNight <= 10000;
+        case 'Private Pool':
+          return stay.amenities.any((a) => a.toLowerCase().contains('pool')) || stay.title.toLowerCase().contains('pool');
         case 'All':
         default:
           return true;
       }
     }).toList();
+
+    final dynamicChips = _getFilterChipsForCategory(widget.categoryTitle);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -85,38 +186,13 @@ class _CategoryViewScreenState extends State<CategoryViewScreen> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
-              children: [
-                _FilterChip(
-                  label: 'All',
-                  isSelected: _selectedFilter == 'All',
-                  onTap: () => setState(() => _selectedFilter = 'All'),
-                ),
-                _FilterChip(
-                  label: 'With Host',
-                  isSelected: _selectedFilter == 'With Host',
-                  onTap: () => setState(() => _selectedFilter = 'With Host'),
-                ),
-                _FilterChip(
-                  label: 'Entire Place',
-                  isSelected: _selectedFilter == 'Entire Place',
-                  onTap: () => setState(() => _selectedFilter = 'Entire Place'),
-                ),
-                _FilterChip(
-                  label: 'Guest Favorite',
-                  isSelected: _selectedFilter == 'Guest Favorite',
-                  onTap: () => setState(() => _selectedFilter = 'Guest Favorite'),
-                ),
-                _FilterChip(
-                  label: 'Starhost',
-                  isSelected: _selectedFilter == 'Starhost',
-                  onTap: () => setState(() => _selectedFilter = 'Starhost'),
-                ),
-                _FilterChip(
-                  label: 'Rating 4.9+',
-                  isSelected: _selectedFilter == 'Rating 4.9+',
-                  onTap: () => setState(() => _selectedFilter = 'Rating 4.9+'),
-                ),
-              ],
+              children: dynamicChips.map((chipLabel) {
+                return _FilterChip(
+                  label: chipLabel,
+                  isSelected: _selectedFilter == chipLabel,
+                  onTap: () => setState(() => _selectedFilter = chipLabel),
+                );
+              }).toList(),
             ),
           ),
 

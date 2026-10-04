@@ -659,14 +659,8 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
       
       await GoogleSignIn.instance.initialize();
-      final GoogleSignInAccount? googleUser = await GoogleSignIn.instance.authenticate();
-      if (googleUser == null) {
-        _isLoadingAuth = false;
-        notifyListeners();
-        return false;
-      }
-      
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final googleUser = await GoogleSignIn.instance.authenticate();
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
       );
@@ -1019,6 +1013,39 @@ class AppProvider extends ChangeNotifier {
     await prefs.remove('host_onboarding_draft');
     
     notifyListeners();
+  }
+
+  Future<bool> deleteAccount() async {
+    try {
+      final token = await _getToken();
+      if (token != null) {
+        try {
+          await http.delete(
+            Uri.parse('$_apiUrl/api/v1/users/me'),
+            headers: {'Authorization': 'Bearer $token'},
+          );
+        } catch (apiErr) {
+          debugPrint('Backend delete user note: $apiErr');
+        }
+      }
+
+      // Delete Firebase Auth user if authenticated
+      if (_auth?.currentUser != null) {
+        try {
+          await _auth!.currentUser!.delete();
+        } catch (fbErr) {
+          debugPrint('Firebase delete user note: $fbErr');
+        }
+      }
+
+      // Clear local storage and reset all user state
+      await logout();
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting account: $e');
+      await logout();
+      return false;
+    }
   }
 
   void toggleWishlist(StayModel stay) async {

@@ -144,7 +144,7 @@ export class PropertiesBoostService {
       bookingId: orderId,
       amount,
       customerId: user.id || property.hostId,
-      customerEmail: property.host?.email || user.email || 'host@stayq.space',
+      customerEmail: property.host?.email || user.email || 'hello@stayq.space',
       customerPhone: property.host?.phone || user.phone || '9999999999',
       customerName: property.host?.displayName || user.displayName || 'Stay Q Host',
       returnUrl: `https://stayq.space/host/boost/callback?order_id={order_id}&property_id=${propertyId}&tier=${tierId}`,

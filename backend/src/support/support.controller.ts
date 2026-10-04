@@ -12,7 +12,6 @@ import { SupportService } from './support.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
 
 @Controller('support')
-@UseGuards(FirebaseAuthGuard)
 export class SupportController {
   constructor(private readonly supportService: SupportService) {}
 
@@ -84,8 +83,9 @@ export class SupportController {
   }
 
   /**
-   * 5. Update ticket status / mark resolved
+   * 5. Update ticket status / mark resolved (Admin only)
    */
+  @UseGuards(FirebaseAuthGuard)
   @Patch('tickets/:id')
   async updateTicket(
     @Param('id') id: string,

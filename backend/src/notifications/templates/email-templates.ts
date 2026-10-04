@@ -569,7 +569,7 @@ export const EmailTemplates = {
         </div>
 
         <div style="background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px; font-size: 11.5px; color: #64748b; margin-top: 14px; line-height: 1.5;">
-          <strong>📜 Host Terms & Policies:</strong> Payouts settle directly to your verified bank account following guest check-in without platform deductions. Support desk: host-support@stayq.space.
+          <strong>📜 Host Terms & Policies:</strong> Payouts settle directly to your verified bank account following guest check-in without platform deductions. Support desk: support@stayq.space.
         </div>
         `,
         'Onboard Your First Property',

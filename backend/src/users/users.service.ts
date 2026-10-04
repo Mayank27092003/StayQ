@@ -83,8 +83,47 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    return this.prisma.user.delete({
-      where: { id: userId },
-    });
+    // 1. Unlink support tickets & clean up dependent records
+    await this.prisma.supportTicket.updateMany({
+      where: { userId },
+      data: { userId: null },
+    }).catch(() => {});
+
+    await this.prisma.deviceToken.deleteMany({
+      where: { userId },
+    }).catch(() => {});
+
+    await this.prisma.notification.deleteMany({
+      where: { userId },
+    }).catch(() => {});
+
+    await this.prisma.wishlist.deleteMany({
+      where: { userId },
+    }).catch(() => {});
+
+    await this.prisma.savedSearch.deleteMany({
+      where: { userId },
+    }).catch(() => {});
+
+    try {
+      return await this.prisma.user.delete({
+        where: { id: userId },
+      });
+    } catch (err) {
+      // If user has historical bookings/transactions, anonymize PII for legal GDPR/Apple compliance
+      const anonymizedId = `deleted_${Date.now()}`;
+      return await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          email: `${anonymizedId}@deleted.stayq.space`,
+          displayName: 'Deleted Account',
+          phone: null,
+          photoUrl: null,
+          bio: null,
+          location: null,
+          roles: [],
+        },
+      });
+    }
   }
 }

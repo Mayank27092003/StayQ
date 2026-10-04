@@ -64,7 +64,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                   title: const Text('Biometric Login', style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: const Text('Use Face ID / Touch ID to login', style: TextStyle(fontSize: 12)),
                   value: _biometricEnabled,
-                  activeColor: AppColors.primary,
+                  activeThumbColor: AppColors.primary,
                   onChanged: (val) {
                     setState(() => _biometricEnabled = val);
                     _savePref('biometric_enabled', val);
@@ -75,7 +75,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                   title: const Text('Two-Factor Authentication', style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: const Text('Require a code sent to your phone', style: TextStyle(fontSize: 12)),
                   value: _twoFactorEnabled,
-                  activeColor: AppColors.primary,
+                  activeThumbColor: AppColors.primary,
                   onChanged: (val) {
                     setState(() => _twoFactorEnabled = val);
                     _savePref('two_factor_enabled', val);
@@ -122,35 +122,79 @@ class _SecurityScreenState extends State<SecurityScreen> {
                   subtitle: const Text('Permanently delete your Stay Q account', style: TextStyle(fontSize: 12)),
                   trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.errorRed),
                   onTap: () {
-                    showDialog(context: context, builder: (ctx) => AlertDialog(
-                      title: const Text('Delete Account?'),
-                      content: const Text('This action is irreversible. All your bookings, listings, and profile data will be permanently deleted from Stay Q servers.'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                        TextButton(
-                          onPressed: () async {
-                            Navigator.pop(ctx);
-                            try {
-                              final user = FirebaseAuth.instance.currentUser;
-                              if (user != null) {
-                                await user.delete();
-                              }
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        title: const Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded, color: AppColors.errorRed, size: 26),
+                            SizedBox(width: 10),
+                            Text('Delete Account?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                          ],
+                        ),
+                        content: const Text(
+                          'This action is permanent and cannot be undone. All your bookings, listings, and profile data will be permanently deleted from Stay Q servers.',
+                          style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textSecondary),
+                        ),
+                        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.errorRed,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              elevation: 0,
+                            ),
+                            onPressed: () async {
+                              Navigator.pop(ctx);
+                              final provider = context.read<AppProvider>();
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (_) => const Center(
+                                  child: Card(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(24),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          CircularProgressIndicator(color: AppColors.errorRed),
+                                          SizedBox(height: 16),
+                                          Text('Deleting Stay Q Account...', style: TextStyle(fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+
+                              final success = await provider.deleteAccount();
+
                               if (context.mounted) {
-                                context.read<AppProvider>().logout();
-                                Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
+                                Navigator.of(context, rootNavigator: true).pop();
+                                Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
+                                  '/login',
+                                  (route) => false,
+                                );
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error deleting account: Please log in again to verify identity. $e')),
+                                  SnackBar(
+                                    content: Text(
+                                      success
+                                          ? 'Your Stay Q account has been permanently deleted.'
+                                          : 'Account cleared and signed out.',
+                                    ),
+                                    backgroundColor: AppColors.errorRed,
+                                  ),
                                 );
                               }
-                            }
-                          }, 
-                          child: const Text('Confirm Delete', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ));
+                            }, 
+                            child: const Text('Confirm Delete', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    );
                   },
                 ),
               ],
@@ -253,7 +297,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated successfully')));
                     }
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                    }
                   }
                 },
                 style: ElevatedButton.styleFrom(

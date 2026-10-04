@@ -108,7 +108,7 @@ class _HostProPaywallSheetState extends State<HostProPaywallSheet> {
       totalAmount: amount,
       propertyTitle: 'StayQ Host Pro (${selectedPlan['title']})',
       customerName: provider.userName.isNotEmpty ? provider.userName : 'Host Partner',
-      customerEmail: provider.userEmail.isNotEmpty ? provider.userEmail : 'host@stayq.space',
+      customerEmail: provider.userEmail.isNotEmpty ? provider.userEmail : 'hello@stayq.space',
       customerPhone: provider.userPhone.isNotEmpty ? provider.userPhone : '9876543210',
     );
 

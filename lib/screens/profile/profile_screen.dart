@@ -197,7 +197,7 @@ class ProfileScreen extends StatelessWidget {
                             children: [
                               CircleAvatar(
                                 radius: 36,
-                                backgroundColor: AppColors.primary.withOpacity(0.2),
+                                backgroundColor: AppColors.primary.withValues(alpha: 0.2),
                                 backgroundImage: _getAvatarImage(provider.userAvatar),
                                 child: provider.userAvatar.isEmpty
                                     ? Text(
@@ -927,6 +927,15 @@ class ProfileScreen extends StatelessWidget {
                 title: 'Help & Support',
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportScreen())),
               ),
+              if (provider.isLoggedIn)
+                _SettingsTile(
+                  icon: Icons.delete_forever_rounded,
+                  title: 'Delete Account',
+                  subtitle: 'Permanently delete your profile and personal data',
+                  textColor: AppColors.errorRed,
+                  iconColor: AppColors.errorRed,
+                  onTap: () => _confirmDeleteAccount(context, provider),
+                ),
 
               const SizedBox(height: 24),
 
@@ -985,6 +994,86 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _confirmDeleteAccount(BuildContext context, AppProvider provider) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.errorRed, size: 26),
+            SizedBox(width: 10),
+            Text('Delete Account?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: const Text(
+          'This action is permanent and cannot be undone. All your bookings, wishlists, reviews, and profile credentials will be deleted from Stay Q servers in compliance with data privacy regulations.',
+          style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textSecondary),
+        ),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.errorRed,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogCtx);
+
+              // Show blocking progress dialog
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const Center(
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: AppColors.errorRed),
+                          SizedBox(height: 16),
+                          Text('Deleting Stay Q Account...', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+
+              final success = await provider.deleteAccount();
+
+              if (context.mounted) {
+                Navigator.of(context, rootNavigator: true).pop(); // Dismiss loading dialog
+                Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
+                  '/login',
+                  (route) => false,
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      success
+                          ? 'Your Stay Q account has been permanently deleted.'
+                          : 'Account cleared and signed out.',
+                    ),
+                    backgroundColor: AppColors.errorRed,
+                  ),
+                );
+              }
+            },
+            child: const Text('Confirm Delete', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
@@ -1204,12 +1293,16 @@ class _SettingsTile extends StatelessWidget {
   final String title;
   final String? subtitle;
   final VoidCallback? onTap;
+  final Color? textColor;
+  final Color? iconColor;
 
   const _SettingsTile({
     required this.icon,
     required this.title,
     this.subtitle,
     this.onTap,
+    this.textColor,
+    this.iconColor,
   });
 
   @override
@@ -1229,17 +1322,17 @@ class _SettingsTile extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.surfaceLight.withValues(alpha: 0.5),
+            color: (iconColor ?? AppColors.surfaceLight).withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: AppColors.textPrimary, size: 20),
+          child: Icon(icon, color: iconColor ?? AppColors.textPrimary, size: 20),
         ),
         title: Text(
           title,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).textTheme.bodyLarge?.color,
+            color: textColor ?? Theme.of(context).textTheme.bodyLarge?.color,
           ),
         ),
         subtitle: subtitle != null
@@ -1248,7 +1341,7 @@ class _SettingsTile extends StatelessWidget {
                 style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
               )
             : null,
-        trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+        trailing: Icon(Icons.chevron_right_rounded, color: textColor ?? AppColors.textMuted),
         onTap: () {
           AppMotion.tapSelection();
           if (onTap != null) onTap!();

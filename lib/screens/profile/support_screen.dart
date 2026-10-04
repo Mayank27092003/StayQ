@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../config/app_config.dart';
+import '../../providers/app_provider.dart';
 import '../../theme/app_colors.dart';
 
 class SupportScreen extends StatefulWidget {
@@ -33,9 +36,9 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
   String? _selectedTopic;
 
   // Escalation Form State
-  final TextEditingController _nameController = TextEditingController(text: 'Guest User');
-  final TextEditingController _emailController = TextEditingController(text: 'guest@stayq.space');
-  final TextEditingController _phoneController = TextEditingController(text: '+91 ');
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _issueController = TextEditingController();
   String _urgency = 'HIGH';
   bool _isSubmittingTicket = false;
@@ -111,7 +114,36 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.index == 1) {
+        _fetchTickets();
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final provider = Provider.of<AppProvider>(context, listen: false);
+      if (provider.userName.isNotEmpty && provider.userName != 'Guest') {
+        _nameController.text = provider.userName;
+      } else if (_nameController.text.isEmpty) {
+        _nameController.text = 'Guest User';
+      }
+
+      if (provider.userEmail.isNotEmpty) {
+        _emailController.text = provider.userEmail;
+      }
+
+      if (provider.userPhone.isNotEmpty) {
+        _phoneController.text = provider.userPhone;
+      } else if (_phoneController.text.isEmpty) {
+        _phoneController.text = '+91 ';
+      }
+
+      if (_emailController.text.isNotEmpty && _emailController.text.contains('@') && _emailController.text != 'guest@stayq.space') {
+        _fetchTickets();
+      }
+    });
   }
 
   @override
@@ -145,17 +177,21 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
     // Check if user requested human agent
     final lower = text.toLowerCase();
     if (lower.contains('agent') || lower.contains('human') || lower.contains('executive') || lower.contains('call me')) {
-      await Future.delayed(const Duration(milliseconds: 600));
+      if (_issueController.text.isEmpty) {
+        _issueController.text = text;
+      }
+      await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
         setState(() {
           _isAiTyping = false;
           _messages.add({
             'sender': 'ai',
-            'text': '🤝 Absolutely! I will connect you with a Senior Support Executive right away.\n\nPlease switch to the "Transfer to Agent" tab to confirm your phone number and raise your priority ticket.',
+            'text': '🤝 Absolutely! I will connect you with a Senior Support Executive right away.\n\nOpening Priority Ticket dispatch with your chat transcript attached...',
             'time': 'Just now',
           });
         });
         _scrollToBottom();
+        _showEscalationSheet();
       }
       return;
     }
@@ -234,13 +270,25 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
     setState(() => _isSubmittingTicket = true);
 
     try {
+      final provider = Provider.of<AppProvider>(context, listen: false);
+      String? token;
+      try {
+        token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      } catch (_) {}
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      };
+
       final response = await http.post(
         Uri.parse('$_apiBaseUrl/support/tickets'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode({
           'name': name,
           'email': email,
           'phone': phone,
+          'userId': provider.userId,
           'subject': _issueController.text.isNotEmpty ? _issueController.text : '${_selectedTopic ?? "General"} Support Request',
           'message': _issueController.text.isNotEmpty ? _issueController.text : 'Customer escalated to human agent via Stay Q App.',
           'category': _selectedTopic ?? 'General Support',
@@ -255,6 +303,7 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
           setState(() {
             _createdTicket = data;
           });
+          _fetchTickets();
         }
       } else {
         // Fallback optimistic reference
@@ -341,8 +390,7 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
               labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
               unselectedLabelStyle: const TextStyle(fontSize: 12),
               tabs: const [
-                Tab(icon: Icon(Icons.auto_awesome, size: 18), text: 'AI & Live Chat'),
-                Tab(icon: Icon(Icons.support_agent, size: 18), text: 'Transfer to Agent'),
+                Tab(icon: Icon(Icons.auto_awesome, size: 18), text: 'AI Concierge & Live Chat'),
                 Tab(icon: Icon(Icons.confirmation_number_outlined, size: 18), text: 'My Tickets'),
               ],
             ),
@@ -353,7 +401,6 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
         controller: _tabController,
         children: [
           _buildChatTab(),
-          _buildHandoverTab(),
           _buildMyTicketsTab(),
         ],
       ),
@@ -483,11 +530,11 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Need a human agent?', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              const Text('Issue not resolved by AI?', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               TextButton.icon(
-                onPressed: () => _tabController.animateTo(1),
+                onPressed: _showEscalationSheet,
                 icon: const Icon(Icons.headset_mic_rounded, size: 16),
-                label: const Text('Transfer to Executive', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                label: const Text('Escalate to Senior Agent', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -525,310 +572,260 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
     );
   }
 
-  // 2. Transfer to Agent / Ticket Escalation Tab
-  Widget _buildHandoverTab() {
-    if (_createdTicket != null) {
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-            boxShadow: [
-              BoxShadow(color: Colors.green.withValues(alpha: 0.05), blurRadius: 16, offset: const Offset(0, 4)),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 36),
+  // 2. Escalation Sheet Triggered from AI Chat
+  void _showEscalationSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Support Ticket Dispatched!',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Your ticket has been assigned to a Senior Stay Q Support Executive. We will contact you at ${_createdTicket!['phone'] ?? _phoneController.text} shortly.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  children: [
-                    const Text('Ticket Tracking Reference', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                    const SizedBox(height: 4),
-                    Text(
-                      _createdTicket!['ticketRef'] ?? 'SQ-TICKET-ACTIVE',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary, letterSpacing: 1),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        setState(() => _createdTicket = null);
-                        _tabController.animateTo(0);
-                      },
-                      child: const Text('Back to Chat'),
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _fetchTickets();
-                        _tabController.animateTo(2);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Escalate to Senior Agent',
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Chat transcript will be attached automatically',
+                                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: () => Navigator.pop(modalContext),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // WhatsApp Priority Desk
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () async {
+                                final uri = Uri.parse(AppConfig.whatsappSupportUrl);
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF25D366).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.35)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF25D366),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 20),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Text(
+                                            'WhatsApp Instant Desk',
+                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF075E54)),
+                                          ),
+                                          Text(
+                                            AppConfig.whatsappSupportNumber,
+                                            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF25D366),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text(
+                                        'Chat',
+                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Name
+                          const Text('Full Name', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _nameController,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Phone
+                          const Text('WhatsApp / Phone Number', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                              hintText: '+91 ',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Email
+                          const Text('Email Address', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Urgency
+                          const Text('Urgency Level', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              _buildModalUrgencyOption('NORMAL', 'Standard', 'Within 2 hrs', setModalState),
+                              const SizedBox(width: 8),
+                              _buildModalUrgencyOption('HIGH', 'High', '30 mins', setModalState),
+                              const SizedBox(width: 8),
+                              _buildModalUrgencyOption('URGENT', 'Urgent', 'Emergency', setModalState),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Issue Summary
+                          const Text('Brief Issue Summary', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _issueController,
+                            maxLines: 3,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                              hintText: 'Describe what you need help with...',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                              contentPadding: const EdgeInsets.all(12),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: _isSubmittingTicket
+                                  ? null
+                                  : () async {
+                                      final messenger = ScaffoldMessenger.of(context);
+                                      setModalState(() {});
+                                      await _createSupportTicket();
+                                      if (modalContext.mounted) {
+                                        Navigator.pop(modalContext);
+                                      }
+                                      if (mounted) {
+                                        _tabController.animateTo(1);
+                                        final ref = _createdTicket?['ticketRef'] ?? '';
+                                        messenger.showSnackBar(
+                                          SnackBar(
+                                            content: Text('Priority ticket $ref registered!'),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+                                      }
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              child: _isSubmittingTicket
+                                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : const Text('Dispatch Priority Support Ticket', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
                       ),
-                      child: const Text('Track Ticket'),
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Transfer to Senior Support Executive', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 6),
-          const Text('Our operations team will review your chat transcript and call you directly.', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-          const SizedBox(height: 16),
-
-          // 1-Click WhatsApp Support Card
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () async {
-                final uri = Uri.parse(AppConfig.whatsappSupportUrl);
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
-              },
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [const Color(0xFF25D366).withValues(alpha: 0.12), const Color(0xFF128C7E).withValues(alpha: 0.08)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.35)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF25D366),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'WhatsApp Priority Desk',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF075E54)),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            'Instant reply • ${AppConfig.whatsappSupportNumber}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF25D366),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text(
-                        'Chat',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Official Channels Card
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.alternate_email_rounded, size: 16, color: AppColors.primary),
-                    SizedBox(width: 6),
-                    Text('Stay Q Official Desks', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text('• WhatsApp Support: ${AppConfig.whatsappSupportNumber}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF075E54))),
-                const SizedBox(height: 2),
-                const Text('• Support & Bookings: support@stayq.space', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                const SizedBox(height: 2),
-                const Text('• Legal & Grievances: grievance@stayq.space', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.teal)),
-                const SizedBox(height: 2),
-                const Text('• Host & Partnerships: hello@stayq.space', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.orange)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Name Field
-          const Text('Full Name', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
-          const SizedBox(height: 6),
-          TextField(
-            controller: _nameController,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Phone Field
-          const Text('WhatsApp / Phone Number', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
-          const SizedBox(height: 6),
-          TextField(
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              hintText: '+91 98765 43210',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Email Field
-          const Text('Email Address', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
-          const SizedBox(height: 6),
-          TextField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Urgency Selection
-          const Text('Urgency Level', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              _buildUrgencyOption('NORMAL', 'Standard', 'Within 2 hrs'),
-              const SizedBox(width: 8),
-              _buildUrgencyOption('HIGH', 'High', 'Within 30 mins'),
-              const SizedBox(width: 8),
-              _buildUrgencyOption('URGENT', 'Urgent', 'Emergency'),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // Issue Summary
-          const Text('Brief Issue Summary', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
-          const SizedBox(height: 6),
-          TextField(
-            controller: _issueController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              hintText: 'Describe what you need help with...',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
-              contentPadding: const EdgeInsets.all(12),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: _isSubmittingTicket ? null : _createSupportTicket,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              child: _isSubmittingTicket
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Dispatch Priority Support Ticket', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            ),
-          ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
-  Widget _buildUrgencyOption(String id, String title, String subtitle) {
+  Widget _buildModalUrgencyOption(String id, String title, String subtitle, StateSetter setModalState) {
     final isSelected = _urgency == id;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _urgency = id),
+        onTap: () {
+          setModalState(() => _urgency = id);
+          setState(() => _urgency = id);
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
           decoration: BoxDecoration(
