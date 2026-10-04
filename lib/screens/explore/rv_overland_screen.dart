@@ -5,6 +5,11 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
 import 'category_view_screen.dart';
+import '../../models/corridor_model.dart';
+import '../../models/corridor_region.dart';
+import '../../data/curated_corridors_dataset.dart';
+import '../../services/corridors_repository.dart';
+import '../qube/qube_planner_screen.dart';
 
 class RvOverlandScreen extends StatefulWidget {
   const RvOverlandScreen({super.key});
@@ -16,6 +21,29 @@ class RvOverlandScreen extends StatefulWidget {
 class _RvOverlandScreenState extends State<RvOverlandScreen> {
   int _selectedStoryIndex = 0;
   int _selectedKmIndex = 1;
+  CorridorRegion _selectedRegion = CorridorRegion.northIndia;
+  List<CorridorModel> _corridors = curatedCampervanCorridors;
+  bool _isLoadingCorridors = false;
+  final CorridorsRepository _corridorsRepo = CorridorsRepository();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCorridors();
+  }
+
+  Future<void> _loadCorridors() async {
+    setState(() => _isLoadingCorridors = true);
+    final list = await _corridorsRepo.getCorridors();
+    if (mounted && list.isNotEmpty) {
+      setState(() {
+        _corridors = list;
+        _isLoadingCorridors = false;
+      });
+    } else if (mounted) {
+      setState(() => _isLoadingCorridors = false);
+    }
+  }
 
   final List<Map<String, dynamic>> _visualStories = [
     {
@@ -52,35 +80,86 @@ class _RvOverlandScreenState extends State<RvOverlandScreen> {
     },
   ];
 
-  final List<Map<String, dynamic>> _routes = [
-    {
-      'title': 'Goa ⇄ Kerala Coastal Highway',
-      'duration': '6 – 8 Days',
-      'distance': '950 km',
-      'badge': 'Most Popular',
-      'image': 'assets/images/rv_beach_camp.jpg',
-      'stops': 'Goa → Gokarna → Murudeshwar → Kochi',
-      'highlights': ['Beach RV Docks', 'Seafood Hubs', 'Cliff Sunsets'],
-    },
-    {
-      'title': 'Western Ghats Monsoon Loop',
-      'duration': '4 – 6 Days',
-      'distance': '620 km',
-      'badge': 'Scenic Hills',
-      'image': 'assets/images/rv_interior_cozy.jpg',
-      'stops': 'Mumbai / Pune → Lonavala → Mahabaleshwar → Goa',
-      'highlights': ['Waterfalls', 'Valley Views', 'Cool Weather'],
-    },
-    {
-      'title': 'Himalayan Mountain Circuit',
-      'duration': '8 – 12 Days',
-      'distance': '1,150 km',
-      'badge': 'High Altitude',
-      'image': 'assets/images/rv_roadtrip_drive.jpg',
-      'stops': 'Chandigarh → Manali → Jispa → Sarchu → Leh',
-      'highlights': ['Snow Passes', 'Heated Cabins', '4x4 Campervans'],
-    },
-  ];
+  String _getRegionLabel(CorridorRegion region) {
+    switch (region) {
+      case CorridorRegion.northIndia:
+        return 'North India';
+      case CorridorRegion.southIndia:
+        return 'South India';
+      case CorridorRegion.gujaratRajasthan:
+        return 'Gujarat & Rajasthan';
+      case CorridorRegion.northEast:
+        return 'North East';
+    }
+  }
+
+  String _getRegionEmoji(CorridorRegion region) {
+    switch (region) {
+      case CorridorRegion.northIndia:
+        return '🏔️';
+      case CorridorRegion.southIndia:
+        return '🌊';
+      case CorridorRegion.gujaratRajasthan:
+        return '🏜️';
+      case CorridorRegion.northEast:
+        return '🌿';
+    }
+  }
+
+  String _getRegionImage(CorridorRegion region) {
+    switch (region) {
+      case CorridorRegion.northIndia:
+        return 'assets/images/corridor_north_india.jpg';
+      case CorridorRegion.southIndia:
+        return 'assets/images/corridor_south_india.jpg';
+      case CorridorRegion.gujaratRajasthan:
+        return 'assets/images/corridor_gujarat_rajasthan.jpg';
+      case CorridorRegion.northEast:
+        return 'assets/images/corridor_north_east.jpg';
+    }
+  }
+
+  String _getRegionTitle(CorridorRegion region) {
+    switch (region) {
+      case CorridorRegion.northIndia:
+        return 'Himalayan Passes & Royal Heritage';
+      case CorridorRegion.southIndia:
+        return 'Coastal Highways & Western Ghats Loops';
+      case CorridorRegion.gujaratRajasthan:
+        return 'Desert Dunes & Salt Flat Frontiers';
+      case CorridorRegion.northEast:
+        return 'Living Root Bridges & Emerald Valleys';
+    }
+  }
+
+  String _getRegionDescription(CorridorRegion region) {
+    switch (region) {
+      case CorridorRegion.northIndia:
+        return 'Snow-capped mountain views, Tibetan monasteries, pine trails & royal forts with verified pit-stops.';
+      case CorridorRegion.southIndia:
+        return 'Arabian Sea coastal highways, coffee estate loops, beach camps & cliffside sunset docks.';
+      case CorridorRegion.gujaratRajasthan:
+        return 'Thar desert stargazing dunes, white salt flats of Kutch, historic royal palaces & wild safaris.';
+      case CorridorRegion.northEast:
+        return 'Dawki crystal rivers, cloud-capped valleys, living root bridges & offbeat tea-estate campervan docks.';
+    }
+  }
+
+  void _planWithQube(CorridorModel corridor) {
+    AppMotion.tapSelection();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QubePlannerScreen(
+          initialPrompt:
+              'I want to plan a campervan roadtrip for the "${corridor.name}" (${corridor.durationFormatted}, ${corridor.distanceFormatted}). '
+              'The route covers: ${corridor.route}. '
+              'Theme: ${corridor.theme}. '
+              'Can you create a day-by-day campervan itinerary with recommended overnight pit-stops and scenic viewpoints?',
+        ),
+      ),
+    );
+  }
 
   final List<Map<String, dynamic>> _kmOptions = [
     {
@@ -350,169 +429,152 @@ class _RvOverlandScreenState extends State<RvOverlandScreen> {
             ),
           ),
 
-          // ─── 4. POPULAR ROADTRIP ROUTES ───
+          // ─── 4. REGIONAL CAMPERVAN CORRIDORS ───
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'CURATED ITINERARIES',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.6,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (_isLoadingCorridors)
+                        const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
                   const Text(
-                    'Curated Roadtrip Routes',
+                    'Regional Travel Corridors',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 22,
                       fontWeight: FontWeight.w900,
                       color: AppColors.textPrimary,
                       letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   const Text(
-                    'Tested corridors with verified night pit-stops along the way',
-                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    'Vetted overland routes with verified 220V power docks, night halts & camping spots',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.35),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
 
-                  // Route Cards
-                  ..._routes.map((route) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.borderLight),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Route Photo with Badge
-                          Stack(
-                            children: [
-                              SizedBox(
-                                height: 130,
-                                width: double.infinity,
-                                child: Image.asset(
-                                  route['image'] as String,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Image.asset(
-                                    'assets/images/real_rv.jpg',
-                                    fit: BoxFit.cover,
-                                  ),
+                  // Region Selection Tabs
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: CorridorRegion.values.map((region) {
+                        final isSelected = _selectedRegion == region;
+                        final count = _corridors.where((c) => c.region == region).length;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: InkWell(
+                            onTap: () {
+                              AppMotion.tapSelection();
+                              setState(() => _selectedRegion = region);
+                            },
+                            borderRadius: BorderRadius.circular(14),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppColors.primary : Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isSelected ? AppColors.primary : AppColors.borderLight,
+                                  width: isSelected ? 1.5 : 1,
                                 ),
-                              ),
-                              Positioned.fill(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.black.withValues(alpha: 0.1),
-                                        Colors.black.withValues(alpha: 0.65),
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: AppColors.primary.withValues(alpha: 0.25),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ]
+                                    : [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.02),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 1),
+                                        ),
                                       ],
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _getRegionEmoji(region),
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _getRegionLabel(region),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: isSelected ? Colors.white : AppColors.textPrimary,
                                     ),
                                   ),
-                                ),
-                              ),
-                              Positioned(
-                                top: 12,
-                                left: 12,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    route['badge'] as String,
-                                    style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 10,
-                                left: 14,
-                                right: 14,
-                                child: Text(
-                                  route['title'] as String,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          // Route Details
-                          Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.schedule_rounded, size: 14, color: AppColors.textSecondary),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      route['duration'] as String,
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? Colors.white.withValues(alpha: 0.25)
+                                          : const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
-                                    const SizedBox(width: 14),
-                                    const Icon(Icons.route_rounded, size: 14, color: AppColors.textSecondary),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      route['distance'] as String,
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.pin_drop_rounded, size: 14, color: AppColors.primary),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        route['stops'] as String,
-                                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                        overflow: TextOverflow.ellipsis,
+                                    child: Text(
+                                      '$count',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: isSelected ? Colors.white : AppColors.textSecondary,
                                       ),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Wrap(
-                                  spacing: 6,
-                                  children: (route['highlights'] as List<String>).map((hl) {
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF3F4F6),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        hl,
-                                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ],
-                      ),
-                    );
-                  }),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Realistic Collage Showcase Hero Card for Active Region
+                  _buildRegionCollageHeroCard(_selectedRegion),
+                  const SizedBox(height: 16),
+
+                  // List of Corridor Cards for selected region
+                  ..._corridors
+                      .where((c) => c.region == _selectedRegion)
+                      .toList()
+                      .map((corridor) => _buildCorridorCard(corridor)),
                 ],
               ),
             ),
@@ -799,5 +861,525 @@ class _RvOverlandScreenState extends State<RvOverlandScreen> {
         ],
       ),
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.05);
+  }
+
+  Widget _buildRegionCollageHeroCard(CorridorRegion region) {
+    final count = _corridors.where((c) => c.region == region).length;
+    final imagePath = _getRegionImage(region);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              SizedBox(
+                height: 190,
+                width: double.infinity,
+                child: Image.asset(
+                  imagePath,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Image.asset(
+                    'assets/images/campervan_wide_8k.jpg',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withValues(alpha: 0.15),
+                        Colors.black.withValues(alpha: 0.75),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 14,
+                left: 14,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_getRegionEmoji(region), style: const TextStyle(fontSize: 13)),
+                      const SizedBox(width: 6),
+                      Text(
+                        _getRegionLabel(region).toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 14,
+                right: 14,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    '$count Curated Routes',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 14,
+                left: 16,
+                right: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getRegionTitle(region),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _getRegionDescription(region),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 12.5,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                _buildQuickFeatureTag(Icons.electric_bolt_rounded, '220V Pit-Stops'),
+                const SizedBox(width: 8),
+                _buildQuickFeatureTag(Icons.verified_user_rounded, 'Safe Night Docks'),
+                const SizedBox(width: 8),
+                _buildQuickFeatureTag(Icons.route_rounded, 'Scenic Highways'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 250.ms);
+  }
+
+  Widget _buildQuickFeatureTag(IconData icon, String text) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 13, color: AppColors.primary),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCorridorCard(CorridorModel corridor) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Row: Numbering/Badge & Duration/Distance Stats
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '#${corridor.sortOrder}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                if (corridor.badge != null) ...[
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Text(
+                        corridor.badge!,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1D4ED8),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                Row(
+                  children: [
+                    const Icon(Icons.schedule_rounded, size: 14, color: AppColors.textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      corridor.durationFormatted,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Icon(Icons.straighten_rounded, size: 14, color: AppColors.textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      corridor.distanceFormatted,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Corridor Name
+            Text(
+              corridor.name,
+              style: const TextStyle(
+                fontSize: 17.5,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 4),
+
+            // Theme
+            Row(
+              children: [
+                const Icon(Icons.stars_rounded, size: 14, color: Color(0xFFE05638)),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    corridor.theme,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFE05638),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Route Pathway Visual Chain
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.alt_route_rounded, size: 15, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'ROUTE PATHWAY (${corridor.stops.length} STOPS)',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    corridor.route,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF334155),
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Description
+            Text(
+              corridor.description,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Highlights Chips
+            if (corridor.highlights.isNotEmpty) ...[
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: corridor.highlights.map((hl) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Text(
+                      hl,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF475569),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 10),
+            ],
+
+            // Advisory Notes or Permits (if present)
+            if (corridor.advisoryNotes != null || corridor.permits.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (corridor.advisoryNotes != null)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFFB45309)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              corridor.advisoryNotes!,
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFF92400E),
+                                height: 1.35,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (corridor.permits.isNotEmpty) ...[
+                      if (corridor.advisoryNotes != null) const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.assignment_outlined, size: 14, color: Color(0xFFB45309)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Permits: ${corridor.permits.join(', ')}',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFF92400E),
+                                height: 1.35,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+
+            // Source Attribution
+            if (corridor.sourceName != null) ...[
+              Row(
+                children: [
+                  const Icon(Icons.verified_rounded, size: 13, color: Color(0xFF0284C7)),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      'Curated & inspired by ${corridor.sourceName}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF0369A1),
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Actions Row: "Plan with Qube" & "View RVs"
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _planWithQube(corridor),
+                    icon: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: Image.asset(
+                        'assets/images/qube_robot.jpg',
+                        width: 18,
+                        height: 18,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.auto_awesome, size: 16),
+                      ),
+                    ),
+                    label: const Text(
+                      'Plan with Qube',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E293B),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: OutlinedButton.icon(
+                    onPressed: _openRvCategory,
+                    icon: const Icon(Icons.directions_car_filled_rounded, size: 15),
+                    label: const Text(
+                      'View RVs',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

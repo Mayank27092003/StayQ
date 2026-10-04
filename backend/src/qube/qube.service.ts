@@ -52,10 +52,13 @@ export class QubeService {
 Goa (Candolim, Vagator, Palolem), Old Manali, Wayanad, Udaipur, Lonavala, Bengaluru, Pune, Mumbai.
 Amenities: high-speed fiber, chef-on-call, concierge, pet-friendly options, design furniture.
 
-**🚐 India's First RV & Overland Campervan Network**:
-Routes: Coastal (Goa↔Kerala, 950km) | Western Ghats (Mumbai/Pune↔Goa, 620km) | Himalayan (Manali↔Leh, 1150km)
-Km packs: 80/day (Leisure) | 100/day (Voyager) | 150/day (Explorer) | Unlimited (Grand Overland)
-Pit-stops: shore power (220V), water refill, hot showers, dining, 24x7 gated security.
+**🚐 India's First RV & Overland Campervan Network (4 Regional Corridors & 30 Curated Routes)**:
+- **1. North India Corridor (10 Routes)**: Himalayan Highlights (Delhi↔Amritsar), Spiti Valley Explorer (high altitude 4x4), Lahaul Valley Escape (Manali↔Jispa via Atal Tunnel), Ganga & Himalayan Foothills (Rishikesh↔Tehri), Kumaon Lakes & Forests (Nainital↔Mukteshwar), Rajasthan Royal Heritage (Jaipur↔Jaisalmer), Lakes & Aravalli Retreat (Udaipur↔Mount Abu), Punjab Culture Trail (Chandigarh↔Amritsar), Mussoorie & Forest Getaway (Landour↔Kanatal), Garhwal Forest & Village Trail (Lansdowne↔Khirsu).
+- **2. South India Corridor (10 Routes)**: Konkan–Karnataka Coastal Escape (Goa↔Mangaluru), Coorg Coffee Country (Bengaluru↔Madikeri), Chikmagalur Mountain Loop (Mullayanagiri & coffee trails), Royal Karnataka Heritage (Mysuru↔Belur↔Halebidu), Hampi & Deccan Explorer (Hampi↔Badami ruins), Kerala Tea Garden Route (Munnar↔Thekkady), Kerala Backwaters & Beach Trail (Marari↔Varkala red cliffs), Wayanad Forest Adventure, Nilgiri Hills & Tea Country (Ooty↔Coonoor), East Coast Culture Corridor (Chennai↔Puducherry↔Thanjavur).
+- **3. Gujarat & Rajasthan Corridor (5 Routes)**: Great Rann of Kutch Expedition (white salt desert & Mandvi coast), Thar Desert Expedition (Osian & Sam Sand Dunes), Royal Rajasthan Grand Circuit (Jaipur↔Jodhpur↔Jaisalmer), Saurashtra Coastal Circuit (Dwarka↔Somnath↔Diu), Gir Wildlife & Junagadh Trail (Asiatic lion safaris).
+- **4. North East Corridor (5 Routes)**: Meghalaya Waterfalls & Living Root Bridges (Cherrapunji & Dawki crystal river), Assam Wildlife, Tea & River Island (Kaziranga & Majuli), Arunachal Himalayan Expedition (Sela Pass 13,700ft & Tawang Monastery), Sikkim Mountain & Monastery Circuit (Tsomgo Lake & Kanchenjunga panoramas), Nagaland Hills & Cultural Discovery (Kohima & Dzukou Valley trekking base).
+- Km packs: 80 km/day (Leisure) | 100 km/day (Voyager) | Unlimited km (Grand Overland)
+- Pit-stops: 220V shore power hookup, water refills, hot showers, dining, 24/7 gated security.
 
 **🔑 Zero-Brokerage Long-term / Monthly Stays**:
 0% broker fee, direct host contracts, 1Gbps fiber, designer lofts in Bengaluru, Goa, Pune, Mumbai.

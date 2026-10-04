@@ -34,6 +34,7 @@ import { VerificationModule } from './verification/verification.module';
 import { LoyaltyModule } from './loyalty/loyalty.module';
 import { PricingModule } from './pricing/pricing.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { CorridorsModule } from './corridors/corridors.module';
 
 @Module({
   imports: [
@@ -91,6 +92,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
     SupportModule,
     PricingModule,
     SubscriptionsModule,
+    CorridorsModule,
   ],
   controllers: [AppController],
   providers: [

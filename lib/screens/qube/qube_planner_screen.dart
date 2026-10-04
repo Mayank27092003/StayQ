@@ -32,7 +32,9 @@ enum QubeMode {
 }
 
 class QubePlannerScreen extends StatefulWidget {
-  const QubePlannerScreen({super.key});
+  final String? initialPrompt;
+
+  const QubePlannerScreen({super.key, this.initialPrompt});
 
   @override
   State<QubePlannerScreen> createState() => _QubePlannerScreenState();
@@ -105,6 +107,9 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
         setState(() {
           _messages[0] = QubeMessage(text: _getRandomGreeting(userName), isUser: false);
         });
+      }
+      if (widget.initialPrompt != null && widget.initialPrompt!.trim().isNotEmpty) {
+        _sendPrompt(widget.initialPrompt!);
       }
     });
   }

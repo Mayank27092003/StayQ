@@ -1866,4 +1866,44 @@ model PointsTransaction {
   @@index([createdAt])
 }
 
+// ============================================================================
+// OVERLAND & CAMPERVAN CORRIDORS
+// ============================================================================
+
+enum CorridorRegion {
+  NORTH_INDIA
+  SOUTH_INDIA
+  GUJARAT_RAJASTHAN
+  NORTH_EAST
+}
+
+model CampervanCorridor {
+  id              String         @id @default(uuid())
+  slug            String         @unique
+  region          CorridorRegion
+  name            String
+  sortOrder       Int            @default(0)
+  durationMinDays Int
+  durationMaxDays Int
+  distanceKm      Float
+  stops           String[]       @default([])
+  theme           String
+  description     String
+  sourceName      String?
+  sourceUrl       String?
+  permits         String[]       @default([])
+  advisoryNotes   String?
+  badge           String?
+  highlights      String[]       @default([])
+  imageKey        String?
+  isActive        Boolean        @default(true)
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([region])
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
 
