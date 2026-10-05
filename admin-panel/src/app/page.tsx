@@ -44,7 +44,7 @@ export default function DashboardOverview() {
       axios.get("/api/v1/admin/analytics/recent-activity"),
       axios.get("/api/v1/properties?adminView=true"),
       axios.get("/api/v1/bookings?adminView=true"),
-      fetch("/api/v1/admin/moderation/test-host-applications").then((r) =>
+      fetch("/api/v1/admin/moderation/host-applications").then((r) =>
         r.ok ? r.json() : []
       ),
     ])

@@ -69,7 +69,7 @@ export default function HostApplicationsPage() {
   const fetchApplications = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/v1/admin/moderation/test-host-applications");
+      const res = await fetch("/api/v1/admin/moderation/host-applications");
       if (res.ok) {
         const data = await res.json();
         setApplications(data);
@@ -86,7 +86,7 @@ export default function HostApplicationsPage() {
   const handleApprove = async (userId: string) => {
     setProcessingId(userId);
     try {
-      const res = await fetch(`/api/v1/admin/moderation/test-host-applications/${userId}/approve`, { method: "POST" });
+      const res = await fetch(`/api/v1/admin/moderation/host-applications/${userId}/approve`, { method: "POST" });
       if (res.ok) {
         setToastMessage("Host and listing approved successfully! Property is now ACTIVE.");
         setToastType("success");
@@ -106,7 +106,7 @@ export default function HostApplicationsPage() {
   const handleReject = async (userId: string) => {
     setProcessingId(userId);
     try {
-      const res = await fetch(`/api/v1/admin/moderation/test-host-applications/${userId}/reject`, { method: "POST" });
+      const res = await fetch(`/api/v1/admin/moderation/host-applications/${userId}/reject`, { method: "POST" });
       if (res.ok) {
         setToastMessage("Host application rejected.");
         setToastType("info");

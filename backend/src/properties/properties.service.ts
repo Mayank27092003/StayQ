@@ -123,7 +123,7 @@ export class PropertiesService {
         monthlyRent: data.monthlyRent ? Number(data.monthlyRent) : null,
         securityDeposit: data.securityDeposit ? Number(data.securityDeposit) : null,
         leaseDurationMonths: data.leaseDurationMonths ? Number(data.leaseDurationMonths) : 11,
-        status: data.status || 'ACTIVE',
+        status: data.status || 'PENDING_REVIEW',
       },
       include: {
         images: true,

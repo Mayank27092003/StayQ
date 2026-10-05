@@ -453,18 +453,27 @@ export class AdminModerationService {
   async getHostApplications() {
     const users = await this.prisma.user.findMany({
       where: {
-        properties: {
-          some: {
-            status: { in: ['PENDING_REVIEW', 'DRAFT'] as any }
+        OR: [
+          {
+            properties: {
+              some: {
+                status: { in: ['PENDING_REVIEW', 'DRAFT'] as any }
+              }
+            }
+          },
+          {
+            isHostVerified: false,
+            properties: {
+              some: {}
+            }
           }
-        }
+        ]
       },
       include: {
         payoutAccount: true,
         properties: {
-          where: { status: { in: ['PENDING_REVIEW', 'DRAFT'] as any } },
           orderBy: { createdAt: 'desc' },
-          take: 1,
+          take: 5,
           include: {
             images: true,
             roomTypes: true
