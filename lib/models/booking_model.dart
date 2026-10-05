@@ -89,4 +89,32 @@ class BookingModel {
       guestAvatar: json['guest']?['photoUrl'] ?? json['guestAvatarUrl'] ?? '',
     );
   }
+
+  BookingModel copyWith({
+    String? id,
+    StayModel? stay,
+    DateTime? checkIn,
+    DateTime? checkOut,
+    int? adults,
+    int? children,
+    double? totalAmount,
+    String? confirmationCode,
+    BookingStatus? status,
+    String? guestName,
+    String? guestAvatar,
+  }) {
+    return BookingModel(
+      id: id ?? this.id,
+      stay: stay ?? this.stay,
+      checkIn: checkIn ?? this.checkIn,
+      checkOut: checkOut ?? this.checkOut,
+      adults: adults ?? this.adults,
+      children: children ?? this.children,
+      totalAmount: totalAmount ?? this.totalAmount,
+      confirmationCode: confirmationCode ?? this.confirmationCode,
+      status: status ?? this.status,
+      guestName: guestName ?? this.guestName,
+      guestAvatar: guestAvatar ?? this.guestAvatar,
+    );
+  }
 }

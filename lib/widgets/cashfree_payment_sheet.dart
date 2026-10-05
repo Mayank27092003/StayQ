@@ -41,7 +41,7 @@ class CashfreePaymentSheet extends StatefulWidget {
     required this.propertyTitle,
     this.customerName = 'Stay Q Guest',
     this.customerEmail = 'guest@stayq.space',
-    this.customerPhone = '9876543210',
+    this.customerPhone = '9765413179',
   });
 
   static Future<PaymentSuccessResult?> show(
@@ -51,7 +51,7 @@ class CashfreePaymentSheet extends StatefulWidget {
     required String propertyTitle,
     String customerName = 'Stay Q Guest',
     String customerEmail = 'guest@stayq.space',
-    String customerPhone = '9876543210',
+    String customerPhone = '9765413179',
   }) {
     return showModalBottomSheet<PaymentSuccessResult>(
       context: context,
@@ -242,33 +242,25 @@ class _CashfreePaymentSheetState extends State<CashfreePaymentSheet> {
           );
         }
       } else {
-        // Instant simulated capture fallback for smooth guest checkout
-        setState(() => _verificationStatusMsg = 'Payment confirmed on gateway! 🎉');
-        await Future.delayed(const Duration(milliseconds: 500));
+        setState(() => _verificationStatusMsg = 'Payment not completed on gateway. Please complete payment in your UPI/bank app.');
         if (mounted) {
-          Navigator.pop(
-            context,
-            PaymentSuccessResult(
-              isSuccess: true,
-              orderId: _orderId,
-              paymentId: 'CF-LIVE-${DateTime.now().millisecondsSinceEpoch}',
-              paymentMethod: method,
-              amount: widget.totalAmount,
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment not completed. Please finish payment and tap verify again.'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
             ),
           );
         }
       }
-    } catch (_) {
-      // Fallback completion
+    } catch (e) {
       if (mounted) {
-        Navigator.pop(
-          context,
-          PaymentSuccessResult(
-            isSuccess: true,
-            orderId: _orderId,
-            paymentId: 'CF-TXN-${DateTime.now().millisecondsSinceEpoch}',
-            paymentMethod: method,
-            amount: widget.totalAmount,
+        setState(() => _verificationStatusMsg = 'Payment verification error. Please retry.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Verification error: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }

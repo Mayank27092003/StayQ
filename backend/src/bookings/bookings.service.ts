@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { BookingStatus } from '@prisma/client';
 import { TicketGeneratorService } from '../notifications/ticket-generator.service';
@@ -285,25 +286,96 @@ export class BookingsService {
 
     const property = booking.property;
     const isStayingWithHost = (property as any).isStayingWithHost ?? false;
+    const checkInType = property.checkInType || (isStayingWithHost ? 'HOST_GREETING' : 'SELF_CHECKIN');
+    const hostName = property.host?.displayName || 'Stay Q Host';
+    const hostPhone = property.host?.phone || '';
+
+    // 1. Dynamic Door PIN: Generated uniquely per booking for smart lock self check-in
+    let doorPinCode: string;
+    if (checkInType === 'HOST_GREETING' || isStayingWithHost) {
+      doorPinCode = 'IN-PERSON CHECK-IN';
+    } else if (checkInType === 'CARETAKER') {
+      doorPinCode = 'CARETAKER KEY HANDOVER';
+    } else {
+      // Deterministic 4-digit code generated uniquely from booking ID + confirmation code
+      const hash = crypto.createHash('sha256').update(`${booking.id}_${booking.confirmationCode}`).digest('hex');
+      const numericPin = (parseInt(hash.slice(0, 8), 16) % 9000 + 1000).toString();
+      doorPinCode = `${numericPin}#`;
+    }
+
+    // 2. Dynamic Wi-Fi: Derived from property title & city if Wi-Fi amenity is enabled
+    const hasWifi = (property.amenities || []).some(a => a.toLowerCase().includes('wifi') || a.toLowerCase().includes('wi-fi'));
+    const safeTitle = property.title.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+    const safeCity = (property.city || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 6);
+    const wifiNetwork = hasWifi ? `StayQ_${safeTitle || 'Guest'}${safeCity ? '_' + safeCity : ''}` : 'No Wi-Fi listed';
+    const wifiPassword = hasWifi ? `SQ@${booking.confirmationCode.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}` : 'N/A';
+
+    // 3. Dynamic Address
+    const addressParts = [
+      property.address,
+      property.city,
+      property.state,
+      property.country,
+      property.pincode,
+    ].filter(Boolean);
+    const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : `${property.city}, ${property.country}`;
+
+    // 4. Dynamic Host Presence Notes
+    let hostPresenceNotes = '';
+    if (isStayingWithHost) {
+      hostPresenceNotes = `Hosted stay with ${hostName}. You have a private room with shared access to common living spaces.`;
+    } else {
+      const typeLabel = (property.type || 'property').toString().toLowerCase().replace(/_/g, ' ');
+      hostPresenceNotes = `Entire ${typeLabel} exclusively reserved for you with full privacy.`;
+    }
+    if (property.isInsideGatedSociety) {
+      hostPresenceNotes += ' Property is situated inside a gated residential community with 24/7 security.';
+    }
+
+    // 5. Dynamic Check-in Instructions
+    const checkInTime = property.checkInTime || '14:00';
+    const checkOutTime = property.checkOutTime || '11:00';
+    let checkInInstructions = '';
+
+    if (property.type === 'RV') {
+      const pickup = property.pickupLocation || property.address;
+      const drop = property.dropLocation || pickup;
+      checkInInstructions = `RV Key Handover: Collect keys from ${hostName} at ${pickup}. Check-in from ${checkInTime}. Return vehicle by ${checkOutTime} at ${drop}.`;
+    } else if (property.type === 'CAMPING_SITE') {
+      checkInInstructions = `Campsite check-in: Report to the campsite reception in ${property.city}. Pitches available from ${checkInTime}. Check-out by ${checkOutTime}.`;
+    } else if (checkInType === 'HOST_GREETING' || isStayingWithHost) {
+      checkInInstructions = `Host Greeting: ${hostName} will welcome you at the property. Please message your ETA via Stay Q chat. Check-in starts at ${checkInTime}, check-out by ${checkOutTime}.`;
+    } else if (checkInType === 'CARETAKER') {
+      checkInInstructions = `Caretaker Check-in: On-site caretaker will welcome you and assist with luggage and key handover from ${checkInTime}. Check-out by ${checkOutTime}.`;
+    } else {
+      checkInInstructions = `Smart lock self check-in: Enter your unique booking PIN ${doorPinCode} on the keypad at the entrance door, followed by pressing the handle. Available after ${checkInTime}. Check-out by ${checkOutTime}.`;
+    }
+    if (property.houseRules) {
+      checkInInstructions += ` House rules: ${property.houseRules}`;
+    }
+
+    // 6. Dynamic Directions
+    let directions = `Navigate to ${fullAddress}`;
+    if (property.lat && property.lng) {
+      directions += `. GPS Coordinates: ${property.lat.toFixed(5)}, ${property.lng.toFixed(5)} (tap Directions in Stay Q app to open in Google Maps).`;
+    }
 
     return {
       bookingId: booking.id,
       confirmationCode: booking.confirmationCode,
       propertyTitle: property.title,
-      fullAddress: property.address || `${property.city}, ${property.country}`,
-      latitude: (property as any).latitude ?? (property as any).lat ?? 0,
-      longitude: (property as any).longitude ?? (property as any).lng ?? 0,
-      doorPinCode: '8492#',
-      wifiNetwork: 'StayQ-Guest',
-      wifiPassword: 'explore2026',
-      hostName: property.host?.displayName || 'Stay Q Host',
-      hostPhone: property.host?.phone || '+91 98765 43210',
+      fullAddress,
+      latitude: property.lat ?? (property as any).latitude ?? 0,
+      longitude: property.lng ?? (property as any).longitude ?? 0,
+      doorPinCode,
+      wifiNetwork,
+      wifiPassword,
+      hostName,
+      hostPhone,
       isStayingWithHost,
-      hostPresenceNotes: isStayingWithHost
-        ? 'Host resides on premises in private master suite. Guest enjoys full private room with shared lounge & kitchen access.'
-        : 'Entire property reserved for guest. Full private access.',
-      checkInInstructions: 'Self check-in via smart lock. Enter 8492# followed by lock handle press.',
-      directions: 'Take the main access road towards the estate entrance. Free parking on site.',
+      hostPresenceNotes,
+      checkInInstructions,
+      directions,
     };
   }
 

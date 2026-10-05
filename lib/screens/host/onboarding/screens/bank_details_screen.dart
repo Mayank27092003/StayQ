@@ -292,7 +292,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
         setState(() {
           _isUpiVerifiedWithCashfree = true;
           _verifiedUpiAccountName = resolvedName;
-          if (_holderController.text.isEmpty || _holderController.text == 'Mock Guest') {
+          if (_holderController.text.trim().isEmpty) {
             _holderController.text = resolvedName;
           }
         });
@@ -347,7 +347,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
         setState(() {
           _isPanVerified = true;
           _verifiedPanHolderName = registeredName ?? 'Verified Taxpayer';
-          if (_holderController.text.isEmpty || _holderController.text == 'Mock Guest') {
+          if (_holderController.text.trim().isEmpty) {
             _holderController.text = _verifiedPanHolderName!;
           }
         });
@@ -726,7 +726,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
         setState(() {
           _isAadhaarVerified = true;
           _aadhaarPhotoUrl = res['photoUrl']?.toString();
-          if (res['name'] != null && (_holderController.text.isEmpty || _holderController.text == 'Mock Guest')) {
+          if (res['name'] != null && _holderController.text.trim().isEmpty) {
             _holderController.text = res['name'].toString();
           }
         });

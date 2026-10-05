@@ -17,6 +17,18 @@ export class TicketGeneratorService {
 
   async generateTicketImage(bookingDetails: any): Promise<Buffer> {
     const fontData = await this.getFont();
+    const guestName = bookingDetails.guest?.displayName || bookingDetails.guest?.name || bookingDetails.guestName || 'Valued Guest';
+    const propertyTitle = bookingDetails.property?.title || bookingDetails.propertyName || 'Stay Q Luxury Stay';
+    const category = (bookingDetails.property?.category || bookingDetails.category || 'Luxury Stay').toString().replace(/_/g, ' ');
+    const city = bookingDetails.property?.city || bookingDetails.city || '';
+    const hostName = bookingDetails.property?.host?.displayName || bookingDetails.hostName || 'Stay Q Verified Host';
+    const confCode = bookingDetails.confirmationCode || 'SQ-VIP';
+    const checkInDate = bookingDetails.checkIn ? new Date(bookingDetails.checkIn) : null;
+    const checkOutDate = bookingDetails.checkOut ? new Date(bookingDetails.checkOut) : null;
+    const checkInStr = checkInDate ? checkInDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Confirmed';
+    const checkOutStr = checkOutDate ? checkOutDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Confirmed';
+    const amountStr = bookingDetails.totalAmount ? `PAID: ₹${Number(bookingDetails.totalAmount).toLocaleString('en-IN')}` : 'CONFIRMED (PAID)';
+
     const svg = await satori( { /* satori object */
         type: 'div',
         props: {
@@ -50,7 +62,7 @@ export class TicketGeneratorService {
                   type: 'div',
                   props: {
                     style: { fontSize: '24px', fontWeight: 'bold', color: '#c5a880', letterSpacing: '4px' },
-                    children: 'STAY Q | DIGITAL STAY PASS'
+                    children: 'STAY Q | OFFICIAL DIGITAL STAY PASS'
                   }
                 }
               }
@@ -88,8 +100,8 @@ export class TicketGeneratorService {
                                 props: {
                                   style: { display: 'flex', flexDirection: 'column' },
                                   children: [
-                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Property / Host' } },
-                                    { type: 'span', props: { style: { fontSize: '20px', fontWeight: 'bold', color: '#073359' }, children: 'STAY Q VERIFIED STAY' } },
+                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Host' } },
+                                    { type: 'span', props: { style: { fontSize: '20px', fontWeight: 'bold', color: '#073359' }, children: hostName.toUpperCase() } },
                                   ]
                                 }
                               },
@@ -98,8 +110,8 @@ export class TicketGeneratorService {
                                 props: {
                                   style: { display: 'flex', flexDirection: 'column', width: '200px' },
                                   children: [
-                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Itinerary' } },
-                                    { type: 'span', props: { style: { fontSize: '18px', fontWeight: 'bold' }, children: 'Premium Escape' } },
+                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Category & Destination' } },
+                                    { type: 'span', props: { style: { fontSize: '18px', fontWeight: 'bold' }, children: city ? `${category.toUpperCase()} • ${city.toUpperCase()}` : category.toUpperCase() } },
                                   ]
                                 }
                               },
@@ -117,8 +129,8 @@ export class TicketGeneratorService {
                                 props: {
                                   style: { display: 'flex', flexDirection: 'column' },
                                   children: [
-                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Passenger Name' } },
-                                    { type: 'span', props: { style: { fontSize: '22px', fontWeight: 'bold' }, children: bookingDetails.guestName || 'Valued Guest' } },
+                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Guest Name' } },
+                                    { type: 'span', props: { style: { fontSize: '22px', fontWeight: 'bold' }, children: guestName } },
                                   ]
                                 }
                               },
@@ -127,8 +139,8 @@ export class TicketGeneratorService {
                                 props: {
                                   style: { display: 'flex', flexDirection: 'column', width: '200px' },
                                   children: [
-                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Booking Reference' } },
-                                    { type: 'span', props: { style: { fontSize: '20px', fontWeight: 'bold' }, children: `#${bookingDetails.confirmationCode || 'SQ-VIP-001'}` } },
+                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Confirmation Code' } },
+                                    { type: 'span', props: { style: { fontSize: '20px', fontWeight: 'bold' }, children: `#${confCode}` } },
                                   ]
                                 }
                               },
@@ -146,8 +158,8 @@ export class TicketGeneratorService {
                                 props: {
                                   style: { display: 'flex', flexDirection: 'column' },
                                   children: [
-                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Departure' } },
-                                    { type: 'span', props: { style: { fontSize: '18px', fontWeight: 'bold' }, children: bookingDetails.checkIn ? new Date(bookingDetails.checkIn).toLocaleDateString() : 'TBD' } },
+                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Check-in' } },
+                                    { type: 'span', props: { style: { fontSize: '18px', fontWeight: 'bold' }, children: checkInStr } },
                                   ]
                                 }
                               },
@@ -156,8 +168,8 @@ export class TicketGeneratorService {
                                 props: {
                                   style: { display: 'flex', flexDirection: 'column', width: '200px' },
                                   children: [
-                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Disembark' } },
-                                    { type: 'span', props: { style: { fontSize: '18px', fontWeight: 'bold' }, children: bookingDetails.checkOut ? new Date(bookingDetails.checkOut).toLocaleDateString() : 'TBD' } },
+                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Check-out' } },
+                                    { type: 'span', props: { style: { fontSize: '18px', fontWeight: 'bold' }, children: checkOutStr } },
                                   ]
                                 }
                               },
@@ -175,8 +187,8 @@ export class TicketGeneratorService {
                                 props: {
                                   style: { display: 'flex', flexDirection: 'column' },
                                   children: [
-                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Stateroom / Property' } },
-                                    { type: 'span', props: { style: { fontSize: '20px', fontWeight: 'bold' }, children: bookingDetails.propertyName || 'Premium Suite' } },
+                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Property / Stay' } },
+                                    { type: 'span', props: { style: { fontSize: '20px', fontWeight: 'bold' }, children: propertyTitle } },
                                   ]
                                 }
                               },
@@ -185,8 +197,8 @@ export class TicketGeneratorService {
                                 props: {
                                   style: { display: 'flex', flexDirection: 'column', width: '200px' },
                                   children: [
-                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Status' } },
-                                    { type: 'span', props: { style: { fontSize: '20px', fontWeight: 'bold', color: '#073359' }, children: 'CONFIRMED (PAID)' } },
+                                    { type: 'span', props: { style: { fontSize: '14px', color: '#555', marginBottom: '4px' }, children: 'Payment Status' } },
+                                    { type: 'span', props: { style: { fontSize: '18px', fontWeight: 'bold', color: '#073359' }, children: amountStr } },
                                   ]
                                 }
                               },
@@ -219,7 +231,7 @@ export class TicketGeneratorService {
                              children: {
                                type: 'img',
                                props: {
-                                 src: `https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=0&data=STAYQ-CONFIRMATION-${bookingDetails.confirmationCode || 'TEST'}`,
+                                 src: `https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=0&data=STAYQ-CONFIRMATION-${confCode}`,
                                  style: { width: '140px', height: '140px' },
                                }
                              }
@@ -229,7 +241,7 @@ export class TicketGeneratorService {
                            type: 'div',
                            props: {
                              style: { marginTop: '16px', fontSize: '18px', fontWeight: 'bold', letterSpacing: '1px' },
-                             children: 'SCAN AT PIER'
+                             children: 'SCAN FOR CHECK-IN'
                            }
                          },
                          // Barcode lines

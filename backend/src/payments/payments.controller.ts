@@ -27,13 +27,13 @@ export class PaymentsController {
     @Headers('x-idempotency-key') idempotencyKey: string,
   ) {
     return this.paymentsService.createCashfreeOrder({
-      bookingId: body.bookingId || `booking_${Date.now()}`,
+      bookingId: body.bookingId,
       amount: body.amount,
       idempotencyKey,
-      customerId: body.customerId || `cust_${Date.now()}`,
-      customerName: body.customerName || 'Stay Q Guest',
-      customerEmail: body.customerEmail || 'guest@stayq.space',
-      customerPhone: body.customerPhone || '9876543210',
+      customerId: body.customerId,
+      customerName: body.customerName,
+      customerEmail: body.customerEmail,
+      customerPhone: body.customerPhone,
       returnUrl: body.returnUrl,
     });
   }

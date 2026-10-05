@@ -2,7 +2,7 @@ name: stay_q
 description: "Stay Q Luxury Stays & Experiences Mobile App"
 publish_to: 'none'
 
-version: 1.0.10+15
+version: 1.0.11+16
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

@@ -25,6 +25,12 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
   bool _isLoadingStatus = true;
   Map<String, dynamic>? _verificationStatus;
 
+  // Edit toggles to allow user to modify already-verified credentials
+  bool _editBank = false;
+  bool _editAadhaar = false;
+  bool _editPan = false;
+  bool _editUpi = false;
+
   // Bank Form State
   final _accountController = TextEditingController();
   final _ifscController = TextEditingController();
@@ -91,6 +97,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
           _verificationStatus = res;
           _isLoadingStatus = false;
         });
+        context.read<AppProvider>().syncVerificationFromBackend(res);
       }
     } catch (e) {
       if (mounted) {
@@ -381,10 +388,16 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
   }
 
   Widget _buildVerificationHeader() {
-    final kycBadges = _verificationStatus?['badges'] as List? ?? [];
-    final isBankVerified = _verificationStatus?['isBankVerified'] == true;
-    final isAadhaarVerified = _verificationStatus?['isAadhaarVerified'] == true;
-    final isPanVerified = _verificationStatus?['isPanVerified'] == true;
+    final provider = context.watch<AppProvider>();
+    final isBankVerified = _verificationStatus?['isBankVerified'] == true ||
+        _verificationStatus?['bankAccountVerified'] == true ||
+        provider.isBankVerified;
+    final isAadhaarVerified = _verificationStatus?['isAadhaarVerified'] == true ||
+        _verificationStatus?['aadhaarVerified'] == true ||
+        provider.isAadhaarVerified;
+    final isPanVerified = _verificationStatus?['isPanVerified'] == true ||
+        _verificationStatus?['panVerified'] == true ||
+        provider.isPanVerified;
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -478,13 +491,166 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
     );
   }
 
+  Widget _buildVerifiedCredentialCard({
+    required String title,
+    required String subtitle,
+    required List<MapEntry<String, String>> fields,
+    required VoidCallback onEdit,
+    String editLabel = 'Update Details',
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10B981).withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF10B981),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF047857)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.verified_rounded, color: Colors.white, size: 12),
+                    SizedBox(width: 4),
+                    Text(
+                      'VERIFIED',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 10),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFFA7F3D0)),
+          const SizedBox(height: 12),
+          ...fields.map((f) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      f.key,
+                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                    ),
+                    Flexible(
+                      child: Text(
+                        f.value,
+                        textAlign: TextAlign.end,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
+              label: Text(editLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.borderLight),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn().slideY(begin: 0.05);
+  }
+
   // TAB 1: Bank Account
   Widget _buildBankTab() {
+    final provider = context.watch<AppProvider>();
+    final isBankVerified = _verificationStatus?['isBankVerified'] == true ||
+        _verificationStatus?['bankAccountVerified'] == true ||
+        provider.isBankVerified;
+
+    if (isBankVerified && !_editBank) {
+      final bankDetails = _verificationStatus?['bankDetails'] as Map?;
+      final bankName = bankDetails?['bankName']?.toString() ??
+          (provider.verifiedBankName.isNotEmpty ? provider.verifiedBankName : 'Verified Bank');
+      final accNum = bankDetails?['accountNumberMasked']?.toString() ??
+          (provider.verifiedAccountNumber.isNotEmpty ? provider.verifiedAccountNumber : '••••••••');
+      final holder = _verificationStatus?['accountHolderName']?.toString() ??
+          (provider.verifiedFullName.isNotEmpty ? provider.verifiedFullName : 'Account Holder');
+      final ifsc = bankDetails?['ifsc']?.toString() ?? 'VERIFIED';
+
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildVerifiedCredentialCard(
+              title: 'Bank Account Verified',
+              subtitle: 'Cashfree Penny Drop Authenticated',
+              fields: [
+                MapEntry('Bank Name', bankName),
+                MapEntry('Account Number', accNum),
+                MapEntry('IFSC Code', ifsc),
+                MapEntry('Beneficiary Name', holder),
+                const MapEntry('Status', 'Active for Instant 60-Sec Refund & Payouts'),
+              ],
+              onEdit: () {
+                setState(() => _editBank = true);
+              },
+              editLabel: 'Change or Re-verify Bank Account',
+            ),
+          ],
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isBankVerified && _editBank) ...[
+            TextButton.icon(
+              onPressed: () => setState(() => _editBank = false),
+              icon: const Icon(Icons.arrow_back, size: 16),
+              label: const Text('Back to Verified Bank Details'),
+            ),
+            const SizedBox(height: 8),
+          ],
           const Text(
             'Penny Drop Bank Verification',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -543,11 +709,59 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
 
   // TAB 2: Aadhaar OKYC
   Widget _buildAadhaarTab() {
+    final provider = context.watch<AppProvider>();
+    final isAadhaarVerified = _verificationStatus?['isAadhaarVerified'] == true ||
+        _verificationStatus?['aadhaarVerified'] == true ||
+        provider.isAadhaarVerified;
+
+    if (isAadhaarVerified && !_editAadhaar) {
+      final name = provider.verifiedFullName.isNotEmpty
+          ? provider.verifiedFullName
+          : (_verificationStatus?['displayName']?.toString() ?? 'UIDAI Aadhaar Holder');
+      final aadhaarNum = provider.verifiedAadhaarNumber.isNotEmpty
+          ? provider.verifiedAadhaarNumber
+          : (_verificationStatus?['govIdNumber'] != null
+              ? '••••••••' + _verificationStatus!['govIdNumber'].toString().substring(_verificationStatus!['govIdNumber'].toString().length - 4)
+              : '••••••••••••');
+      final addr = provider.verifiedAddress.isNotEmpty ? provider.verifiedAddress : 'UIDAI Verified Resident';
+
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildVerifiedCredentialCard(
+              title: 'UIDAI Aadhaar Verified',
+              subtitle: 'Paperless e-KYC (OKYC) Authenticated',
+              fields: [
+                MapEntry('Aadhaar Number', aadhaarNum),
+                MapEntry('Cardholder Name', name),
+                MapEntry('Address', addr),
+                const MapEntry('Status', 'UIDAI Digital Identity Confirmed'),
+              ],
+              onEdit: () {
+                setState(() => _editAadhaar = true);
+              },
+              editLabel: 'Re-verify Aadhaar',
+            ),
+          ],
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isAadhaarVerified && _editAadhaar) ...[
+            TextButton.icon(
+              onPressed: () => setState(() => _editAadhaar = false),
+              icon: const Icon(Icons.arrow_back, size: 16),
+              label: const Text('Back to Verified Aadhaar Details'),
+            ),
+            const SizedBox(height: 8),
+          ],
           const Text(
             'UIDAI Aadhaar OKYC Verification',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -646,11 +860,57 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
 
   // TAB 3: PAN Card
   Widget _buildPanTab() {
+    final provider = context.watch<AppProvider>();
+    final isPanVerified = _verificationStatus?['isPanVerified'] == true ||
+        _verificationStatus?['panVerified'] == true ||
+        provider.isPanVerified;
+
+    if (isPanVerified && !_editPan) {
+      final name = provider.verifiedFullName.isNotEmpty
+          ? provider.verifiedFullName
+          : (_verificationStatus?['accountHolderName']?.toString() ??
+              _verificationStatus?['displayName']?.toString() ??
+              'Taxpayer');
+      final panNum = provider.verifiedPanNumber.isNotEmpty
+          ? provider.verifiedPanNumber
+          : (_verificationStatus?['govIdNumber']?.toString() ?? '••••••••••');
+
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildVerifiedCredentialCard(
+              title: 'NSDL PAN Card Verified',
+              subtitle: 'Income Tax Dept Database Matched',
+              fields: [
+                MapEntry('PAN Number', panNum),
+                MapEntry('Taxpayer Name', name),
+                const MapEntry('Status', 'Active & Govt Validated'),
+              ],
+              onEdit: () {
+                setState(() => _editPan = true);
+              },
+              editLabel: 'Re-verify PAN Card',
+            ),
+          ],
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isPanVerified && _editPan) ...[
+            TextButton.icon(
+              onPressed: () => setState(() => _editPan = false),
+              icon: const Icon(Icons.arrow_back, size: 16),
+              label: const Text('Back to Verified PAN Details'),
+            ),
+            const SizedBox(height: 8),
+          ],
           const Text(
             'NSDL PAN Card Verification',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -707,11 +967,49 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
 
   // TAB 4: UPI ID Fast Refund
   Widget _buildUpiTab() {
+    final provider = context.watch<AppProvider>();
+    final isUpiVerified = _verificationStatus?['isUpiVerified'] == true || provider.isUpiVerified;
+
+    if (isUpiVerified && !_editUpi) {
+      final upiId = provider.verifiedUpiId.isNotEmpty ? provider.verifiedUpiId : 'user@upi';
+      final name = provider.verifiedFullName.isNotEmpty ? provider.verifiedFullName : 'UPI Holder';
+
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildVerifiedCredentialCard(
+              title: 'Instant UPI Refund Setup',
+              subtitle: 'Active Fast-Refund & Payout VPA',
+              fields: [
+                MapEntry('UPI VPA ID', upiId),
+                MapEntry('Account Holder', name),
+                const MapEntry('Status', '60-Sec Automated Refund Enabled'),
+              ],
+              onEdit: () {
+                setState(() => _editUpi = true);
+              },
+              editLabel: 'Change UPI ID',
+            ),
+          ],
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isUpiVerified && _editUpi) ...[
+            TextButton.icon(
+              onPressed: () => setState(() => _editUpi = false),
+              icon: const Icon(Icons.arrow_back, size: 16),
+              label: const Text('Back to Verified UPI Details'),
+            ),
+            const SizedBox(height: 8),
+          ],
           const Text(
             'Instant UPI Refund & Payout Setup',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -807,7 +1105,13 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
   }
 
   Widget _buildResultCard(Map<String, dynamic> data) {
-    final isVerified = data['verified'] == true;
+    final isVerified = data['verified'] == true || data['valid'] == true || data['status'] == 'SUCCESS';
+    final rawScore = data['nameMatchScore'];
+    int? displayScore;
+    if (rawScore is num) {
+      displayScore = rawScore <= 1.0 ? (rawScore * 100).round() : rawScore.round();
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(16),
@@ -846,12 +1150,12 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
                     'Registered Name: ${data['registeredName']}',
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
                   ),
-                if (data['nameMatchScore'] != null)
+                if (displayScore != null)
                   Text(
-                    'Name Match Score: ${data['nameMatchScore']}%',
+                    'Name Match Score: $displayScore%',
                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
-                if (data['name'] != null)
+                if (data['name'] != null && data['name'] != data['registeredName'])
                   Text(
                     'Name: ${data['name']}',
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),

@@ -434,61 +434,80 @@ class ProfileScreen extends StatelessWidget {
               // VERIFIED IDENTITY & TRUST SHOWCASE CARD
               // ══════════════════════════════════════════════════════════════
               const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: (provider.isGovIdVerified || provider.isEmailVerified)
-                      ? const Color(0xFF10B981).withValues(alpha: 0.08)
-                      : Colors.amber.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: (provider.isGovIdVerified || provider.isEmailVerified)
-                        ? const Color(0xFF10B981).withValues(alpha: 0.3)
-                        : Colors.amber.withValues(alpha: 0.3),
-                    width: 1.5,
+              Builder(
+                builder: (context) {
+                final bool hasPayout = provider.isBankVerified || provider.isUpiVerified;
+                final bool hasGovId = provider.isGovIdVerified;
+                final bool hasEmail = provider.isEmailVerified;
+                final int verifiedCount = (hasEmail ? 1 : 0) + (hasGovId ? 1 : 0) + (hasPayout ? 1 : 0);
+
+                final String badgeText = verifiedCount == 3
+                    ? '100% VERIFIED'
+                    : verifiedCount == 2
+                        ? '67% VERIFIED'
+                        : verifiedCount == 1
+                            ? '33% VERIFIED'
+                            : 'ACTION REQUIRED';
+
+                final Color badgeColor = verifiedCount == 3
+                    ? const Color(0xFF10B981)
+                    : (verifiedCount > 0 ? const Color(0xFFF59E0B) : Colors.amber.shade700);
+
+                final Color containerBg = verifiedCount == 3
+                    ? const Color(0xFF10B981).withValues(alpha: 0.08)
+                    : (verifiedCount > 0 ? const Color(0xFFF59E0B).withValues(alpha: 0.06) : Colors.amber.withValues(alpha: 0.06));
+
+                final Color containerBorder = verifiedCount == 3
+                    ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                    : (verifiedCount > 0 ? const Color(0xFFF59E0B).withValues(alpha: 0.3) : Colors.amber.withValues(alpha: 0.3));
+
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: containerBg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: containerBorder,
+                      width: 1.5,
+                    ),
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: (provider.isGovIdVerified || provider.isEmailVerified)
-                                ? const Color(0xFF10B981)
-                                : Colors.amber.shade700,
-                            shape: BoxShape.circle,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: badgeColor,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.shield_rounded, color: Colors.white, size: 16),
                           ),
-                          child: const Icon(Icons.shield_rounded, color: Colors.white, size: 16),
-                        ),
-                        const SizedBox(width: 10),
-                        const Expanded(
-                          child: Text(
-                            'Stay Q Trust & Verification Hub',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF047857),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Stay Q Trust & Verification Hub',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF047857),
+                              ),
                             ),
                           ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: (provider.isGovIdVerified && provider.isEmailVerified)
-                                ? const Color(0xFF10B981)
-                                : Colors.amber.shade700,
-                            borderRadius: BorderRadius.circular(6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: badgeColor,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              badgeText,
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
+                            ),
                           ),
-                          child: Text(
-                            (provider.isGovIdVerified && provider.isEmailVerified) ? '100% VERIFIED' : 'ACTION REQUIRED',
-                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
                     const SizedBox(height: 12),
 
                     // 1. Email Verification Item
@@ -587,7 +606,9 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
+              );
+            },
+          ),
 
               const SizedBox(height: 20),
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +10,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
 import '../../widgets/bouncing_widget.dart';
 import '../../widgets/animated_calendar_picker.dart';
+import '../../widgets/cashfree_payment_sheet.dart';
 import 'booking_confirmation_screen.dart';
 
 class CampingCheckoutScreen extends StatefulWidget {
@@ -117,28 +119,53 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
 
   double get _total => _subtotal + _serviceFee;
 
-  void _confirmBooking() {
+  Future<void> _confirmBooking() async {
     AppMotion.tapHeavy();
     final provider = Provider.of<AppProvider>(context, listen: false);
-    provider.addBooking(
-      widget.stay,
-      _selectedDates.start,
-      _selectedDates.end,
-      _campersCount,
+    final calculatedTotal = (_subtotal + _serviceFee).toDouble();
+
+    final resolvedPhone = provider.userPhone.isNotEmpty
+        ? provider.userPhone
+        : (FirebaseAuth.instance.currentUser?.phoneNumber ?? '9876543210');
+    final resolvedName = provider.userName.isNotEmpty
+        ? provider.userName
+        : (FirebaseAuth.instance.currentUser?.displayName ?? 'Stay Q Guest');
+    final resolvedEmail = provider.userEmail.isNotEmpty
+        ? provider.userEmail
+        : (FirebaseAuth.instance.currentUser?.email ?? 'guest@stayq.space');
+
+    final paymentResult = await CashfreePaymentSheet.show(
+      context,
+      bookingId: 'sq_camp_${DateTime.now().millisecondsSinceEpoch}',
+      totalAmount: calculatedTotal,
+      propertyTitle: widget.stay.title,
+      customerName: resolvedName,
+      customerEmail: resolvedEmail,
+      customerPhone: resolvedPhone,
     );
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => BookingConfirmationScreen(
-          stay: widget.stay,
-          totalAmount: (_subtotal + _serviceFee).toDouble(),
-          selectedDates: _selectedDates,
-          guests: _campersCount,
-          paymentMethod: 'Credit Card',
+    if (paymentResult != null && paymentResult.isSuccess && mounted) {
+      provider.addBooking(
+        widget.stay,
+        _selectedDates.start,
+        _selectedDates.end,
+        _campersCount,
+        totalAmount: calculatedTotal,
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BookingConfirmationScreen(
+            stay: widget.stay,
+            totalAmount: calculatedTotal,
+            selectedDates: _selectedDates,
+            guests: _campersCount,
+            paymentMethod: paymentResult.paymentMethod,
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   @override

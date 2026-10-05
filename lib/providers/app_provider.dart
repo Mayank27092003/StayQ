@@ -48,15 +48,23 @@ class AppProvider extends ChangeNotifier {
   String _verifiedFullName = '';
   String _verifiedAddress = '';
   String _verifiedDob = '';
+  bool _isAadhaarVerified = false;
+  bool _isPanVerified = false;
+  String _verifiedAadhaarNumber = '';
+  String _verifiedPanNumber = '';
   bool _isBankVerified = false;
   String _verifiedBankName = '';
   String _verifiedAccountNumber = '';
   bool _isUpiVerified = false;
   String _verifiedUpiId = '';
 
-  bool get isGovIdVerified => _isGovIdVerified;
-  String get verifiedGovIdType => _verifiedGovIdType;
-  String get verifiedGovIdNumber => _verifiedGovIdNumber;
+  bool get isGovIdVerified => _isGovIdVerified || _isAadhaarVerified || _isPanVerified;
+  bool get isAadhaarVerified => _isAadhaarVerified || (_isGovIdVerified && _verifiedGovIdType == 'AADHAAR');
+  bool get isPanVerified => _isPanVerified || (_isGovIdVerified && _verifiedGovIdType == 'PAN');
+  String get verifiedGovIdType => _verifiedGovIdType.isNotEmpty ? _verifiedGovIdType : (_isAadhaarVerified ? 'AADHAAR' : (_isPanVerified ? 'PAN' : ''));
+  String get verifiedGovIdNumber => _verifiedGovIdNumber.isNotEmpty ? _verifiedGovIdNumber : (_isAadhaarVerified ? _verifiedAadhaarNumber : _verifiedPanNumber);
+  String get verifiedAadhaarNumber => _verifiedAadhaarNumber.isNotEmpty ? _verifiedAadhaarNumber : (_verifiedGovIdType == 'AADHAAR' ? _verifiedGovIdNumber : '');
+  String get verifiedPanNumber => _verifiedPanNumber.isNotEmpty ? _verifiedPanNumber : (_verifiedGovIdType == 'PAN' ? _verifiedGovIdNumber : '');
   String get verifiedFullName => _verifiedFullName;
   String get verifiedAddress => _verifiedAddress;
   String get verifiedDob => _verifiedDob;
@@ -163,6 +171,10 @@ class AppProvider extends ChangeNotifier {
     _verifiedFullName = prefs.getString('verifiedFullName') ?? '';
     _verifiedAddress = prefs.getString('verifiedAddress') ?? '';
     _verifiedDob = prefs.getString('verifiedDob') ?? '';
+    _isAadhaarVerified = prefs.getBool('isAadhaarVerified') ?? (_isGovIdVerified && _verifiedGovIdType == 'AADHAAR');
+    _isPanVerified = prefs.getBool('isPanVerified') ?? (_isGovIdVerified && _verifiedGovIdType == 'PAN');
+    _verifiedAadhaarNumber = prefs.getString('verifiedAadhaarNumber') ?? (_verifiedGovIdType == 'AADHAAR' ? _verifiedGovIdNumber : '');
+    _verifiedPanNumber = prefs.getString('verifiedPanNumber') ?? (_verifiedGovIdType == 'PAN' ? _verifiedGovIdNumber : '');
     _isBankVerified = prefs.getBool('isBankVerified') ?? false;
     _verifiedBankName = prefs.getString('verifiedBankName') ?? '';
     _verifiedAccountNumber = prefs.getString('verifiedAccountNumber') ?? '';
@@ -194,6 +206,106 @@ class AppProvider extends ChangeNotifier {
     }
 
     notifyListeners();
+
+    // Background sync verification status from backend
+    fetchVerificationStatus();
+  }
+
+  Future<void> fetchVerificationStatus() async {
+    try {
+      final token = await _getToken();
+      if (token == null) return;
+      final response = await http.get(
+        Uri.parse('$_apiUrl/api/v1/verification/status'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is Map<String, dynamic>) {
+          await syncVerificationFromBackend(data);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching verification status from backend: $e');
+    }
+  }
+
+  Future<void> syncVerificationFromBackend(Map<String, dynamic> status) async {
+    bool hasChanged = false;
+    final prefs = await SharedPreferences.getInstance();
+
+    final isBank = status['isBankVerified'] == true || status['bankAccountVerified'] == true;
+    if (isBank) {
+      _isBankVerified = true;
+      hasChanged = true;
+      await prefs.setBool('isBankVerified', true);
+      if (status['bankDetails'] != null && status['bankDetails'] is Map) {
+        final b = status['bankDetails'] as Map;
+        if (b['bankName'] != null) {
+          _verifiedBankName = b['bankName'].toString();
+          await prefs.setString('verifiedBankName', _verifiedBankName);
+        }
+        if (b['accountNumberMasked'] != null) {
+          _verifiedAccountNumber = b['accountNumberMasked'].toString();
+          await prefs.setString('verifiedAccountNumber', _verifiedAccountNumber);
+        }
+      }
+    }
+
+    final isAadhaar = status['isAadhaarVerified'] == true || status['aadhaarVerified'] == true;
+    if (isAadhaar) {
+      _isAadhaarVerified = true;
+      _isGovIdVerified = true;
+      _verifiedGovIdType = 'AADHAAR';
+      hasChanged = true;
+      await prefs.setBool('isAadhaarVerified', true);
+      await prefs.setBool('isGovIdVerified', true);
+      await prefs.setString('verifiedGovIdType', 'AADHAAR');
+      if (status['govIdNumber'] != null) {
+        final raw = status['govIdNumber'].toString();
+        _verifiedAadhaarNumber = '••••••••' + (raw.length >= 4 ? raw.substring(raw.length - 4) : raw);
+        _verifiedGovIdNumber = _verifiedAadhaarNumber;
+        await prefs.setString('verifiedAadhaarNumber', _verifiedAadhaarNumber);
+        await prefs.setString('verifiedGovIdNumber', _verifiedGovIdNumber);
+      }
+    }
+
+    final isPan = status['isPanVerified'] == true || status['panVerified'] == true;
+    if (isPan) {
+      _isPanVerified = true;
+      _isGovIdVerified = true;
+      if (!isAadhaar) {
+        _verifiedGovIdType = 'PAN';
+        await prefs.setString('verifiedGovIdType', 'PAN');
+      }
+      hasChanged = true;
+      await prefs.setBool('isPanVerified', true);
+      await prefs.setBool('isGovIdVerified', true);
+      if (status['govIdNumber'] != null) {
+        _verifiedPanNumber = status['govIdNumber'].toString();
+        if (!isAadhaar) _verifiedGovIdNumber = _verifiedPanNumber;
+        await prefs.setString('verifiedPanNumber', _verifiedPanNumber);
+        await prefs.setString('verifiedGovIdNumber', _verifiedGovIdNumber);
+      }
+    }
+
+    if (status['accountHolderName'] != null && status['accountHolderName'].toString().isNotEmpty) {
+      final name = status['accountHolderName'].toString();
+      _verifiedFullName = name;
+      await prefs.setString('verifiedFullName', name);
+      if (_userName.isEmpty || _userName == 'Guest') {
+        _userName = name;
+        await prefs.setString('userName', name);
+      }
+      hasChanged = true;
+    }
+
+    if (hasChanged) {
+      notifyListeners();
+    }
   }
 
   Future<void> setAadhaarVerified({
@@ -203,8 +315,10 @@ class AppProvider extends ChangeNotifier {
     String? dob,
   }) async {
     _isGovIdVerified = true;
+    _isAadhaarVerified = true;
     _verifiedGovIdType = 'AADHAAR';
-    _verifiedGovIdNumber = '••••••••' + (aadhaarNumber.length >= 4 ? aadhaarNumber.substring(aadhaarNumber.length - 4) : aadhaarNumber);
+    _verifiedAadhaarNumber = '••••••••' + (aadhaarNumber.length >= 4 ? aadhaarNumber.substring(aadhaarNumber.length - 4) : aadhaarNumber);
+    _verifiedGovIdNumber = _verifiedAadhaarNumber;
     _verifiedFullName = name;
     _verifiedAddress = address;
     if (dob != null) _verifiedDob = dob;
@@ -215,8 +329,10 @@ class AppProvider extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isGovIdVerified', true);
+    await prefs.setBool('isAadhaarVerified', true);
     await prefs.setString('verifiedGovIdType', 'AADHAAR');
     await prefs.setString('verifiedGovIdNumber', _verifiedGovIdNumber);
+    await prefs.setString('verifiedAadhaarNumber', _verifiedAadhaarNumber);
     await prefs.setString('verifiedFullName', _verifiedFullName);
     await prefs.setString('verifiedAddress', _verifiedAddress);
     if (dob != null) await prefs.setString('verifiedDob', _verifiedDob);
@@ -228,7 +344,9 @@ class AppProvider extends ChangeNotifier {
     required String panNumber,
   }) async {
     _isGovIdVerified = true;
+    _isPanVerified = true;
     _verifiedGovIdType = 'PAN';
+    _verifiedPanNumber = panNumber;
     _verifiedGovIdNumber = panNumber;
     _verifiedFullName = name;
     if (_userName.isEmpty || _userName == 'Guest') {
@@ -238,8 +356,10 @@ class AppProvider extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isGovIdVerified', true);
+    await prefs.setBool('isPanVerified', true);
     await prefs.setString('verifiedGovIdType', 'PAN');
     await prefs.setString('verifiedGovIdNumber', _verifiedGovIdNumber);
+    await prefs.setString('verifiedPanNumber', _verifiedPanNumber);
     await prefs.setString('verifiedFullName', _verifiedFullName);
     await prefs.setString('userName', _userName);
   }
@@ -1130,14 +1250,15 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addBooking(StayModel stay, DateTime start, DateTime end, int adultsCount) async {
+  Future<void> addBooking(StayModel stay, DateTime start, DateTime end, int adultsCount, {double? totalAmount}) async {
+    final int days = end.difference(start).inDays > 0 ? end.difference(start).inDays : 1;
     final newBooking = BookingModel(
       id: 'BK-${DateTime.now().millisecondsSinceEpoch}',
       stay: stay,
       checkIn: start,
       checkOut: end,
       adults: adultsCount,
-      totalAmount: stay.pricePerNight * end.difference(start).inDays,
+      totalAmount: totalAmount ?? (stay.pricePerNight * days + stay.cleaningFee),
       confirmationCode: 'SQ-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}',
       status: BookingStatus.pending,
       guestName: _userName.isNotEmpty ? _userName : 'Guest User',
@@ -1168,7 +1289,18 @@ class AppProvider extends ChangeNotifier {
         }),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
-        debugPrint('Booking submitted successfully');
+        final data = json.decode(response.body);
+        if (data != null && data['id'] != null) {
+          final index = _bookings.indexOf(newBooking);
+          if (index != -1) {
+            _bookings[index] = newBooking.copyWith(
+              id: data['id'],
+              confirmationCode: data['confirmationCode'] ?? newBooking.confirmationCode,
+            );
+            notifyListeners();
+          }
+        }
+        debugPrint('Booking submitted successfully: ${data?['confirmationCode'] ?? ''}');
       } else {
         debugPrint('Failed to submit booking: ${response.statusCode}');
       }

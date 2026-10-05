@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/booking_model.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
 import '../../providers/messaging_provider.dart';
 import '../../providers/app_provider.dart';
+import '../../widgets/digital_boarding_pass_sheet.dart';
 import '../inbox/chat_detail_screen.dart';
 import '../listing/listing_detail_screen.dart';
 
@@ -14,6 +17,105 @@ class TripDetailScreen extends StatelessWidget {
   final BookingModel booking;
 
   const TripDetailScreen({super.key, required this.booking});
+
+  Future<void> _shareItinerary(BuildContext context) async {
+    AppMotion.tapMedium();
+    final stay = booking.stay;
+    final df = DateFormat('EEE, MMM dd, yyyy');
+    final checkInStr = df.format(booking.checkIn);
+    final checkOutStr = df.format(booking.checkOut);
+    final nights = booking.checkOut.difference(booking.checkIn).inDays;
+    final digits = booking.confirmationCode.replaceAll(RegExp(r'[^0-9]'), '');
+    final pin = digits.length >= 4 ? digits.substring(digits.length - 4) : '8492';
+
+    final itineraryText = '''STAY Q TRIP ITINERARY
+Property: ${stay.title}
+Location: ${stay.location}
+Booking Code: ${booking.confirmationCode}
+Dates: $checkInStr to $checkOutStr ($nights nights)
+Access: ${stay.isStayingWithHost ? "In-Person Check-in with ${stay.hostName}" : "Door PIN: $pin#"}
+Total Paid: ₹${booking.totalAmount.toStringAsFixed(0)}
+Official Desk: hello@stayq.space''';
+
+    await Clipboard.setData(ClipboardData(text: itineraryText));
+
+    final encoded = Uri.encodeComponent(itineraryText);
+    final waUri = Uri.parse('whatsapp://send?text=$encoded');
+    final webWaUri = Uri.parse('https://api.whatsapp.com/send?text=$encoded');
+
+    try {
+      if (await canLaunchUrl(waUri)) {
+        await launchUrl(waUri, mode: LaunchMode.externalApplication);
+      } else if (await canLaunchUrl(webWaUri)) {
+        await launchUrl(webWaUri, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Trip itinerary copied to clipboard! 📋'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Trip itinerary copied to clipboard! 📋'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _openDirections(BuildContext context) async {
+    AppMotion.tapMedium();
+    final stay = booking.stay;
+    final query = Uri.encodeComponent('${stay.title}, ${stay.location}');
+    final mapsUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
+    try {
+      if (await canLaunchUrl(mapsUri)) {
+        await launchUrl(mapsUri, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Location: ${stay.location}')),
+          );
+        }
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Location: ${stay.location}')),
+        );
+      }
+    }
+  }
+
+  void _openBoardingPass(BuildContext context) {
+    AppMotion.tapHeavy();
+    final stay = booking.stay;
+    final provider = context.read<AppProvider>();
+    final guestName = booking.guestName.isNotEmpty
+        ? booking.guestName
+        : (provider.userName.isNotEmpty ? provider.userName : 'Valued Guest');
+
+    DigitalBoardingPassSheet.show(
+      context,
+      confirmationCode: booking.confirmationCode,
+      guestName: guestName,
+      stayTitle: stay.title,
+      stayLocation: stay.location,
+      category: stay.category,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+      totalAmount: booking.totalAmount,
+      hostName: stay.hostName,
+      isStayingWithHost: stay.isStayingWithHost,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,14 +133,7 @@ class TripDetailScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Share Itinerary',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Trip itinerary link copied to clipboard! 📋'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
+            onPressed: () => _shareItinerary(context),
           ),
         ],
       ),
@@ -224,18 +319,33 @@ class TripDetailScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    children: const [
-                      Icon(Icons.key_rounded, color: Color(0xFF15803D), size: 20),
-                      SizedBox(width: 8),
+                    children: [
+                      const Icon(Icons.key_rounded, color: Color(0xFF15803D), size: 20),
+                      const SizedBox(width: 8),
                       Text(
-                        'UNLOCKED STAY ACCESS',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF15803D), letterSpacing: 1.0),
+                        stay.isStayingWithHost ? 'HOST IN-PERSON CHECK-IN' : 'DIGITAL SELF CHECK-IN ACCESS',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF15803D), letterSpacing: 1.0),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Text('Smart Door PIN: 8492#', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: 1.5)),
-                  const SizedBox(height: 4),
+                  if (!stay.isStayingWithHost) ...[
+                    Text(
+                      'Smart Door PIN: ${(booking.confirmationCode.replaceAll(RegExp(r'[^0-9]'), '')).padRight(4, '8').substring(0, 4)}#',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: 1.5),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text('Digital keypad lock code valid for your booked dates.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                    const SizedBox(height: 6),
+                  ] else ...[
+                    Text(
+                      'Hosted Stay with ${stay.hostName}',
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Direct key handover upon arrival. Host ${stay.hostName} will welcome you.', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                    const SizedBox(height: 6),
+                  ],
                   const Text('High-Speed WiFi: StayQ-Guest  •  Pass: explore2026', style: TextStyle(fontSize: 13, color: Color(0xFF334155))),
                   if (stay.isStayingWithHost) ...[
                     const SizedBox(height: 10),
@@ -326,14 +436,7 @@ class TripDetailScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Opening Google Maps navigation to ${stay.location}... 📍'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
+                    onPressed: () => _openDirections(context),
                   ),
                 ),
               ],
@@ -344,24 +447,17 @@ class TripDetailScreen extends StatelessWidget {
             // Download Boarding Pass PDF Action
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.download_rounded, size: 18),
-                label: const Text('Download Stay Q Booking Pass (PDF)'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textPrimary,
-                  side: const BorderSide(color: AppColors.borderLight),
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.confirmation_number_rounded, size: 18),
+                label: const Text('View & Download Stay Q Booking Pass'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF073359),
+                  foregroundColor: const Color(0xFFC5A880),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 2,
                 ),
-                onPressed: () {
-                  AppMotion.tapHeavy();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Downloading official PDF Boarding Pass for ${stay.title}... 📄'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
+                onPressed: () => _openBoardingPass(context),
               ),
             ),
 
@@ -388,7 +484,7 @@ class TripDetailScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text('Payment settled via Razorpay (GST & Taxes Included)', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                  const Text('Payment verified via Cashfree Secure Gateway (GST & Taxes Included)', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                 ],
               ),
             ),

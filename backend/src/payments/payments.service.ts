@@ -5,7 +5,7 @@ import { NotificationType } from '@prisma/client';
 import * as crypto from 'crypto';
 
 export interface CreateOrderParams {
-  bookingId: string;
+  bookingId?: string;
   amount: number;
   idempotencyKey?: string;
   customerId?: string;
@@ -49,15 +49,54 @@ export class PaymentsService {
   async createCashfreeOrder(params: CreateOrderParams) {
     const { bookingId, amount, idempotencyKey, customerId, customerName, customerPhone, customerEmail, returnUrl } = params;
 
-    // Verify against DB Booking if bookingId exists to prevent client-side price spoofing
     let finalAmount = amount;
+    let resolvedCustomerName = customerName;
+    let resolvedCustomerEmail = customerEmail;
+    let resolvedCustomerPhone = customerPhone;
+
     if (bookingId && !bookingId.startsWith('test_') && !bookingId.startsWith('booking_')) {
       const dbBooking = await this.prisma.booking.findUnique({
         where: { id: bookingId },
-        select: { id: true, totalAmount: true, status: true },
+        select: {
+          id: true,
+          totalAmount: true,
+          status: true,
+          guest: {
+            select: { id: true, phone: true, displayName: true, email: true },
+          },
+        },
       });
-      if (dbBooking && dbBooking.totalAmount && Number(dbBooking.totalAmount) > 0) {
-        finalAmount = Number(dbBooking.totalAmount);
+      if (dbBooking) {
+        if (dbBooking.totalAmount && Number(dbBooking.totalAmount) > 0) {
+          finalAmount = Number(dbBooking.totalAmount);
+        }
+        if (!resolvedCustomerName && dbBooking.guest?.displayName) {
+          resolvedCustomerName = dbBooking.guest.displayName;
+        }
+        if (!resolvedCustomerEmail && dbBooking.guest?.email) {
+          resolvedCustomerEmail = dbBooking.guest.email;
+        }
+        if (!resolvedCustomerPhone && dbBooking.guest?.phone) {
+          resolvedCustomerPhone = dbBooking.guest.phone;
+        }
+      }
+    }
+
+    if ((!resolvedCustomerPhone || !resolvedCustomerEmail || !resolvedCustomerName) && customerId) {
+      try {
+        const dbUser = await this.prisma.user.findFirst({
+          where: {
+            OR: [{ id: customerId }, { firebaseUid: customerId }],
+          },
+          select: { phone: true, displayName: true, email: true },
+        });
+        if (dbUser) {
+          if (!resolvedCustomerName && dbUser.displayName) resolvedCustomerName = dbUser.displayName;
+          if (!resolvedCustomerEmail && dbUser.email) resolvedCustomerEmail = dbUser.email;
+          if (!resolvedCustomerPhone && dbUser.phone) resolvedCustomerPhone = dbUser.phone;
+        }
+      } catch (err: any) {
+        this.logger.debug(`User lookup error: ${err.message}`);
       }
     }
 
@@ -78,7 +117,8 @@ export class PaymentsService {
     }
 
     const orderId = `order_stayq_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const sanitizedPhone = (customerPhone || '9876543210').replace(/\D/g, '').slice(-10);
+    const rawPhoneDigits = (resolvedCustomerPhone || '').replace(/\D/g, '');
+    const sanitizedPhone = rawPhoneDigits.length >= 10 ? rawPhoneDigits.slice(-10) : '9765413179';
 
     const payload = {
       order_id: orderId,
@@ -86,9 +126,9 @@ export class PaymentsService {
       order_currency: 'INR',
       customer_details: {
         customer_id: customerId || `cust_${Date.now()}`,
-        customer_phone: sanitizedPhone.length === 10 ? sanitizedPhone : '9876543210',
-        customer_name: customerName || 'Stay Q Guest',
-        customer_email: customerEmail || 'guest@stayq.space',
+        customer_phone: sanitizedPhone,
+        customer_name: resolvedCustomerName || 'Stay Q Guest',
+        customer_email: resolvedCustomerEmail || 'guest@stayq.space',
       },
       order_meta: {
         return_url: returnUrl || `https://stayq.space/booking/status?order_id=${orderId}`,

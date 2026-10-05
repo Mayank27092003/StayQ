@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../services/api/api_client.dart';
@@ -101,15 +102,25 @@ class _HostProPaywallSheetState extends State<HostProPaywallSheet> {
 
     if (!mounted) return;
 
+    final resolvedPhone = provider.userPhone.isNotEmpty
+        ? provider.userPhone
+        : (FirebaseAuth.instance.currentUser?.phoneNumber ?? '9876543210');
+    final resolvedName = provider.userName.isNotEmpty
+        ? provider.userName
+        : (FirebaseAuth.instance.currentUser?.displayName ?? 'Host Partner');
+    final resolvedEmail = provider.userEmail.isNotEmpty
+        ? provider.userEmail
+        : (FirebaseAuth.instance.currentUser?.email ?? 'hello@stayq.space');
+
     // 2. Attach and Launch Real Cashfree Payment Sheet
     final paymentResult = await CashfreePaymentSheet.show(
       context,
       bookingId: orderId,
       totalAmount: amount,
       propertyTitle: 'StayQ Host Pro (${selectedPlan['title']})',
-      customerName: provider.userName.isNotEmpty ? provider.userName : 'Host Partner',
-      customerEmail: provider.userEmail.isNotEmpty ? provider.userEmail : 'hello@stayq.space',
-      customerPhone: provider.userPhone.isNotEmpty ? provider.userPhone : '9876543210',
+      customerName: resolvedName,
+      customerEmail: resolvedEmail,
+      customerPhone: resolvedPhone,
     );
 
     if (paymentResult == null) {

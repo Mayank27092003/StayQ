@@ -37,8 +37,10 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
   void _loadDashboardData() {
     final appProvider = context.read<AppProvider>();
     final currentUser = FirebaseAuth.instance.currentUser;
-    final hostId = currentUser?.uid ?? appProvider.userId ?? 'mock_host_id';
-    context.read<HostDashboardProvider>().fetchDashboardData(hostId);
+    final hostId = currentUser?.uid ?? appProvider.userId;
+    if (hostId != null) {
+      context.read<HostDashboardProvider>().fetchDashboardData(hostId);
+    }
   }
 
   String _resolveHostName(AppProvider appProvider, HostDashboardProvider dashboard) {

@@ -21,13 +21,19 @@ class ManageListingsScreen extends StatefulWidget {
 }
 
 class _ManageListingsScreenState extends State<ManageListingsScreen> {
+  String? _getHostId(BuildContext context) {
+    final appProvider = context.read<AppProvider>();
+    return appProvider.userId ?? FirebaseAuth.instance.currentUser?.uid;
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final appProvider = context.read<AppProvider>();
-      final hostId = appProvider.userId ?? 'mock_host_id';
-      context.read<HostListingsProvider>().fetchHostListings(hostId);
+      final hostId = _getHostId(context);
+      if (hostId != null) {
+        context.read<HostListingsProvider>().fetchHostListings(hostId);
+      }
     });
   }
 
@@ -63,8 +69,10 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
           : RefreshIndicator(
               color: AppColors.primary,
               onRefresh: () async {
-                final hostId = appProvider.userId ?? 'mock_host_id';
-                await context.read<HostListingsProvider>().fetchHostListings(hostId);
+                final hostId = _getHostId(context);
+                if (hostId != null) {
+                  await context.read<HostListingsProvider>().fetchHostListings(hostId);
+                }
               },
               child: provider.listings.isEmpty
                   ? _buildEmptyState(context)
@@ -280,7 +288,8 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
                     child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
                   ),
                   onSelected: (value) {
-                    final hostId = context.read<AppProvider>().userId ?? 'mock_host_id';
+                    final hostId = _getHostId(context);
+                    if (hostId == null) return;
                     if (value == 'toggle') {
                       provider.toggleListingStatus(stay.id, stay.status, hostId);
                     } else if (value == 'delete') {
@@ -362,8 +371,10 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
                       ),
                     );
                     if (res == true && mounted) {
-                      final hostId = context.read<AppProvider>().userId ?? 'mock_host_id';
-                      context.read<HostListingsProvider>().fetchHostListings(hostId);
+                      final hostId = _getHostId(context);
+                      if (hostId != null) {
+                        context.read<HostListingsProvider>().fetchHostListings(hostId);
+                      }
                     }
                   },
                   child: Container(
@@ -440,8 +451,10 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
                         MaterialPageRoute(builder: (_) => PropertyBoostScreen(property: stay)),
                       );
                       if (res == true && mounted) {
-                        final hostId = context.read<AppProvider>().userId ?? 'mock_host_id';
-                        context.read<HostListingsProvider>().fetchHostListings(hostId);
+                        final hostId = _getHostId(context);
+                        if (hostId != null) {
+                          context.read<HostListingsProvider>().fetchHostListings(hostId);
+                        }
                       }
                     }),
                     _buildActionButton(Icons.edit_rounded, 'Edit', () {

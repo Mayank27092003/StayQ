@@ -46,8 +46,7 @@ function wrapLuxuryCard(title: string, subheader: string, contentHtml: string, c
       </div>
       <div class="footer">
         &copy; ${new Date().getFullYear()} Stay Q Inc. &bull; <a href="${BASE_URL}">stayq.space</a><br>
-        Official Desk: <a href="mailto:grievance@stayq.space">grievance@stayq.space</a><br>
-        Official Verified Hostinger SSL Mailer
+        Official Desk: <a href="mailto:hello@stayq.space">hello@stayq.space</a>
       </div>
     </div>
   </body>

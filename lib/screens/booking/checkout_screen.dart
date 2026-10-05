@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../models/stay_model.dart';
 import '../../providers/app_provider.dart';
@@ -248,18 +249,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
 
               // Interactive Price Accordion with Number Roll-Up Counter
-              PriceBreakdownAccordion(
-                nightRate: stay.pricePerNight,
-                nights: nights > 0 ? nights : 1,
-                cleaningFee: 0.0,
-                serviceFee: 0.0,
-                taxes: ((stay.pricePerNight * (nights > 0 ? nights : 1)) * 0.18).roundToDouble(),
-                referralDiscount: _applyReferral && provider.referralBalance > 0
-                    ? (provider.referralBalance < ((stay.pricePerNight * (nights > 0 ? nights : 1)) * 0.10).floorToDouble()
-                        ? provider.referralBalance
-                        : ((stay.pricePerNight * (nights > 0 ? nights : 1)) * 0.10).floorToDouble())
-                    : 0.0,
-              ),
+              () {
+                final int finalNights = nights > 0 ? nights : 1;
+                final double subtotal = stay.pricePerNight * finalNights;
+                final double cleaning = stay.cleaningFee;
+                final double service = (subtotal * 0.10).roundToDouble();
+                final double taxes = (service * 0.18).roundToDouble();
+                final double maxCap = (subtotal * 0.10).floorToDouble();
+                final double discount = _applyReferral && provider.referralBalance > 0
+                    ? (provider.referralBalance < maxCap ? provider.referralBalance : maxCap)
+                    : 0.0;
+                return PriceBreakdownAccordion(
+                  nightRate: stay.pricePerNight,
+                  nights: finalNights,
+                  cleaningFee: cleaning,
+                  serviceFee: service,
+                  taxes: taxes,
+                  referralDiscount: discount,
+                );
+              }(),
 
               const SizedBox(height: 24),
 
@@ -386,20 +394,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     AppMotion.tapHeavy();
                     final int finalNights = nights > 0 ? nights : 1;
                     final double subtotal = stay.pricePerNight * finalNights;
-                    final double cleaning = 0.0;
-                    final double service = 0.0;
-                    final double taxes = (subtotal * 0.18).roundToDouble();
-                    final double calculatedTotal = subtotal + cleaning + service + taxes;
+                    final double cleaning = stay.cleaningFee;
+                    final double service = (subtotal * 0.10).roundToDouble();
+                    final double taxes = (service * 0.18).roundToDouble();
+                    final double maxCap = (subtotal * 0.10).floorToDouble();
+                    final double discount = _applyReferral && provider.referralBalance > 0
+                        ? (provider.referralBalance < maxCap ? provider.referralBalance : maxCap)
+                        : 0.0;
+                    final double calculatedTotal = (subtotal + cleaning + service + taxes - discount).clamp(0.0, double.infinity);
                     final effectiveGuests = provider.adultsCount + provider.childrenCount;
+
+                    final resolvedPhone = provider.userPhone.isNotEmpty
+                        ? provider.userPhone
+                        : (FirebaseAuth.instance.currentUser?.phoneNumber ?? '9876543210');
+                    final resolvedName = provider.userName.isNotEmpty
+                        ? provider.userName
+                        : (FirebaseAuth.instance.currentUser?.displayName ?? 'Stay Q Guest');
+                    final resolvedEmail = provider.userEmail.isNotEmpty
+                        ? provider.userEmail
+                        : (FirebaseAuth.instance.currentUser?.email ?? 'guest@stayq.space');
 
                     final paymentResult = await CashfreePaymentSheet.show(
                       context,
                       bookingId: 'sq_book_${DateTime.now().millisecondsSinceEpoch}',
                       totalAmount: calculatedTotal,
                       propertyTitle: stay.title,
-                      customerName: provider.userName.isNotEmpty ? provider.userName : 'Stay Q Guest',
-                      customerEmail: provider.userEmail.isNotEmpty ? provider.userEmail : 'guest@stayq.space',
-                      customerPhone: provider.userPhone.isNotEmpty ? provider.userPhone : '9876543210',
+                      customerName: resolvedName,
+                      customerEmail: resolvedEmail,
+                      customerPhone: resolvedPhone,
                     );
 
                     if (paymentResult != null && paymentResult.isSuccess && mounted) {
@@ -408,6 +430,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         _tripDates.start,
                         _tripDates.end,
                         effectiveGuests > 0 ? effectiveGuests : 2,
+                        totalAmount: calculatedTotal,
                       );
                       Navigator.pushReplacement(
                         context,

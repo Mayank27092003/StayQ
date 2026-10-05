@@ -10,8 +10,8 @@ import '../../widgets/door_unlock_animation.dart';
 import '../../widgets/confetti_burst.dart';
 import '../../widgets/bouncing_widget.dart';
 import '../../services/qube_trigger_service.dart';
-import '../../widgets/custom_toast.dart';
 import '../../navigation/app_router.dart';
+import '../../widgets/digital_boarding_pass_sheet.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
 
@@ -301,9 +301,11 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Door Access PIN: 8492#  •  Host On-Site Check-in',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    Text(
+                      stay.isStayingWithHost
+                          ? 'Host In-Person Check-in • Hosted by ${stay.hostName.isNotEmpty ? stay.hostName : "Host"}'
+                          : 'Door PIN: ${_confCode.replaceAll(RegExp(r'[^0-9]'), '').padRight(4, '8').substring(0, 4)}# • Smart Keypad Check-in',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                     ),
                   ],
                 ),
@@ -314,18 +316,30 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
               // Action Buttons
               ElevatedButton.icon(
                 icon: const Icon(Icons.confirmation_number_outlined, size: 18),
-                label: const Text('Download Stay Q Booking Pass (PDF)'),
+                label: const Text('View & Download Stay Q Booking Pass'),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 54),
+                  backgroundColor: const Color(0xFF073359),
+                  foregroundColor: const Color(0xFFC5A880),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 onPressed: () {
                   AppMotion.tapHeavy();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Downloading Stay Q Booking Pass for ${stay.title}... 📄'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
+                  final provider = context.read<AppProvider>();
+                  final guestName = provider.userName.isNotEmpty ? provider.userName : 'Valued Guest';
+
+                  DigitalBoardingPassSheet.show(
+                    context,
+                    confirmationCode: _confCode,
+                    guestName: guestName,
+                    stayTitle: stay.title,
+                    stayLocation: stay.location,
+                    category: stay.category,
+                    checkIn: widget.selectedDates.start,
+                    checkOut: widget.selectedDates.end,
+                    totalAmount: widget.totalAmount,
+                    hostName: stay.hostName,
+                    isStayingWithHost: stay.isStayingWithHost,
                   );
                 },
               ),

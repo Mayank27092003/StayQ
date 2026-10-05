@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -349,15 +350,24 @@ class _RewardsScreenState extends State<RewardsScreen> {
               onPressed: () async {
                 Navigator.pop(ctx);
 
-                // Attach real Cashfree payment for membership tier upgrade
+                final resolvedPhone = provider.userPhone.isNotEmpty
+                    ? provider.userPhone
+                    : (FirebaseAuth.instance.currentUser?.phoneNumber ?? '9876543210');
+                final resolvedName = provider.userName.isNotEmpty
+                    ? provider.userName
+                    : (FirebaseAuth.instance.currentUser?.displayName ?? 'Club Member');
+                final resolvedEmail = provider.userEmail.isNotEmpty
+                    ? provider.userEmail
+                    : (FirebaseAuth.instance.currentUser?.email ?? 'hello@stayq.space');
+
                 final paymentResult = await CashfreePaymentSheet.show(
                   context,
                   bookingId: 'TIER_${tierKey}_${DateTime.now().millisecondsSinceEpoch}',
                   totalAmount: price.toDouble(),
                   propertyTitle: 'Stay Q Club - $tierTitle',
-                  customerName: provider.userName.isNotEmpty ? provider.userName : 'Club Member',
-                  customerEmail: provider.userEmail.isNotEmpty ? provider.userEmail : 'hello@stayq.space',
-                  customerPhone: provider.userPhone.isNotEmpty ? provider.userPhone : '9876543210',
+                  customerName: resolvedName,
+                  customerEmail: resolvedEmail,
+                  customerPhone: resolvedPhone,
                 );
 
                 if (paymentResult == null) {

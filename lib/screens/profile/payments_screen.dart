@@ -27,8 +27,11 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
   Future<void> _fetchData() async {
     final provider = context.read<AppProvider>();
-    final userId = provider.userId ?? 'mock_user_id';
-    // Assume apiUrl is accessible or just use the deployed one for this mock
+    final userId = provider.userId ?? FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null || userId.isEmpty) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
     const String apiUrl = 'https://stayq-api-608570851336.asia-south1.run.app';
 
     try {

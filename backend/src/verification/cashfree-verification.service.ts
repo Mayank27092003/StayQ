@@ -47,6 +47,7 @@ export interface AadhaarVerifyResult {
 export interface PanVerificationResult {
   pan: string;
   valid: boolean;
+  verified?: boolean;
   registeredName: string;
   type: string;
   nameMatchScore: number;
@@ -203,7 +204,7 @@ export class CashfreeVerificationService {
           ipWhitelisted: true,
         };
 
-        if (userId && isHost) {
+        if (userId) {
           await this.saveVerifiedPayoutAccount(userId, cleanAccount, cleanIfsc, result.nameAtBank);
         }
 
@@ -554,12 +555,16 @@ export class CashfreeVerificationService {
       // Case 2: Success response from NSDL/Cashfree
       if (response.ok && (data.valid === true || data.status === 'VALID' || data.status === 'SUCCESS')) {
         const registeredName = data.registered_name || data.name || name || 'Valid Taxpayer';
+        const rawScore = typeof data.name_match_score === 'number' ? data.name_match_score : 1.0;
+        const normalizedScore = rawScore <= 1.0 ? Math.round(rawScore * 100) : Math.round(rawScore);
+
         const result: PanVerificationResult = {
           pan: cleanPan,
           valid: true,
+          verified: true,
           registeredName: registeredName,
           type: data.type || 'Individual',
-          nameMatchScore: typeof data.name_match_score === 'number' ? data.name_match_score : 1.0,
+          nameMatchScore: normalizedScore,
           referenceId: String(data.ref_id || data.verification_id || Date.now()),
           status: 'SUCCESS',
         };
@@ -897,8 +902,14 @@ export class CashfreeVerificationService {
       isStarHost: user.isSuperhost,
       isSuperhost: user.isSuperhost,
       aadhaarVerified: payout?.govIdType === 'AADHAAR' && payout?.verified,
+      isAadhaarVerified: payout?.govIdType === 'AADHAAR' && payout?.verified,
       panVerified: payout?.govIdType === 'PAN' && payout?.verified,
+      isPanVerified: payout?.govIdType === 'PAN' && payout?.verified,
       bankAccountVerified: payout?.verified && payout?.accountNumber !== 'PENDING',
+      isBankVerified: payout?.verified && payout?.accountNumber !== 'PENDING',
+      govIdType: payout?.govIdType || null,
+      govIdNumber: payout?.govIdNumber || null,
+      accountHolderName: payout?.accountHolderName || null,
       bankDetails: payout && payout.accountNumber !== 'PENDING' ? {
         bankName: payout.bankName,
         accountHolder: payout.accountHolderName,

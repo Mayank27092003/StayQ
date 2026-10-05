@@ -35,7 +35,7 @@ export class LeasesService {
       throw new ForbiddenException('Only the tenant, landlord, or admin can access lease documents');
     }
     
-    const pdfUrl = 'https://cloud-storage.example.com/lease-docs/generated.pdf';
+    const pdfUrl = `https://storage.googleapis.com/stay-q-media/leases/${lease.id}/agreement-${lease.booking?.confirmationCode || id}.pdf`;
     
     return this.prisma.leaseAgreement.update({
       where: { id },

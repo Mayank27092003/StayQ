@@ -937,19 +937,21 @@ class HostOnboardingProvider extends ChangeNotifier {
 
       if (draftResponse.statusCode == 200 || draftResponse.statusCode == 201) {
         final responseData = jsonDecode(draftResponse.body);
-        final propertyId = responseData['id'] ?? responseData['_id'] ?? 'mock_id';
+        final propertyId = responseData['id'] ?? responseData['_id'] ?? responseData['property']?['id'];
         
-        // 3. Submit for review
-        try {
-          await http.post(
-            Uri.parse('$_apiUrl/api/v1/properties/$propertyId/submit'),
-            headers: {
-              'Content-Type': 'application/json',
-              if (token != null) 'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({}),
-          );
-        } catch (_) {}
+        // 3. Submit for review if valid propertyId
+        if (propertyId != null && propertyId.toString().isNotEmpty) {
+          try {
+            await http.post(
+              Uri.parse('$_apiUrl/api/v1/properties/$propertyId/submit'),
+              headers: {
+                'Content-Type': 'application/json',
+                if (token != null) 'Authorization': 'Bearer $token',
+              },
+              body: jsonEncode({}),
+            );
+          } catch (_) {}
+        }
 
         // Clear draft upon successful submission
         await clearDraftPrefs();

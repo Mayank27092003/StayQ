@@ -4,6 +4,7 @@ class StayModel {
   final String title;
   final String location;
   final double pricePerNight;
+  final double cleaningFee;
   final double rating;
   final int reviewCount;
   final List<String> imageUrls;
@@ -51,6 +52,7 @@ class StayModel {
     required this.title,
     required this.location,
     required this.pricePerNight,
+    this.cleaningFee = 0.0,
     required this.rating,
     required this.reviewCount,
     required this.imageUrls,
@@ -91,6 +93,7 @@ class StayModel {
       title: data['title'] ?? '',
       location: data['address'] ?? '',
       pricePerNight: (data['pricePerNight'] ?? 0).toDouble(),
+      cleaningFee: (data['cleaningFee'] ?? 0).toDouble(),
       rating: (data['rating'] ?? 0).toDouble(),
       reviewCount: data['reviewCount'] ?? 0,
       imageUrls: List<String>.from(data['images'] ?? []),
@@ -131,6 +134,15 @@ class StayModel {
         price = double.tryParse(json['pricePerNight']) ?? 0;
       } else if (json['pricePerNight'] is num) {
         price = (json['pricePerNight'] as num).toDouble();
+      }
+    }
+
+    double parsedCleaningFee = 0.0;
+    if (json['cleaningFee'] != null) {
+      if (json['cleaningFee'] is String) {
+        parsedCleaningFee = double.tryParse(json['cleaningFee']) ?? 0.0;
+      } else if (json['cleaningFee'] is num) {
+        parsedCleaningFee = (json['cleaningFee'] as num).toDouble();
       }
     }
 
@@ -194,6 +206,7 @@ class StayModel {
       title: json['title'] ?? '',
       location: '${json['city'] ?? ''}, ${json['country'] ?? ''}'.trim().replaceAll(RegExp(r'^,\s*'), ''),
       pricePerNight: price,
+      cleaningFee: parsedCleaningFee,
 
       rating: 4.8, // Fallback since reviews aren't included yet
       reviewCount: 15,
@@ -242,6 +255,7 @@ class StayModel {
       'title': title,
       'address': location,
       'pricePerNight': pricePerNight,
+      'cleaningFee': cleaningFee,
       'rating': rating,
       'reviewCount': reviewCount,
       'images': imageUrls,

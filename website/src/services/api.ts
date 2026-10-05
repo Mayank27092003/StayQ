@@ -256,7 +256,11 @@ export async function fetchStays(filters?: Partial<SearchFilters>): Promise<Stay
     const res = await fetch(`${API_BASE_URL}/properties`, { headers: { Accept: 'application/json' } });
     if (res.ok) {
       const data = await res.json();
-      dbProps = Array.isArray(data) ? data : data?.data || [];
+      const rawList = Array.isArray(data) ? data : data?.data || [];
+      dbProps = rawList.filter((p: any) => {
+        const title = (p.title || p.name || '').toLowerCase();
+        return !title.includes('brutal test') && !title.includes('[test]');
+      });
     }
   } catch {
     // Continue with local custom properties
@@ -270,53 +274,56 @@ export async function fetchStays(filters?: Partial<SearchFilters>): Promise<Stay
     }
   });
 
-  if (combinedRaw.length > 0) {
-    const realStays: Stay[] = combinedRaw.map((p: any) => {
-      const isZb = p.isZeroBroker || p.type === 'ZERO_BROKER' || p.category === 'ZERO_BROKER' || p.category?.name === 'Zero Broker' || p.longTermAvailable;
-      const hostName = p.hostName || (p.host ? `${p.host.displayName || p.host.firstName || ''} ${p.host.lastName || ''}`.trim() : 'Verified Host');
-      const categoryName = p.category?.name || p.category || (isZb ? 'Zero Broker' : (p.type || 'Villas'));
+  const realStays: Stay[] = combinedRaw.map((p: any) => {
+    const isZb = p.isZeroBroker || p.type === 'ZERO_BROKER' || p.category === 'ZERO_BROKER' || p.category?.name === 'Zero Broker' || p.longTermAvailable;
+    const hostName = p.hostName || (p.host ? `${p.host.displayName || p.host.firstName || ''} ${p.host.lastName || ''}`.trim() : 'Verified Host');
+    const categoryName = p.category?.name || p.category || (isZb ? 'Zero Broker' : (p.type || 'Villas'));
 
-      return {
-        id: p.id,
-        title: p.title || p.name || 'Stay Q Verified Stay',
-        location: p.address ? `${p.address}, ${p.city || 'Goa'}, ${p.country || 'India'}` : `${p.city || 'Goa'}, ${p.state || 'India'}`,
-        city: p.city || 'Goa',
-        state: p.state || 'India',
-        country: p.country || 'India',
-        pincode: p.pincode || '',
-        pricePerNight: Number(p.basePrice || p.pricePerNight) || (isZb ? 3200 : 5000),
-        rating: Number(p.rating || p.starRating) || 4.95,
-        reviewCount: Number(p.reviewCount) || 0,
-        imageUrls: p.imageUrls?.length ? p.imageUrls : (p.images?.length ? p.images.map((img: any) => img.url || img) : (p.heroImage ? [p.heroImage] : ['/images/villa_1.jpg'])),
-        category: categoryName,
-        propertyType: isZb ? 'ZERO_BROKER' : (p.type || 'STAY'),
-        isZeroBroker: isZb,
-        isSponsored: p.isSponsored === true || p.sponsoredTier != null,
-        sponsoredTier: p.sponsoredTier,
-        depositAmount: Number(p.securityDeposit) || 50000,
-        leaseTerm: p.leaseDurationMonths ? `${p.leaseDurationMonths} Months` : '1 - 11 Months Flexible',
-        hostName: hostName || 'Verified Host',
-        hostAvatar: p.hostAvatar || p.host?.avatarUrl || p.host?.photoUrl || '/images/avatar_alex.jpg',
-        isGuestFavorite: true,
-        isStarHost: true,
-        isFeatured: true,
-        amenities: p.amenities?.length ? p.amenities : ['High-Speed Wi-Fi', 'Air Conditioning', 'Free Parking', 'Kitchen'],
-        tags: isZb ? ['Zero Broker', 'Verified Lease', 'Direct Owner'] : ['Verified', 'Instant Book', 'Luxury'],
-        description: p.description || 'Verified direct property with modern amenities and peaceful surroundings.',
-        lat: Number(p.lat || p.latitude) || 15.5182,
-        lng: Number(p.lng || p.longitude) || 73.7634,
-        maxGuests: Number(p.maxGuests) || 4,
-        bedrooms: Number(p.bedrooms) || 2,
-        beds: Number(p.beds) || 2,
-        baths: Number(p.bathrooms || p.baths) || 2,
-      };
-    });
+    return {
+      id: p.id,
+      title: p.title || p.name || 'Stay Q Verified Stay',
+      location: p.address ? `${p.address}, ${p.city || 'Goa'}, ${p.country || 'India'}` : `${p.city || 'Goa'}, ${p.state || 'India'}`,
+      city: p.city || 'Goa',
+      state: p.state || 'India',
+      country: p.country || 'India',
+      pincode: p.pincode || '',
+      pricePerNight: Number(p.basePrice || p.pricePerNight) || (isZb ? 3200 : 5000),
+      rating: Number(p.rating || p.starRating) || 4.95,
+      reviewCount: Number(p.reviewCount) || 0,
+      imageUrls: p.imageUrls?.length ? p.imageUrls : (p.images?.length ? p.images.map((img: any) => img.url || img) : (p.heroImage ? [p.heroImage] : ['/images/villa_1.jpg'])),
+      category: categoryName,
+      propertyType: isZb ? 'ZERO_BROKER' : (p.type || 'STAY'),
+      isZeroBroker: isZb,
+      isSponsored: p.isSponsored === true || p.sponsoredTier != null,
+      sponsoredTier: p.sponsoredTier,
+      depositAmount: Number(p.securityDeposit) || 50000,
+      leaseTerm: p.leaseDurationMonths ? `${p.leaseDurationMonths} Months` : '1 - 11 Months Flexible',
+      hostName: hostName || 'Verified Host',
+      hostAvatar: p.hostAvatar || p.host?.avatarUrl || p.host?.photoUrl || '/images/avatar_alex.jpg',
+      isGuestFavorite: true,
+      isStarHost: true,
+      isFeatured: true,
+      amenities: p.amenities?.length ? p.amenities : ['High-Speed Wi-Fi', 'Air Conditioning', 'Free Parking', 'Kitchen'],
+      tags: isZb ? ['Zero Broker', 'Verified Lease', 'Direct Owner'] : ['Verified', 'Instant Book', 'Luxury'],
+      description: p.description || 'Verified direct property with modern amenities and peaceful surroundings.',
+      lat: Number(p.lat || p.latitude) || 15.5182,
+      lng: Number(p.lng || p.longitude) || 73.7634,
+      maxGuests: Number(p.maxGuests) || 4,
+      bedrooms: Number(p.bedrooms) || 2,
+      beds: Number(p.beds) || 2,
+      baths: Number(p.bathrooms || p.baths) || 2,
+    };
+  });
 
-    return applyFilters(realStays, filters);
-  }
+  // Merge real properties with curated stays to provide complete inventory
+  const combinedStays: Stay[] = [...realStays];
+  CURATED_STAYS.forEach((cs) => {
+    if (!combinedStays.some((s) => s.id === cs.id)) {
+      combinedStays.push(cs);
+    }
+  });
 
-  // Return curated luxury stays fallback
-  return applyFilters(CURATED_STAYS, filters);
+  return applyFilters(combinedStays, filters);
 }
 
 export async function fetchExperiences(category?: string): Promise<Experience[]> {

@@ -13,7 +13,7 @@ export const CheckoutModal: React.FC = () => {
   const [guestEmail, setGuestEmail] = useState(user?.email || '');
   const [guestPhone, setGuestPhone] = useState(user?.phone || '');
   const [specialRequests, setSpecialRequests] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CARD' | 'NETBANKING' | 'PAY_AT_STAY'>('UPI');
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CARD' | 'NETBANKING'>('UPI');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Live Gateway State
@@ -127,11 +127,6 @@ export const CheckoutModal: React.FC = () => {
     const finalName = guestName.trim() || user.name || 'Guest';
     const finalEmail = guestEmail.trim() || user.email || 'guest@stayq.space';
     const finalPhone = guestPhone.trim() || user.phone || '+91 9999999999';
-
-    if (paymentMethod === 'PAY_AT_STAY') {
-      await handleFinalizeBooking('Pay at Check-in (Zero Deposit)');
-      return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -283,23 +278,6 @@ export const CheckoutModal: React.FC = () => {
                   </div>
                 </label>
 
-                <label className={`payment-option ${paymentMethod === 'PAY_AT_STAY' ? 'payment-option--active' : ''}`}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    checked={paymentMethod === 'PAY_AT_STAY'}
-                    onChange={() => setPaymentMethod('PAY_AT_STAY')}
-                  />
-                  <div className="payment-option__content">
-                    <div className="payment-option__icon">
-                      <CheckCircle2 size={20} />
-                    </div>
-                    <div>
-                      <strong>Pay at Check-in</strong>
-                      <p>Reserve now with zero advance deposit, pay host on arrival</p>
-                    </div>
-                  </div>
-                </label>
               </div>
             </div>
           </div>
