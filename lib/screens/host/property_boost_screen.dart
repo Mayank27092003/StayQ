@@ -1,7 +1,12 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../models/stay_model.dart';
 import '../../theme/app_colors.dart';
 import '../../services/api/api_client.dart';
+import '../../services/api/payments_api.dart';
+import '../../models/payment_order.dart';
+import '../../models/json_values.dart';
+import '../../widgets/cashfree_payment_sheet.dart';
 
 class PropertyBoostScreen extends StatefulWidget {
   final StayModel property;
@@ -20,6 +25,9 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
   bool _isLoading = false;
   bool _isProcessing = false;
   Map<String, dynamic>? _boostStatus;
+  final String _purchaseKey = 'purchase:${DateTime.now().microsecondsSinceEpoch}:${Random.secure().nextInt(1 << 32)}';
+  PaymentOrder? _pendingOrder;
+  String? _pendingTier;
 
   final List<Map<String, dynamic>> _tiers = [
     {
@@ -66,19 +74,21 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
       'price': 999,
       'durationDays': 30,
       'rankMultiplier': '#1 Rank',
-      'tagline': '#1 Guaranteed Rank + Explore Hero Carousel',
+      'tagline': 'Spotlight placement eligibility',
       'colors': [const Color(0xFFFFB800), const Color(0xFF5A31F4)],
       'icon': Icons.workspace_premium_rounded,
       'isPopular': false,
       'features': [
-        '#1 Guaranteed Top Rank in Search & City Feeds',
-        'Luxury Glowing 👑 Stay Q Spotlight Badge',
+        'Priority placement under current server ranking rules',
+        'Luxury Glowing 👑 StayQ Spotlight Badge',
         'Featured in Top Homepage Explorer Carousel',
-        'Dedicated Push Notification Promo to 10,000+ Guests',
+        'Promotional distribution subject to opted-in audience',
         'Active for 30 full days',
       ],
     },
   ];
+
+  void _safeSetState(VoidCallback change) { if (mounted) setState(change); }
 
   @override
   void initState() {
@@ -87,60 +97,44 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
   }
 
   Future<void> _fetchBoostStatus() async {
-    setState(() => _isLoading = true);
+    _safeSetState(() => _isLoading = true);
     try {
       final res = await ApiClient.instance.get('/properties/${widget.property.id}/boost/status');
       if (res != null && res is Map && res['success'] == true) {
-        setState(() {
+        _safeSetState(() {
           _boostStatus = Map<String, dynamic>.from(res);
         });
       }
     } catch (_) {
       // Fallback gracefully
     } finally {
-      setState(() => _isLoading = false);
+      _safeSetState(() => _isLoading = false);
     }
   }
 
   Future<void> _handleBoostPayment() async {
-    final selectedTier = _tiers[_selectedTierIndex];
-    setState(() => _isProcessing = true);
-
+    if (_isProcessing) return;
+    final tier = _tiers[_selectedTierIndex]; final tierId = tier['id'] as String;
+    _safeSetState(() => _isProcessing = true);
     try {
-      // 1. Create Checkout Order
-      final checkoutRes = await ApiClient.instance.post(
-        '/properties/${widget.property.id}/boost/checkout',
-        body: {'tierId': selectedTier['id']},
-      );
-
-      final orderId = (checkoutRes is Map ? checkoutRes['orderId'] : null) ?? 'BOOST_${DateTime.now().millisecondsSinceEpoch}';
-
-      // 2. Activate Boost
-      await ApiClient.instance.post(
-        '/properties/${widget.property.id}/boost/activate',
-        body: {
-          'tierId': selectedTier['id'],
-          'orderId': orderId,
-        },
-      );
-
-      if (mounted) {
-        _showSuccessDialog(selectedTier);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to activate boost: $e'),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-      }
-    }
+      if (_pendingTier != tierId) { _pendingOrder = null; _pendingTier = tierId; }
+      _pendingOrder ??= PaymentOrder.fromJson(jsonMap(await ApiClient.instance.post(
+        '/properties/${widget.property.id}/boost/checkout', body: {'tierId': tierId},
+        idempotencyKey: '$_purchaseKey:${tierId}')));
+      if (!mounted) return;
+      final payment = await CashfreePaymentSheet.show(context, bookingId: _pendingOrder!.id,
+        existingOrder: _pendingOrder, totalAmount: _pendingOrder!.amount,
+        propertyTitle: '${widget.property.title}: ${tier['name']}',
+        verifyOrder: (orderId) => PaymentsApi(ApiClient.instance).verifyPayment(orderId));
+      if (payment == null || !mounted) return;
+      final result = jsonMap(await ApiClient.instance.post('/properties/${widget.property.id}/boost/activate',
+        body: {'tierId': tierId, 'orderId': payment.orderId}, idempotencyKey: 'activate:${payment.orderId}'));
+      if (!mounted) return;
+      if (result['isActive'] != true && jsonMap(result['boost'])['isActive'] != true) throw StateError('Payment is confirmed, but boost activation is pending.');
+      await _fetchBoostStatus();
+      if (mounted) _showSuccessDialog(tier);
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+    finally { _safeSetState(() => _isProcessing = false); }
   }
 
   void _showSuccessDialog(Map<String, dynamic> tier) {
@@ -262,9 +256,9 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
                       width: 72,
                       height: 72,
                       child: widget.property.imageUrls.isNotEmpty
-                          ? (widget.property.imageUrls[0].startsWith('http')
-                              ? Image.network(widget.property.imageUrls[0], fit: BoxFit.cover)
-                              : Image.asset(widget.property.imageUrls[0], fit: BoxFit.cover))
+                          ? (widget.property.firstImage.startsWith('http')
+                              ? Image.network(widget.property.firstImage, fit: BoxFit.cover)
+                              : Image.asset(widget.property.firstImage, fit: BoxFit.cover))
                           : Container(color: AppColors.surfaceLight),
                     ),
                   ),
@@ -366,7 +360,7 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
               final isSelected = _selectedTierIndex == index;
 
               return GestureDetector(
-                onTap: () => setState(() => _selectedTierIndex = index),
+                onTap: () => _safeSetState(() => _selectedTierIndex = index),
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 14),
                   padding: const EdgeInsets.all(18),

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { MessagingService } from './messaging.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -14,7 +14,10 @@ export class MessagingController {
   }
 
   @Get('conversations/:id')
-  getConversation(@CurrentUser('id') userId: string, @Param('id') conversationId: string) {
+  getConversation(
+    @CurrentUser('id') userId: string,
+    @Param('id') conversationId: string,
+  ) {
     return this.messagingService.getConversation(userId, conversationId);
   }
 
@@ -23,9 +26,14 @@ export class MessagingController {
     @CurrentUser('id') userId: string,
     @Body('hostId') hostId: string,
     @Body('propertyId') propertyId?: string,
-    @Body('bookingId') bookingId?: string
+    @Body('bookingId') bookingId?: string,
   ) {
-    return this.messagingService.createConversation(userId, hostId, propertyId, bookingId);
+    return this.messagingService.createConversation(
+      userId,
+      hostId,
+      propertyId,
+      bookingId,
+    );
   }
 
   @Post('conversations/:id/messages')
@@ -33,10 +41,16 @@ export class MessagingController {
     @CurrentUser('id') userId: string,
     @Param('id') conversationId: string,
     @Body('text') text: string,
-    @Body('imageUrl') imageUrl?: string
+    @Body('imageUrl') imageUrl?: string,
+    @Body('clientMessageId') clientMessageId?: string,
   ) {
-    const result = await this.messagingService.sendMessage(userId, conversationId, text, imageUrl);
+    const result = await this.messagingService.sendMessage(
+      userId,
+      conversationId,
+      text,
+      imageUrl,
+      clientMessageId,
+    );
     return result.message;
   }
 }
-

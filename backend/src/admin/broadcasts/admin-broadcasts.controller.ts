@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AdminBroadcastsService } from './admin-broadcasts.service';
 import { BroadcastQueryDto } from './dto/broadcast.dto';
@@ -18,17 +29,23 @@ export class AdminBroadcastsController {
   }
 
   @Post()
-  create(@Body() body: any) {
-    return this.svc.createAndDispatch(body);
+  create(@Body() body: any, @CurrentUser('id') adminId: string) {
+    return this.svc.createAndDispatch(body, adminId);
   }
 
   @Post(':id/send')
-  send(@Param('id', ParseUUIDPipe) id: string) {
-    return this.svc.send(id, 'SYSTEM_ADMIN');
+  send(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') adminId: string,
+  ) {
+    return this.svc.send(id, adminId);
   }
 
   @Delete(':id')
-  delete(@Param('id', ParseUUIDPipe) id: string) {
-    return this.svc.delete(id, 'SYSTEM_ADMIN');
+  delete(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') adminId: string,
+  ) {
+    return this.svc.delete(id, adminId);
   }
 }

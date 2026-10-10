@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { CloudTasksClient } from '@google-cloud/tasks';
 
 @Injectable()
@@ -19,7 +23,13 @@ export class CloudTasksService {
     payload: any,
     scheduledTime: Date,
   ): Promise<void> {
-    const project = process.env.GOOGLE_CLOUD_PROJECT || 'stay-q';
+    const project = process.env.GOOGLE_CLOUD_PROJECT;
+    if (
+      !project ||
+      !process.env.CLOUD_TASKS_SECRET ||
+      process.env.CLOUD_TASKS_SECRET.length < 32
+    )
+      throw new ServiceUnavailableException('Cloud Tasks is not configured');
     const queue = process.env.CLOUD_TASKS_QUEUE || 'default';
     const location = process.env.CLOUD_TASKS_LOCATION || 'asia-south1';
 
@@ -32,6 +42,7 @@ export class CloudTasksService {
         url: url,
         headers: {
           'Content-Type': 'application/json',
+          'x-stayq-task-secret': process.env.CLOUD_TASKS_SECRET,
         },
         body: Buffer.from(JSON.stringify(payload)).toString('base64'),
       },
@@ -39,7 +50,9 @@ export class CloudTasksService {
 
     // Schedule time
     task.scheduleTime = {
-      seconds: Math.max(scheduledTime.getTime() / 1000, Date.now() / 1000 + 10), // At least 10s in future
+      seconds: Math.floor(
+        Math.max(scheduledTime.getTime() / 1000, Date.now() / 1000 + 10),
+      ), // At least 10s in future
     };
 
     try {
@@ -48,13 +61,15 @@ export class CloudTasksService {
           `Local Dev: Simulating Cloud Task creation to ${url} at ${scheduledTime.toISOString()}`,
         );
         // In local dev, we don't actually hit GCP unless configured
-        return;
+        throw new ServiceUnavailableException(
+          'Cloud Tasks delivery is disabled in development',
+        );
       }
-      
+
       const [response] = await this.client.createTask({ parent, task });
       this.logger.log(`Created Cloud Task ${response.name}`);
     } catch (error) {
-      this.logger.error(`Failed to schedule Cloud Task: ${error.message}`);
+      throw new ServiceUnavailableException('Cloud Task scheduling failed');
     }
   }
 }

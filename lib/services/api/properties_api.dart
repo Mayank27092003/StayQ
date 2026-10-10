@@ -6,12 +6,17 @@ class PropertiesApi {
   PropertiesApi(this._client);
 
   Future<List<dynamic>> getProperties({Map<String, String>? filters}) async {
-    final response = await _client.get('/properties', queryParameters: filters);
-    return response as List<dynamic>;
+    final response = await _client.get('/properties', queryParameters: filters, authenticated: false);
+    if (response is List) return response;
+    if (response is Map) {
+      final list = response['properties'] ?? response['data'];
+      if (list is List) return list;
+    }
+    return const [];
   }
 
   Future<dynamic> getProperty(String id) async {
-    return await _client.get('/properties/$id');
+    return await _client.get('/properties/$id', authenticated: false);
   }
 
   Future<dynamic> createProperty(Map<String, dynamic> data) async {

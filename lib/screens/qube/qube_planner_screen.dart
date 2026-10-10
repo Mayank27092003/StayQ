@@ -74,7 +74,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
       "Hey$nameStr! Qube here 🌊☀️\n\nLooking for a luxury villa with a private infinity pool, cliffside views in Vagator, or quiet beachfront bliss in Palolem? Tell me your dates and who you're traveling with, and let's find the spot!",
 
       // 🚐 Overland Campervans & Road Trips
-      "Hello$nameStr! Ready to hit the open road? 🚐💨\n\nI'm Qube, Stay Q's overland companion. We've got campervans mapped across the Western Ghats and Himalayan passes with verified 220V pit-stops and hot showers. Where is the road trip taking you?",
+      "Hello$nameStr! Ready to hit the open road? 🚐💨\n\nI'm Qube, StayQ's overland companion. We've got campervans mapped across the Western Ghats and Himalayan passes with verified 220V pit-stops and hot showers. Where is the road trip taking you?",
 
       // 🏔️ Mountain Chalets & Pine Trails
       "$timeGreeting$nameStr! Qube at your service 🏔️✨\n\nSnow peaks, wood-burning fireplaces, and quiet pine forests calling your name? Let me know if you want an offbeat Himalayan hideout or a scenic road trip route!",
@@ -83,7 +83,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
       "$timeGreeting$nameStr! Looking for a workcation or monthly stay? 🔑💻\n\nCheck out our 0% broker designer lofts with 1Gbps fiber internet in Bengaluru, Goa, and Pune. Where do you want to settle in next?",
 
       // 🇮🇳 Warm Hinglish / Local Vibe
-      "Namaste$nameStr! Main hoon Qube 🙏✨\n\nStay Q ka travel companion. Goa ki pool party, Manali ki thand, ya campervan me mast road trip — batao kya plan ban raha hai, baaki main sambhalta hoon!",
+      "Namaste$nameStr! Main hoon Qube 🙏✨\n\nStayQ ka travel companion. Goa ki pool party, Manali ki thand, ya campervan me mast road trip — batao kya plan ban raha hai, baaki main sambhalta hoon!",
     ];
 
     return pools[math.Random().nextInt(pools.length)];
@@ -141,7 +141,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
     });
   }
 
-  /// Extracts conversation history so DeepSeek maintains context across turns
+  /// Extracts conversation history so Qube maintains context across turns
   List<Map<String, String>> _buildHistory() {
     final history = <Map<String, String>>[];
     // Take the last 8 messages for context
@@ -327,7 +327,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'DeepSeek-powered travel intelligence with live property availability across India.',
+                      'StayQ AI travel intelligence with live property availability across India.',
                       style: TextStyle(
                         fontSize: 12,
                         color: Theme.of(context).textTheme.bodySmall?.color,
@@ -686,7 +686,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                     ],
                   ),
                   Text(
-                    'AI Concierge • DeepSeek V3',
+                    'AI Concierge • Always Active',
                     style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                   ),
                 ],

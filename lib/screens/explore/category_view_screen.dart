@@ -1,3 +1,4 @@
+import '../../models/json_values.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_provider.dart';
@@ -71,18 +72,21 @@ class _CategoryViewScreenState extends State<CategoryViewScreen> {
     final provider = Provider.of<AppProvider>(context);
 
     final filteredList = provider.stays.where((stay) {
+      if (stay.pricePerNight < provider.minPrice || stay.pricePerNight > provider.maxPrice) {
+        return false;
+      }
       bool matchesCategory = true;
       final cat = widget.categoryTitle.toLowerCase();
       if (widget.categoryTitle == 'Trending') {
         matchesCategory = stay.isGuestFavorite || stay.rating >= 4.9;
       } else if (cat.contains('zero broker') || cat == 'zero brokerage') {
         matchesCategory = stay.isZeroBroker;
-      } else if (cat == 'rvs' || cat == 'rv' || cat.contains('campervan')) {
-        matchesCategory = stay.propertyType == 'RV' || stay.category.toLowerCase().contains('rv');
+      } else if (cat == 'rvs' || cat == 'rv' || cat.contains('campervan') || cat.contains('overland')) {
+        matchesCategory = stay.isRv || stay.propertyType == 'RV' || stay.category.toLowerCase().contains('rv');
       } else if (cat == 'camping' || cat == 'glamping' || cat.contains('camp')) {
         matchesCategory = stay.propertyType == 'CAMPING_SITE' || stay.category.toLowerCase().contains('camp') || stay.category.toLowerCase().contains('glamp');
       } else if (widget.categoryTitle != 'Recommended' && widget.categoryTitle != 'All Stays') {
-        matchesCategory = stay.category.toLowerCase() == widget.categoryTitle.toLowerCase();
+        matchesCategory = canonicalCategory(stay.category) == canonicalCategory(widget.categoryTitle);
       }
 
       if (!matchesCategory) return false;

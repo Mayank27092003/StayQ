@@ -12,7 +12,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install app dependencies
-RUN npm ci --legacy-peer-deps
+RUN npm ci
 
 # Copy app source
 COPY . .
@@ -22,6 +22,9 @@ RUN npx prisma generate
 
 # Build the NestJS application
 RUN npm run build
+
+# Keep the production image free of test/compiler dependencies.
+RUN npm prune --omit=dev --ignore-scripts
 
 # Stage 2: Production image
 FROM node:24-slim
@@ -36,9 +39,13 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/assets ./assets
+COPY --from=builder /app/scripts ./scripts
 
 # Expose port
-EXPOSE 3000
+ENV NODE_ENV=production
+USER node
+EXPOSE 8080
 
 # Start the server
 CMD ["npm", "run", "start:prod"]

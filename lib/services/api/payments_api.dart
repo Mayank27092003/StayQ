@@ -16,6 +16,7 @@ class PaymentsApi {
   }) async {
     final response = await _client.post(
       '/payments/create-order',
+      idempotencyKey: 'payment:$bookingId',
       body: {
         'bookingId': bookingId,
         'amount': amount,

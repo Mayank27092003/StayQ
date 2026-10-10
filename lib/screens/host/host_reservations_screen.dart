@@ -9,9 +9,21 @@ import '../../theme/app_motion.dart';
 import '../../widgets/bouncing_widget.dart';
 import '../inbox/chat_detail_screen.dart';
 
-class HostReservationsScreen extends StatelessWidget {
+class HostReservationsScreen extends StatefulWidget {
 
   const HostReservationsScreen({super.key});
+  @override
+  State<HostReservationsScreen> createState() => _HostReservationsScreenState();
+}
+
+class _HostReservationsScreenState extends State<HostReservationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AppProvider>().fetchHostBookings();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +33,8 @@ class HostReservationsScreen extends StatelessWidget {
         backgroundColor: AppColors.background,
         appBar: AppBar(
           title: const Text('Reservations', style: TextStyle(fontWeight: FontWeight.bold)),
+          actions: [IconButton(icon: const Icon(Icons.refresh),
+            onPressed: () => context.read<AppProvider>().fetchHostBookings())],
           bottom: const TabBar(
             indicatorColor: AppColors.primary,
             labelColor: AppColors.primary,
@@ -34,6 +48,13 @@ class HostReservationsScreen extends StatelessWidget {
         ),
         body: Consumer<AppProvider>(
           builder: (context, provider, _) {
+            if (provider.loadingHostBookings && provider.hostBookings.isEmpty) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (provider.hostBookingsError != null) {
+              return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(provider.hostBookingsError!), TextButton(onPressed: provider.fetchHostBookings, child: const Text('Retry'))]));
+            }
             final pending = provider.hostBookings.where((b) => b.status == BookingStatus.pending).toList();
             final upcoming = provider.hostBookings.where((b) => b.status == BookingStatus.confirmed || b.status == BookingStatus.upcoming).toList();
             final completed = provider.hostBookings.where((b) => b.status == BookingStatus.completed || b.status == BookingStatus.cancelled).toList();
@@ -110,7 +131,7 @@ class _BookingList extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(b.guestName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text('Total payout: ₹${b.totalAmount.toInt()}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                        Text('Booking total: ₹${b.totalAmount.toInt()}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -121,7 +142,7 @@ class _BookingList extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      isPending ? 'Action Required' : b.status.name.toUpperCase(),
+                      isPending ? (b.isPaid ? 'Action Required' : 'Awaiting payment') : b.status.name.toUpperCase(),
                       style: TextStyle(
                         fontSize: 10, 
                         fontWeight: FontWeight.bold, 
@@ -157,7 +178,8 @@ class _BookingList extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              Text('${DateFormat('MMM d').format(b.checkIn)} - ${DateFormat('MMM d').format(b.checkOut)} • ${b.adults} Guests'),
+              Text('${DateFormat('MMM d').format(b.checkIn)} - ${DateFormat('MMM d').format(b.checkOut)} • ${b.adults + b.children} Guests'),
+              if (b.options.isNotEmpty) Text('Options: ${b.options.entries.map((e) => "${e.key}: ${e.value}").join(", ")}'),
               
               if (isPending) ...[
                 const SizedBox(height: 16),
@@ -165,13 +187,7 @@ class _BookingList extends StatelessWidget {
                   children: [
                     Expanded(
                       child: BouncingWidget(
-                        onTap: () {
-                          AppMotion.tapSelection();
-                          Provider.of<AppProvider>(context, listen: false).updateBookingStatus(b.id, BookingStatus.cancelled);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Reservation declined and dates released.')),
-                          );
-                        },
+                        onTap: () async { try { await context.read<AppProvider>().updateBookingStatus(b.id, BookingStatus.cancelled); if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reservation declined.'))); } catch (e) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); } },
                         child: Container(
                           height: 44,
                           decoration: BoxDecoration(
@@ -185,13 +201,7 @@ class _BookingList extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: BouncingWidget(
-                        onTap: () {
-                          AppMotion.tapSelection();
-                          Provider.of<AppProvider>(context, listen: false).updateBookingStatus(b.id, BookingStatus.confirmed);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Reservation accepted! Guest notified.')),
-                          );
-                        },
+                        onTap: () async { try { await context.read<AppProvider>().updateBookingStatus(b.id, BookingStatus.confirmed); if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reservation confirmed.'))); } catch (e) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); } },
                         child: Container(
                           height: 44,
                           decoration: BoxDecoration(
@@ -215,17 +225,21 @@ class _BookingList extends StatelessWidget {
                     );
 
                     final convId = await messaging.createOrGetConversation(
-                      hostId: b.stay.hostId.isNotEmpty ? b.stay.hostId : b.stay.id,
+                      hostId: b.stay.hostId,
                       propertyId: b.stay.id,
                       bookingId: b.id,
                     );
 
+                      if (convId == null) {
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(messaging.error ?? 'Conversation could not be opened.')));
+                        return;
+                      }
                     if (context.mounted) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => ChatDetailScreen(
-                            chatId: convId ?? 'conv_${b.id}',
+                            chatId: convId,
                             otherUserName: b.guestName.isNotEmpty ? b.guestName : 'Guest',
                             otherUserAvatar: b.guestAvatar,
                           ),

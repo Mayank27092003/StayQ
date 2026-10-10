@@ -1,3 +1,4 @@
+import { PaymentsModule } from '../payments/payments.module';
 import { Module } from '@nestjs/common';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
@@ -18,8 +19,6 @@ import { HostApplicationsController } from './moderation/host-applications.contr
 
 import { AdminHostsController } from './hosts/admin-hosts.controller';
 import { AdminHostsService } from './hosts/admin-hosts.service';
-
-
 
 import { AdminAnalyticsController } from './analytics/admin-analytics.controller';
 import { AdminAnalyticsService } from './analytics/admin-analytics.service';
@@ -60,7 +59,7 @@ import { AdminConversationsController } from './conversations/admin-conversation
 import { AdminConversationsService } from './conversations/admin-conversations.service';
 
 @Module({
-  imports: [PrismaModule, NotificationsModule],
+  imports: [PrismaModule, NotificationsModule, PaymentsModule],
   controllers: [
     AdminController,
     AdminStaffController,

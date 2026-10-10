@@ -1,5 +1,13 @@
-import { Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { queryBoolean } from '../../../common/utils/input.util';
+import { Transform } from 'class-transformer';
+import {
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { HostStatus, PropertyStatus } from '@prisma/client';
 import { PaginationQueryDto } from '../../dto/pagination.dto';
 
@@ -9,12 +17,12 @@ export class HostQueryDto extends PaginationQueryDto {
   hostStatus?: HostStatus;
 
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => queryBoolean(value))
   @IsBoolean()
   isSuperhost?: boolean;
 
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => queryBoolean(value))
   @IsBoolean()
   isStarHost?: boolean;
 

@@ -1,7 +1,17 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { BookingStatus, PaymentStatus, PayoutStatus, PropertyStatus } from '@prisma/client';
+import {
+  BookingStatus,
+  PaymentStatus,
+  PayoutStatus,
+  PropertyStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { decimalToNumber, roundCurrency, roundRate, sumDecimals } from '../common/serialization';
+import {
+  decimalToNumber,
+  roundCurrency,
+  roundRate,
+  sumDecimals,
+} from '../common/serialization';
 import {
   AnalyticsGranularity,
   AnalyticsRangeQueryDto,
@@ -9,11 +19,15 @@ import {
 } from './dto/analytics.dto';
 
 /** Bookings that count as realised business. */
-const REALISED_STATUSES: BookingStatus[] = [BookingStatus.CONFIRMED, BookingStatus.COMPLETED];
+const REALISED_STATUSES: BookingStatus[] = [
+  BookingStatus.CONFIRMED,
+  BookingStatus.COMPLETED,
+];
 /** Payments where money has actually moved. */
 const SETTLED_PAYMENT_STATUSES: PaymentStatus[] = [
   PaymentStatus.CAPTURED,
   PaymentStatus.RELEASED,
+  PaymentStatus.REFUNDED,
 ];
 
 interface ResolvedRange {
@@ -43,14 +57,20 @@ export class AdminAnalyticsService {
       if (from.getTime() > to.getTime()) {
         throw new BadRequestException('from must be earlier than to.');
       }
-      to.setHours(23, 59, 59, 999);
+      if (to.getTime() - from.getTime() > 366 * 86400000)
+        throw new BadRequestException(
+          'Analytics window cannot exceed 366 days',
+        );
+      to.setUTCHours(23, 59, 59, 999);
       return { from, to, granularity };
     }
 
     const days = query.days ?? 30;
+    if (!Number.isInteger(days) || days < 1 || days > 366)
+      throw new BadRequestException('Window must be 1–366 days');
     const to = new Date();
     const from = new Date(to.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
-    from.setHours(0, 0, 0, 0);
+    from.setUTCHours(0, 0, 0, 0);
     return { from, to, granularity };
   }
 
@@ -137,48 +157,71 @@ export class AdminAnalyticsService {
         _count: { _all: true },
       }),
       this.prisma.payment.aggregate({
-        where: { status: { in: SETTLED_PAYMENT_STATUSES }, createdAt: windowFilter },
+        where: {
+          status: { in: SETTLED_PAYMENT_STATUSES },
+          OR: [
+            { capturedAt: windowFilter },
+            { capturedAt: null, createdAt: windowFilter },
+          ],
+        },
         _count: { _all: true },
         _sum: { amount: true, platformCommission: true, hostPayout: true },
       }),
       this.prisma.refund.aggregate({
-        where: { createdAt: windowFilter },
+        where: { createdAt: windowFilter, status: 'SUCCESS' },
         _count: { _all: true },
         _sum: { amount: true },
       }),
       this.prisma.hostEarning.aggregate({
-        where: { payoutStatus: { in: [PayoutStatus.PENDING, PayoutStatus.ELIGIBLE] } },
+        where: {
+          payoutStatus: { in: [PayoutStatus.PENDING, PayoutStatus.ELIGIBLE] },
+        },
         _sum: { netPayout: true },
       }),
-      this.prisma.review.aggregate({ _count: { _all: true }, _avg: { rating: true } }),
+      this.prisma.review.aggregate({
+        _count: { _all: true },
+        _avg: { rating: true },
+      }),
     ]);
 
-    const grossRevenue = roundCurrency(decimalToNumber(settledPayments._sum.amount) ?? 0);
+    const grossRevenue = roundCurrency(
+      decimalToNumber(settledPayments._sum.amount) ?? 0,
+    );
     const refunded = roundCurrency(decimalToNumber(refundAgg._sum.amount) ?? 0);
 
     const realisedInWindow = bookingsByStatus
       .filter((row) => REALISED_STATUSES.includes(row.status))
       .reduce((sum, row) => sum + row._count._all, 0);
     const cancelledInWindow =
-      bookingsByStatus.find((row) => row.status === BookingStatus.CANCELLED)?._count._all ?? 0;
+      bookingsByStatus.find((row) => row.status === BookingStatus.CANCELLED)
+        ?._count._all ?? 0;
     const decidedInWindow = realisedInWindow + cancelledInWindow;
 
     return {
       range: { from: range.from, to: range.to, granularity: range.granularity },
-      users: { total: usersTotal, newInWindow: usersInWindow, hosts: hostsTotal },
+      users: {
+        total: usersTotal,
+        newInWindow: usersInWindow,
+        hosts: hostsTotal,
+      },
       properties: {
         total: propertiesTotal,
-        byStatus: Object.fromEntries(propertiesByStatus.map((r) => [r.status, r._count._all])),
+        byStatus: Object.fromEntries(
+          propertiesByStatus.map((r) => [r.status, r._count._all]),
+        ),
         awaitingReview:
-          propertiesByStatus.find((r) => r.status === PropertyStatus.PENDING_REVIEW)?._count._all ??
-          0,
+          propertiesByStatus.find(
+            (r) => r.status === PropertyStatus.PENDING_REVIEW,
+          )?._count._all ?? 0,
       },
       bookings: {
         total: bookingsTotal,
         inWindow: bookingsInWindow,
         realisedInWindow,
         cancelledInWindow,
-        byStatus: Object.fromEntries(bookingsByStatus.map((r) => [r.status, r._count._all])),
+        byStatus: Object.fromEntries(
+          bookingsByStatus.map((r) => [r.status, r._count._all]),
+        ),
         // Null when nothing was decided in the window, rather than reporting 0%.
         cancellationRate:
           decidedInWindow === 0
@@ -191,7 +234,9 @@ export class AdminAnalyticsService {
         platformCommission: roundCurrency(
           decimalToNumber(settledPayments._sum.platformCommission) ?? 0,
         ),
-        hostPayouts: roundCurrency(decimalToNumber(settledPayments._sum.hostPayout) ?? 0),
+        hostPayouts: roundCurrency(
+          decimalToNumber(settledPayments._sum.hostPayout) ?? 0,
+        ),
         refundCount: refundAgg._count._all,
         refundedAmount: refunded,
         netRevenue: roundCurrency(grossRevenue - refunded),
@@ -205,7 +250,10 @@ export class AdminAnalyticsService {
       },
       reviews: {
         total: reviewAgg._count._all,
-        averageRating: reviewAgg._count._all === 0 ? null : roundRate(reviewAgg._avg.rating ?? null),
+        averageRating:
+          reviewAgg._count._all === 0
+            ? null
+            : roundRate(reviewAgg._avg.rating ?? null),
       },
     };
   }
@@ -221,8 +269,19 @@ export class AdminAnalyticsService {
         select: { createdAt: true, status: true, totalAmount: true },
       }),
       this.prisma.payment.findMany({
-        where: { status: { in: SETTLED_PAYMENT_STATUSES }, createdAt: windowFilter },
-        select: { createdAt: true, amount: true, platformCommission: true },
+        where: {
+          status: { in: SETTLED_PAYMENT_STATUSES },
+          OR: [
+            { capturedAt: windowFilter },
+            { capturedAt: null, createdAt: windowFilter },
+          ],
+        },
+        select: {
+          createdAt: true,
+          capturedAt: true,
+          amount: true,
+          platformCommission: true,
+        },
       }),
       this.prisma.user.findMany({
         where: { createdAt: windowFilter },
@@ -255,7 +314,8 @@ export class AdminAnalyticsService {
       });
     }
 
-    const bucketFor = (date: Date) => buckets.get(this.bucketKey(date, range.granularity));
+    const bucketFor = (date: Date) =>
+      buckets.get(this.bucketKey(date, range.granularity));
 
     for (const booking of bookings) {
       const bucket = bucketFor(booking.createdAt);
@@ -265,11 +325,13 @@ export class AdminAnalyticsService {
         bucket.realisedBookings += 1;
         bucket.bookingValue += decimalToNumber(booking.totalAmount) ?? 0;
       }
-      if (booking.status === BookingStatus.CANCELLED) bucket.cancelledBookings += 1;
+      if (booking.status === BookingStatus.CANCELLED)
+        bucket.cancelledBookings += 1;
     }
 
     for (const payment of payments) {
-      const bucket = bucketFor(payment.createdAt);
+      const paymentDate = payment.capturedAt || payment.createdAt;
+      const bucket = bucketFor(paymentDate);
       if (!bucket) continue;
       bucket.revenue += decimalToNumber(payment.amount) ?? 0;
       bucket.commission += decimalToNumber(payment.platformCommission) ?? 0;
@@ -380,7 +442,9 @@ export class AdminAnalyticsService {
           {
             ...property,
             bookings: row._count._all,
-            bookingValue: roundCurrency(decimalToNumber(row._sum.totalAmount) ?? 0),
+            bookingValue: roundCurrency(
+              decimalToNumber(row._sum.totalAmount) ?? 0,
+            ),
           },
         ];
       }),
@@ -420,8 +484,12 @@ export class AdminAnalyticsService {
           {
             ...host,
             earningRecords: row._count._all,
-            grossAmount: roundCurrency(decimalToNumber(row._sum.grossAmount) ?? 0),
-            platformFee: roundCurrency(decimalToNumber(row._sum.platformFee) ?? 0),
+            grossAmount: roundCurrency(
+              decimalToNumber(row._sum.grossAmount) ?? 0,
+            ),
+            platformFee: roundCurrency(
+              decimalToNumber(row._sum.platformFee) ?? 0,
+            ),
             netPayout: roundCurrency(decimalToNumber(row._sum.netPayout) ?? 0),
           },
         ];
@@ -437,36 +505,67 @@ export class AdminAnalyticsService {
     const range = this.resolveRange(query);
     const windowFilter = { gte: range.from, lte: range.to };
 
-    const [payments, refunds, byPayoutStatus, earningsInWindow] = await Promise.all([
-      this.prisma.payment.findMany({
-        where: { status: { in: SETTLED_PAYMENT_STATUSES }, createdAt: windowFilter },
-        select: {
-          amount: true,
-          platformCommission: true,
-          hostPayout: true,
-          status: true,
-          currency: true,
-        },
-      }),
-      this.prisma.refund.findMany({
-        where: { createdAt: windowFilter },
-        select: { amount: true, reason: true, createdAt: true },
-      }),
-      this.prisma.hostEarning.groupBy({
-        by: ['payoutStatus'],
-        _count: { _all: true },
-        _sum: { netPayout: true },
-      }),
-      this.prisma.hostEarning.aggregate({
-        where: { createdAt: windowFilter },
-        _sum: { grossAmount: true, platformFee: true, netPayout: true, taxDeducted: true },
-      }),
-    ]);
+    const [payments, refunds, byPayoutStatus, earningsInWindow] =
+      await Promise.all([
+        this.prisma.payment.findMany({
+          where: {
+            status: { in: SETTLED_PAYMENT_STATUSES },
+            OR: [
+              { capturedAt: windowFilter },
+              { capturedAt: null, createdAt: windowFilter },
+            ],
+          },
+          select: {
+            amount: true,
+            platformCommission: true,
+            hostPayout: true,
+            status: true,
+            currency: true,
+          },
+        }),
+        this.prisma.refund.findMany({
+          where: { createdAt: windowFilter, status: 'SUCCESS' },
+          select: {
+            payment: { select: { amount: true, platformCommission: true } },
+            amount: true,
+            reason: true,
+            createdAt: true,
+          },
+        }),
+        this.prisma.hostEarning.groupBy({
+          by: ['payoutStatus'],
+          _count: { _all: true },
+          _sum: { netPayout: true },
+        }),
+        this.prisma.hostEarning.aggregate({
+          where: { createdAt: windowFilter },
+          _sum: {
+            grossAmount: true,
+            platformFee: true,
+            netPayout: true,
+            taxDeducted: true,
+          },
+        }),
+      ]);
 
     const gross = roundCurrency(sumDecimals(payments.map((p) => p.amount)));
-    const commission = roundCurrency(sumDecimals(payments.map((p) => p.platformCommission)));
-    const hostPayouts = roundCurrency(sumDecimals(payments.map((p) => p.hostPayout)));
+    const commission = roundCurrency(
+      sumDecimals(payments.map((p) => p.platformCommission)),
+    );
+    const hostPayouts = roundCurrency(
+      sumDecimals(payments.map((p) => p.hostPayout)),
+    );
     const refunded = roundCurrency(sumDecimals(refunds.map((r) => r.amount)));
+    // BL-106: Platform revenue subtracts proportional platform commission share of refund, not the entire gross booking refund
+    const platformRefundShare = refunds.reduce(
+      (sum, r) =>
+        sum +
+        (Number(r.payment.amount) > 0
+          ? (Number(r.amount) * Number(r.payment.platformCommission)) /
+            Number(r.payment.amount)
+          : 0),
+      0,
+    );
 
     return {
       range: { from: range.from, to: range.to },
@@ -478,13 +577,21 @@ export class AdminAnalyticsService {
       hostPayouts,
       refundCount: refunds.length,
       refundedAmount: refunded,
-      netPlatformRevenue: roundCurrency(commission - refunded),
+      netPlatformRevenue: roundCurrency(commission - platformRefundShare),
       netRevenue: roundCurrency(gross - refunded),
       earningsInWindow: {
-        grossAmount: roundCurrency(decimalToNumber(earningsInWindow._sum.grossAmount) ?? 0),
-        platformFee: roundCurrency(decimalToNumber(earningsInWindow._sum.platformFee) ?? 0),
-        taxDeducted: roundCurrency(decimalToNumber(earningsInWindow._sum.taxDeducted) ?? 0),
-        netPayout: roundCurrency(decimalToNumber(earningsInWindow._sum.netPayout) ?? 0),
+        grossAmount: roundCurrency(
+          decimalToNumber(earningsInWindow._sum.grossAmount) ?? 0,
+        ),
+        platformFee: roundCurrency(
+          decimalToNumber(earningsInWindow._sum.platformFee) ?? 0,
+        ),
+        taxDeducted: roundCurrency(
+          decimalToNumber(earningsInWindow._sum.taxDeducted) ?? 0,
+        ),
+        netPayout: roundCurrency(
+          decimalToNumber(earningsInWindow._sum.netPayout) ?? 0,
+        ),
       },
       payoutPipeline: byPayoutStatus.map((row) => ({
         status: row.payoutStatus,

@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Logger, Headers, UnauthorizedException } from '@nestjs/common';
+import { Public } from '../common/decorators/public.decorator';
+import { timingSafeEqual } from 'crypto';
+import {
+  Controller,
+  Post,
+  Body,
+  Logger,
+  Headers,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { TicketGeneratorService } from './ticket-generator.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,39 +22,50 @@ export class WebhooksController {
     private readonly prisma: PrismaService,
   ) {}
 
+  @Public()
   @Post('reminders/night-before')
   async handleNightBeforeReminder(
     @Headers('x-cloudtasks-queuename') queueName: string,
-    @Body() payload: { bookingId: string }
+    @Headers('x-stayq-task-secret') taskSecret: string,
+    @Body() payload: { bookingId: string },
   ) {
-    // Only allow requests from Cloud Tasks or local dev
-    if (process.env.NODE_ENV === 'production' && !queueName) {
-      this.logger.warn('Unauthorized Cloud Tasks webhook call attempted');
-      throw new UnauthorizedException('Missing Cloud Tasks headers');
-    }
+    const expectedSecret = process.env.CLOUD_TASKS_SECRET;
+    if (
+      !expectedSecret ||
+      expectedSecret.length < 32 ||
+      !taskSecret ||
+      Buffer.byteLength(taskSecret) !== Buffer.byteLength(expectedSecret) ||
+      !timingSafeEqual(Buffer.from(taskSecret), Buffer.from(expectedSecret))
+    )
+      throw new UnauthorizedException('Invalid task authentication');
 
-    this.logger.log(`Received Night-Before webhook for booking ${payload.bookingId}`);
-    
+    this.logger.log(
+      `Received Night-Before webhook for booking ${payload.bookingId}`,
+    );
+
     // Fetch booking details
     const booking = await this.prisma.booking.findUnique({
       where: { id: payload.bookingId },
-      include: { guest: true, property: true },
+      include: { guest: true, property: true, payment: true },
     });
 
-    if (!booking || booking.status !== 'CONFIRMED') {
-      this.logger.warn(`Booking ${payload.bookingId} not found or not confirmed.`);
+    if (
+      !booking ||
+      booking.status !== 'CONFIRMED' ||
+      !['CAPTURED', 'RELEASED'].includes(booking.payment?.status || '')
+    ) {
+      this.logger.warn(
+        `Booking ${payload.bookingId} not found or not confirmed.`,
+      );
       return { status: 'skipped' };
     }
 
-    // 1. Generate PNG Ticket
-    const ticketBuffer = await this.ticketGenerator.generateTicketImage(booking);
-    
-    // 2. Send Rich Push Notification via Firebase Cloud Messaging
-    await this.notificationsService.sendRichPushNotification(
-      booking.guest.firebaseUid,
-      'Your Cruise Ticket is Ready! 🚢',
-      `Check-in tomorrow at ${booking.property.checkInTime} for your luxury stay at ${booking.property.title}.`,
-      ticketBuffer.toString('base64'),
+    await this.notificationsService.sendNotification(
+      booking.guestId,
+      'BOOKING_CONFIRMED',
+      'Check-in reminder',
+      `Your stay at ${booking.property.title} starts tomorrow`,
+      { bookingId: booking.id, eventKey: `reminder:${booking.id}` },
     );
 
     return { status: 'success' };

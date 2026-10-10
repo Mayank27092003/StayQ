@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -28,7 +37,7 @@ export class NotificationsController {
   saveDeviceToken(
     @CurrentUser('id') userId: string,
     @Body('token') token: string,
-    @Body('platform') platform: string
+    @Body('platform') platform: string,
   ) {
     return this.notificationsService.saveDeviceToken(userId, token, platform);
   }
@@ -36,7 +45,7 @@ export class NotificationsController {
   @Delete('device-token')
   deleteDeviceToken(
     @CurrentUser('id') userId: string,
-    @Body('token') token: string
+    @Body('token') token: string,
   ) {
     return this.notificationsService.deleteDeviceToken(userId, token);
   }
@@ -49,17 +58,27 @@ export class NotificationsController {
   @Patch('preferences')
   updatePreferences(
     @CurrentUser('id') userId: string,
-    @Body() prefs: { pushEnabled?: boolean; emailEnabled?: boolean; smsEnabled?: boolean }
+    @Body()
+    prefs: {
+      pushEnabled?: boolean;
+      emailEnabled?: boolean;
+      smsEnabled?: boolean;
+    },
   ) {
     return this.notificationsService.updatePreferences(userId, prefs);
   }
-  
+
   @Post('test-push')
   testPush(
     @CurrentUser('id') userId: string,
     @Body('title') title: string,
-    @Body('body') body: string
+    @Body('body') body: string,
   ) {
-    return this.notificationsService.sendNotification(userId, NotificationType.SYSTEM, title, body);
+    return this.notificationsService.sendNotification(
+      userId,
+      NotificationType.SYSTEM,
+      title,
+      body,
+    );
   }
 }

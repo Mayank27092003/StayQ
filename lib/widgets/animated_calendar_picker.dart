@@ -29,8 +29,11 @@ class _AnimatedCalendarPickerState extends State<AnimatedCalendarPicker> with Si
   void initState() {
     super.initState();
     _displayedMonth = DateTime.now();
-    _startDate = widget.initialRange?.start ?? DateTime.now().add(const Duration(days: 3));
-    _endDate = widget.initialRange?.end ?? DateTime.now().add(const Duration(days: 8));
+    final range = widget.initialRange;
+    if (range != null && _validRange(range.start, range.end)) {
+      _startDate = DateUtils.dateOnly(range.start); _endDate = DateUtils.dateOnly(range.end);
+      _displayedMonth = _startDate!;
+    }
 
     _sweepController = AnimationController(
       vsync: this,
@@ -52,7 +55,19 @@ class _AnimatedCalendarPickerState extends State<AnimatedCalendarPicker> with Si
     super.dispose();
   }
 
+  bool _validRange(DateTime start, DateTime end) {
+    start = DateUtils.dateOnly(start); end = DateUtils.dateOnly(end);
+    if (start.isBefore(DateUtils.dateOnly(DateTime.now())) || !end.isAfter(start)) return false;
+    for (var d = start; d.isBefore(end); d = d.add(const Duration(days: 1))) {
+      if (widget.blockedDates.any((b) => DateUtils.isSameDay(b, d))) return false;
+    }
+    return true;
+  }
+
   void _onDayTapped(DateTime day) {
+    day = DateUtils.dateOnly(day);
+    if (day.isBefore(DateUtils.dateOnly(DateTime.now()))) return;
+    if (_startDate != null && _endDate == null && DateUtils.isSameDay(day, _startDate)) return;
     if (widget.blockedDates.any((d) => DateUtils.isSameDay(d, day))) {
       return; // Ignore taps on blocked dates
     }
@@ -172,7 +187,7 @@ class _AnimatedCalendarPickerState extends State<AnimatedCalendarPicker> with Si
                     dayDate.isAfter(_startDate!) &&
                     dayDate.isBefore(_endDate!);
 
-                final isBlocked = widget.blockedDates.any((d) => DateUtils.isSameDay(d, dayDate));
+                final isBlocked = dayDate.isBefore(DateUtils.dateOnly(DateTime.now())) || widget.blockedDates.any((d) => DateUtils.isSameDay(d, dayDate));
 
                 Color bgColor = Colors.transparent;
                 BorderRadius radius = BorderRadius.circular(20);

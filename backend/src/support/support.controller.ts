@@ -7,9 +7,16 @@ import {
   Body,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { SupportService } from './support.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
+import { AdminGuard } from '../admin/guards/admin.guard';
+
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
+import { User } from '@prisma/client';
 
 @Controller('support')
 export class SupportController {
@@ -19,7 +26,9 @@ export class SupportController {
    * 1. AI Triage Chat:
    * Tier-1 automated support with pre-written resolution pathways
    */
+  @Public()
   @Post('ai-triage')
+  @Throttle({ ai: { limit: 15, ttl: 60000 } })
   async aiTriage(
     @Body()
     body: {
@@ -41,6 +50,7 @@ export class SupportController {
    */
   @Post('tickets')
   async createTicket(
+    @CurrentUser() user: User,
     @Body()
     body: {
       name: string;
@@ -55,37 +65,48 @@ export class SupportController {
       userId?: string;
     },
   ) {
-    return this.supportService.createTicket(body);
+    return this.supportService.createTicket(body, user);
   }
 
   /**
-   * 3. List support tickets (Public / Admin access)
+   * 3. List support tickets (Authenticated: users see own tickets; admins see all)
    */
   @Get('tickets')
+  @UseGuards(FirebaseAuthGuard)
   async listTickets(
+    @CurrentUser() user: User,
     @Query()
     query: {
       status?: string;
       category?: string;
       search?: string;
       email?: string;
+      limit?: number;
+      offset?: number;
     },
   ) {
-    return this.supportService.listTickets(query);
+    const effectiveQuery: any = { ...query };
+    if (!user.isAdmin) {
+      effectiveQuery.userId = user.id;
+      if (user.email) effectiveQuery.email = user.email;
+    }
+    return this.supportService.listTickets(effectiveQuery, user);
   }
 
   /**
-   * 4. Get ticket details with message thread
+   * 4. Get ticket details with message thread (Scoped to owner or admin)
    */
   @Get('tickets/:id')
-  async getTicket(@Param('id') id: string) {
-    return this.supportService.getTicket(id);
+  @UseGuards(FirebaseAuthGuard)
+  async getTicket(@CurrentUser() user: User, @Param('id') id: string) {
+    const ticket = await this.supportService.getTicket(id, user);
+    return ticket;
   }
 
   /**
    * 5. Update ticket status / mark resolved (Admin only)
    */
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(FirebaseAuthGuard, AdminGuard)
   @Patch('tickets/:id')
   async updateTicket(
     @Param('id') id: string,
@@ -101,20 +122,21 @@ export class SupportController {
   }
 
   /**
-   * 6. Add reply message to ticket thread
+   * 6. Add reply message to ticket thread (Protected against author spoofing)
    */
   @Post('tickets/:id/messages')
   async addMessage(
     @Param('id') id: string,
     @Body()
     body: {
-      authorType: 'USER' | 'ADMIN' | 'SYSTEM';
+      authorType?: 'USER' | 'ADMIN' | 'SYSTEM';
       authorName?: string;
       authorId?: string;
       body: string;
       internal?: boolean;
     },
+    @Req() req: any,
   ) {
-    return this.supportService.addMessage(id, body);
+    return this.supportService.addMessage(id, body, req.user);
   }
 }

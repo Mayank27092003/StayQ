@@ -26,13 +26,13 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 export async function syncProfileWithBackend(firebaseUser: { uid: string; displayName?: string | null; email?: string | null; phoneNumber?: string | null; photoURL?: string | null }): Promise<UserProfile> {
   const idToken = await auth.currentUser?.getIdToken();
-  const payload = {
-    firstName: firebaseUser.displayName?.split(' ')[0] || 'Stay Q',
-    lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || 'Traveler',
+  const displayName = (firebaseUser.displayName || '').trim();
+  const payload: any = {
+    displayName: displayName.length > 0 ? displayName : 'Stay Q Traveler',
     email: firebaseUser.email || `${firebaseUser.uid}@stayq.space`,
-    phone: firebaseUser.phoneNumber || undefined,
-    avatarUrl: firebaseUser.photoURL || '/images/avatar_alex.jpg',
   };
+  if (firebaseUser.phoneNumber) payload.phone = firebaseUser.phoneNumber;
+  if (firebaseUser.photoURL) payload.photoUrl = firebaseUser.photoURL;
 
   try {
     const res = await fetch(`${API_BASE_URL}/auth/sync-profile`, {
@@ -48,10 +48,10 @@ export async function syncProfileWithBackend(firebaseUser: { uid: string; displa
       const data = await res.json();
       return {
         id: data.id || firebaseUser.uid,
-        name: `${data.firstName || ''} ${data.lastName || ''}`.trim() || firebaseUser.displayName || 'Traveler',
+        name: data.displayName || displayName || 'Stay Q Traveler',
         email: data.email || firebaseUser.email || '',
         phone: data.phone || firebaseUser.phoneNumber || undefined,
-        avatarUrl: data.avatarUrl || firebaseUser.photoURL || '/images/avatar_alex.jpg',
+        avatarUrl: data.photoUrl || firebaseUser.photoURL || '/images/avatar_alex.jpg',
       };
     }
   } catch {
@@ -60,185 +60,14 @@ export async function syncProfileWithBackend(firebaseUser: { uid: string; displa
 
   return {
     id: firebaseUser.uid,
-    name: firebaseUser.displayName || 'Stay Q Traveler',
+    name: displayName || 'Stay Q Traveler',
     email: firebaseUser.email || '',
     phone: firebaseUser.phoneNumber || undefined,
     avatarUrl: firebaseUser.photoURL || '/images/avatar_alex.jpg',
   };
 }
 
-export const CURATED_STAYS: Stay[] = [
-  {
-    id: 'stay-101',
-    title: 'The Highland Infinity Villa',
-    location: 'Candolim, North Goa, India',
-    city: 'Goa',
-    state: 'Goa',
-    pricePerNight: 5500,
-    rating: 4.98,
-    reviewCount: 48,
-    imageUrls: ['/images/real_hero.jpg', '/images/villa_1.jpg', '/images/villa_2.jpg'],
-    category: 'Villas',
-    propertyType: 'STAY',
-    hostName: 'Rajesh & Alok (Star Hosts)',
-    hostAvatar: '/images/avatar_alex.jpg',
-    isZeroBroker: false,
-    isGuestFavorite: true,
-    isStarHost: true,
-    isFeatured: true,
-    amenities: ['Private Pool', 'High-Speed Wi-Fi', 'Air Conditioning', 'Kitchen', 'Ocean View'],
-    tags: ['Star Host', 'Verified Luxury', 'Private Pool'],
-    description: 'Private 3BHK luxury pool villa nestled amidst lush palm greens in Candolim, just 5 mins from the beach.',
-    lat: 15.5182,
-    lng: 73.7634,
-    maxGuests: 6,
-    bedrooms: 3,
-    beds: 3,
-    baths: 3,
-  },
-  {
-    id: 'stay-102',
-    title: 'Himalayan Alpine Glass Cabin',
-    location: 'Old Manali, Himachal Pradesh, India',
-    city: 'Manali',
-    state: 'Himachal Pradesh',
-    pricePerNight: 4200,
-    rating: 4.95,
-    reviewCount: 32,
-    imageUrls: ['/images/cabin_1.jpg', '/images/villa_3.jpg'],
-    category: 'Cabins',
-    propertyType: 'STAY',
-    hostName: 'Vikram Singh',
-    hostAvatar: '/images/avatar_alex.jpg',
-    isZeroBroker: false,
-    isGuestFavorite: true,
-    isStarHost: true,
-    isFeatured: true,
-    amenities: ['Mountain View', 'Fireplace', 'High-Speed Wi-Fi', 'Pet Friendly'],
-    tags: ['Snow Peaks', 'Fireplace', 'Heated Stays'],
-    description: 'Cozy glass-roof mountain cabin with unobstructed 360-degree snow peak views and wood-burning fireplace.',
-    lat: 32.2432,
-    lng: 77.1892,
-    maxGuests: 4,
-    bedrooms: 2,
-    beds: 2,
-    baths: 2,
-  },
-  {
-    id: 'stay-103',
-    title: 'Indiranagar Designer Loft (Zero Brokerage)',
-    location: '100ft Road, Indiranagar, Bengaluru, India',
-    city: 'Bengaluru',
-    state: 'Karnataka',
-    pricePerNight: 3200,
-    rating: 4.92,
-    reviewCount: 19,
-    imageUrls: ['/images/zb_1.jpg', '/images/villa_2.jpg'],
-    category: 'Zero Broker',
-    propertyType: 'ZERO_BROKER',
-    hostName: 'Sanjay Direct Owner',
-    hostAvatar: '/images/avatar_alex.jpg',
-    isZeroBroker: true,
-    depositAmount: 45000,
-    leaseTerm: '1 - 11 Months Flexible',
-    isGuestFavorite: true,
-    isStarHost: true,
-    isFeatured: true,
-    amenities: ['High-Speed Wi-Fi', 'Air Conditioning', 'Kitchen', 'Pet Friendly'],
-    tags: ['Zero Broker', 'Direct Owner', '11-Month Lease'],
-    description: 'Modern penthouse loft with high ceilings, workstation, and direct owner contract with ₹0 brokerage.',
-    lat: 12.9784,
-    lng: 77.6408,
-    maxGuests: 2,
-    bedrooms: 1,
-    beds: 1,
-    baths: 1,
-  },
-  {
-    id: 'stay-104',
-    title: 'Wayanad Rainforest Treehouse',
-    location: 'Meppadi, Wayanad, Kerala, India',
-    city: 'Wayanad',
-    state: 'Kerala',
-    pricePerNight: 6800,
-    rating: 4.96,
-    reviewCount: 27,
-    imageUrls: ['/images/treehouse_1.jpg', '/images/villa_1.jpg'],
-    category: 'Treehouses',
-    propertyType: 'STAY',
-    hostName: 'Ananya Nair',
-    hostAvatar: '/images/avatar_alex.jpg',
-    isZeroBroker: false,
-    isGuestFavorite: true,
-    isStarHost: true,
-    isFeatured: true,
-    amenities: ['Mountain View', 'High-Speed Wi-Fi', 'Kitchen', 'Private Pool'],
-    tags: ['Rainforest', 'Treehouse', 'Organic Meals'],
-    description: 'Elevated 45ft above the rainforest floor inside a 100-acre organic coffee plantation.',
-    lat: 11.5524,
-    lng: 76.1264,
-    maxGuests: 3,
-    bedrooms: 1,
-    beds: 2,
-    baths: 1,
-  },
-  {
-    id: 'stay-105',
-    title: 'Luxury Expedition Motorhome RV',
-    location: 'Leh Ladakh Valley, India',
-    city: 'Leh Ladakh',
-    state: 'Ladakh',
-    pricePerNight: 8500,
-    rating: 4.99,
-    reviewCount: 15,
-    imageUrls: ['/images/rv_1.jpg', '/images/camp_1.jpg'],
-    category: 'RV',
-    propertyType: 'RV',
-    hostName: 'Ladakh Expeditions Host',
-    hostAvatar: '/images/avatar_alex.jpg',
-    isZeroBroker: false,
-    isGuestFavorite: true,
-    isStarHost: true,
-    isFeatured: true,
-    amenities: ['Air Conditioning', 'Kitchen', 'Mountain View', 'High-Speed Wi-Fi'],
-    tags: ['4x4 Campervan', 'Solar Powered', 'Self-Drive / Chauffeur'],
-    description: 'Off-grid 4x4 campervan with plush queen bed, solar-powered kitchen, hot shower, and star-gazing sunroof.',
-    lat: 34.1526,
-    lng: 77.5771,
-    maxGuests: 4,
-    bedrooms: 1,
-    beds: 2,
-    baths: 1,
-  },
-  {
-    id: 'stay-106',
-    title: 'Udaipur Lakeside Heritage Haveli',
-    location: 'Lake Pichola, Udaipur, Rajasthan, India',
-    city: 'Udaipur',
-    state: 'Rajasthan',
-    pricePerNight: 7200,
-    rating: 4.97,
-    reviewCount: 41,
-    imageUrls: ['/images/villa_3.jpg', '/images/villa_1.jpg'],
-    category: 'Villas',
-    propertyType: 'STAY',
-    hostName: 'Maharana Heritage Host',
-    hostAvatar: '/images/avatar_alex.jpg',
-    isZeroBroker: false,
-    isGuestFavorite: true,
-    isStarHost: true,
-    isFeatured: true,
-    amenities: ['Private Pool', 'Ocean View', 'Air Conditioning', 'Kitchen', 'High-Speed Wi-Fi'],
-    tags: ['Royal Palace', 'Lake View', 'Star Host'],
-    description: 'Authentic 200-year-old royal haveli overlooking Lake Pichola with private jharokhas and courtyards.',
-    lat: 24.5764,
-    lng: 73.6835,
-    maxGuests: 6,
-    bedrooms: 3,
-    beds: 3,
-    baths: 3,
-  },
-];
+export const CURATED_STAYS: Stay[] = [];
 
 export const CURATED_EXPERIENCES: Experience[] = [];
 
@@ -256,7 +85,7 @@ export async function fetchStays(filters?: Partial<SearchFilters>): Promise<Stay
     const res = await fetch(`${API_BASE_URL}/properties`, { headers: { Accept: 'application/json' } });
     if (res.ok) {
       const data = await res.json();
-      const rawList = Array.isArray(data) ? data : data?.data || [];
+      const rawList = Array.isArray(data) ? data : data?.properties || data?.data || [];
       dbProps = rawList.filter((p: any) => {
         const title = (p.title || p.name || '').toLowerCase();
         return !title.includes('brutal test') && !title.includes('[test]');
@@ -315,15 +144,7 @@ export async function fetchStays(filters?: Partial<SearchFilters>): Promise<Stay
     };
   });
 
-  // Merge real properties with curated stays to provide complete inventory
-  const combinedStays: Stay[] = [...realStays];
-  CURATED_STAYS.forEach((cs) => {
-    if (!combinedStays.some((s) => s.id === cs.id)) {
-      combinedStays.push(cs);
-    }
-  });
-
-  return applyFilters(combinedStays, filters);
+  return applyFilters(realStays, filters);
 }
 
 export async function fetchExperiences(category?: string): Promise<Experience[]> {

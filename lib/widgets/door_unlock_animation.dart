@@ -163,7 +163,7 @@ class _DoorUnlockAnimationState extends State<DoorUnlockAnimation> with TickerPr
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'STAY Q',
+                        'STAYQ',
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 10,

@@ -34,6 +34,7 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
   late TextEditingController _cityController;
   late TextEditingController _stateController;
   late TextEditingController _countryController;
+  late TextEditingController _pickupLocationController;
 
   GoogleMapController? _mapController;
   bool _isGettingGps = false;
@@ -60,6 +61,18 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
     _countryController = TextEditingController(
       text: provider.country.isNotEmpty ? provider.country : 'India',
     );
+    final initialPickup = provider.pickupLocation.isNotEmpty
+        ? provider.pickupLocation
+        : (provider.address.isNotEmpty ? provider.address : provider.streetAddress);
+    _pickupLocationController = TextEditingController(text: initialPickup);
+
+    // Ensure map coordinates are non-null and valid
+    if (provider.latitude == null || provider.longitude == null || provider.latitude == 0.0 || provider.longitude == 0.0) {
+      provider.updateLocation(
+        lat: 28.6139,
+        lng: 77.2090,
+      );
+    }
 
     _houseNoController.addListener(_updateProvider);
     _buildingController.addListener(_updateProvider);
@@ -72,6 +85,7 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
     _cityController.addListener(_updateProvider);
     _stateController.addListener(_updateProvider);
     _countryController.addListener(_updateProvider);
+    _pickupLocationController.addListener(_updateProvider);
   }
 
   String _computeFullAddress() {
@@ -110,6 +124,9 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
   void _updateProvider() {
     final provider = Provider.of<HostOnboardingProvider>(context, listen: false);
     final fullAddr = _computeFullAddress();
+    final effectivePickup = _pickupLocationController.text.trim().isNotEmpty
+        ? _pickupLocationController.text.trim()
+        : fullAddr;
 
     provider.updateLocation(
       address: fullAddr.isNotEmpty ? fullAddr : _streetAddressController.text,
@@ -124,6 +141,7 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
       floor: _floorController.text.trim(),
       tower: _towerController.text.trim(),
       areaLocality: _areaLocalityController.text.trim(),
+      pickupLocation: effectivePickup,
       lat: provider.latitude ?? 28.6139,
       lng: provider.longitude ?? 77.2090,
     );
@@ -137,7 +155,8 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
     setState(() => _isLoadingPincode = true);
     try {
       final url = Uri.parse('https://api.postalpincode.in/pincode/$pin');
-      final response = await http.get(url);
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
+      if (!mounted || _pincodeController.text.trim() != pin) return;
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List && data.isNotEmpty && data[0]['Status'] == 'Success') {
@@ -389,6 +408,10 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
           _streetAddressController.text = result.title;
         }
 
+        if (provider.propertyType == 'RV' && _pickupLocationController.text.trim().isEmpty) {
+          _pickupLocationController.text = result.title.isNotEmpty ? result.title : result.streetAddress;
+        }
+
         _updateProvider();
 
         if (result.lat != 0.0 && result.lng != 0.0) {
@@ -417,6 +440,7 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
     _cityController.dispose();
     _stateController.dispose();
     _countryController.dispose();
+    _pickupLocationController.dispose();
     super.dispose();
   }
 
@@ -581,6 +605,8 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<HostOnboardingProvider>(context);
+    final isRv = provider.propertyType == 'RV';
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final fullGeneratedAddress = _computeFullAddress();
 
@@ -613,7 +639,7 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 24),
+                  child: Icon(isRv ? Icons.rv_hookup_rounded : Icons.location_on_rounded, color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -621,7 +647,7 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Location & Entrance Map',
+                        isRv ? 'RV Depot & Pickup Location Map' : 'Location & Entrance Map',
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w900,
@@ -632,7 +658,9 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        'Pinpoint exact gate & structured address for guest check-ins.',
+                        isRv
+                            ? 'Pinpoint base station, depot, or pickup point for vehicle handovers.'
+                            : 'Pinpoint exact gate & structured address for guest check-ins.',
                         style: TextStyle(
                           fontSize: 12, 
                           color: isDark ? Colors.white60 : AppColors.textSecondary, 
@@ -865,11 +893,31 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
 
             const SizedBox(height: 20),
 
+            // ─── RV SPECIFIC CARD: Pickup Location & Depot Hub ───
+            if (isRv) ...[
+              _buildCardContainer(
+                title: 'RV Pickup Location & Depot Hub',
+                subtitle: 'The primary base station or depot where guests collect or return the RV.',
+                icon: Icons.rv_hookup_rounded,
+                isDark: isDark,
+                children: [
+                  _buildModernInputField(
+                    label: 'RV Pickup Hub / Depot Address',
+                    controller: _pickupLocationController,
+                    hint: 'e.g. North Goa Airport Depot, Bay 4 / Central RV Station',
+                    isRequired: true,
+                    isDark: isDark,
+                    prefixIcon: const Icon(Icons.rv_hookup_rounded, color: AppColors.primary, size: 18),
+                  ),
+                ],
+              ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05),
+            ],
+
             // ─── CARD 1: Unit & Building Details ───
             _buildCardContainer(
-              title: '1. Unit & Building Details',
-              subtitle: 'House, flat, villa number and society complex name.',
-              icon: Icons.apartment_rounded,
+              title: isRv ? '1. RV Parking Hub / Base Depot Details' : '1. Unit & Building Details',
+              subtitle: isRv ? 'Depot bay, garage plot, or parking complex details.' : 'House, flat, villa number and society complex name.',
+              icon: isRv ? Icons.garage_rounded : Icons.apartment_rounded,
               isDark: isDark,
               children: [
                 Row(
@@ -878,9 +926,9 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
                     Expanded(
                       flex: 1,
                       child: _buildModernInputField(
-                        label: 'House / Flat / Villa No.',
+                        label: isRv ? 'Bay / Plot / Garage No.' : 'House / Flat / Villa No.',
                         controller: _houseNoController,
-                        hint: 'e.g. Villa 4B, Flat 302',
+                        hint: isRv ? 'e.g. Bay 4, Plot 12' : 'e.g. Villa 4B, Flat 302',
                         isRequired: true,
                         isDark: isDark,
                       ),
@@ -889,9 +937,9 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
                     Expanded(
                       flex: 1,
                       child: _buildModernInputField(
-                        label: 'Floor (Optional)',
+                        label: isRv ? 'Section (Optional)' : 'Floor (Optional)',
                         controller: _floorController,
-                        hint: 'e.g. 3rd Floor, Ground',
+                        hint: isRv ? 'e.g. Section B' : 'e.g. 3rd Floor, Ground',
                         isDark: isDark,
                       ),
                     ),
@@ -899,16 +947,16 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
                 ),
                 const SizedBox(height: 14),
                 _buildModernInputField(
-                  label: 'Tower / Wing (Optional)',
+                  label: isRv ? 'Zone / Bay (Optional)' : 'Tower / Wing (Optional)',
                   controller: _towerController,
-                  hint: 'e.g. Tower 2, Wing A',
+                  hint: isRv ? 'e.g. Zone East, Bay A' : 'e.g. Tower 2, Wing A',
                   isDark: isDark,
                 ),
                 const SizedBox(height: 14),
                 _buildModernInputField(
-                  label: 'Society / Building / Project Name',
+                  label: isRv ? 'Base Station / Depot / Facility Name' : 'Society / Building / Project Name',
                   controller: _buildingController,
-                  hint: 'e.g. Sun & Sand Enclave, Palm Heights',
+                  hint: isRv ? 'e.g. Aero RV Hub, Horizon Camper Base' : 'e.g. Sun & Sand Enclave, Palm Heights',
                   isRequired: true,
                   isDark: isDark,
                 ),

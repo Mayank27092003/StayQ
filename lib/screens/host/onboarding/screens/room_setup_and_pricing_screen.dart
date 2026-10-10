@@ -46,6 +46,15 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
     {'title': 'Dormitory Bed', 'icon': '🛌', 'subtitle': 'Single bunk bed in shared dormitory'},
   ];
 
+  final List<Map<String, String>> _campsiteUnitPresets = const [
+    {'title': 'Furnished Glamping Dome', 'icon': '🔮', 'subtitle': 'Geodesic dome with plush queen bed & AC'},
+    {'title': 'Luxury Safari Bell Tent', 'icon': '⛺', 'subtitle': 'Waterproof canvas tent with private deck'},
+    {'title': 'Standard Tent Pitch (BYOT)', 'icon': '🏕️', 'subtitle': 'Ground pitch for Bring-Your-Own-Tent'},
+    {'title': 'Campervan / RV Parking Pitch', 'icon': '🚐', 'subtitle': 'Level pitch with power hookup & water'},
+    {'title': 'Treehouse Pod', 'icon': '🌲', 'subtitle': 'Elevated platform tent / wooden eco-pod'},
+    {'title': 'Riverside Camping Gazebo', 'icon': '🌊', 'subtitle': 'Shaded riverside pitch with fire ring'},
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -53,8 +62,45 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
 
     final totalRooms = provider.bedrooms > 0 ? provider.bedrooms : 1;
 
-    // If multi-inventory property and categories are empty or contain old hardcoded mock, initialize dynamic count
-    if (provider.isMultiInventoryProperty) {
+    // If campsite property, initialize Hipcamp multi-unit inventory defaults
+    if (provider.propertyType == 'CAMPING_SITE') {
+      final isOldMock = provider.roomCategories.length == 2 &&
+          provider.roomCategories[0].quantity == 20 &&
+          provider.roomCategories[1].quantity == 10;
+      if (provider.roomCategories.isEmpty || isOldMock) {
+        provider.roomCategories = [
+          RoomCategoryConfig(
+            id: 'camp_${DateTime.now().millisecondsSinceEpoch}_1',
+            categoryName: 'Furnished Glamping Dome',
+            quantity: 2,
+            bedType: 'Queen Bed',
+            bedCount: 1,
+            maxGuests: 2,
+            pricePerNight: 3500.0,
+            hasAttachedBathroom: true,
+            hasAc: true,
+            hasTv: false,
+            hasBalcony: true,
+            hasBreakfast: true,
+          ),
+          RoomCategoryConfig(
+            id: 'camp_${DateTime.now().millisecondsSinceEpoch}_2',
+            categoryName: 'Standard Tent Pitch (BYOT)',
+            quantity: 5,
+            bedType: 'Floor Mattress',
+            bedCount: 0,
+            maxGuests: 4,
+            pricePerNight: 1200.0,
+            hasAttachedBathroom: false,
+            hasAc: false,
+            hasTv: false,
+            hasBalcony: false,
+            hasBreakfast: false,
+          ),
+        ];
+        provider.saveDraftToPrefs();
+      }
+    } else if (provider.isMultiInventoryProperty) {
       final isOldMock = provider.roomCategories.length == 2 &&
           provider.roomCategories[0].quantity == 20 &&
           provider.roomCategories[1].quantity == 10;
@@ -391,7 +437,11 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                       color: isExactMatch ? const Color(0xFF10B981) : AppColors.primary,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Icon(Icons.hotel_rounded, color: Colors.white, size: 28),
+                    child: Icon(
+                      provider.propertyType == 'CAMPING_SITE' ? Icons.holiday_village_rounded : Icons.hotel_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -401,7 +451,9 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                         Row(
                           children: [
                             Text(
-                              '$totalInventory of $targetRooms Rooms Configured',
+                              provider.propertyType == 'CAMPING_SITE'
+                                  ? '$totalInventory Campsite Units Configured'
+                                  : '$totalInventory of $targetRooms Rooms Configured',
                               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
                             ),
                             const SizedBox(width: 6),
@@ -411,7 +463,9 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${provider.roomCategories.length} Room ${provider.roomCategories.length == 1 ? "Type" : "Types"} • Rates ₹$minPrice ${minPrice != maxPrice ? "- ₹$maxPrice" : ""}/night',
+                          provider.propertyType == 'CAMPING_SITE'
+                              ? '${provider.roomCategories.length} Unit ${provider.roomCategories.length == 1 ? "Format" : "Formats"} (Domes, Tents, Pitches) • Rates ₹$minPrice ${minPrice != maxPrice ? "- ₹$maxPrice" : ""}/night'
+                              : '${provider.roomCategories.length} Room ${provider.roomCategories.length == 1 ? "Type" : "Types"} • Rates ₹$minPrice ${minPrice != maxPrice ? "- ₹$maxPrice" : ""}/night',
                           style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w700),
                         ),
                       ],
@@ -459,9 +513,9 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Room Categories & Rates',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            Text(
+              provider.propertyType == 'CAMPING_SITE' ? 'Campsite Units & Rates' : 'Room Categories & Rates',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
             ),
             Text(
               '${provider.roomCategories.length} configured',
@@ -496,14 +550,16 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.primary, width: 1.5),
             ),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.add_circle_outline_rounded, color: AppColors.primary, size: 20),
-                SizedBox(width: 8),
+                const Icon(Icons.add_circle_outline_rounded, color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
                 Text(
-                  'Add Another Room Category / Type',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.primary),
+                  provider.propertyType == 'CAMPING_SITE'
+                      ? 'Add Another Campsite Unit / Pitch'
+                      : 'Add Another Room Category / Type',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.primary),
                 ),
               ],
             ),
@@ -652,24 +708,29 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Add Room Category',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+              Text(
+                provider.propertyType == 'CAMPING_SITE' ? 'Add Campsite Unit / Pitch' : 'Add Room Category',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Select a room type to add to your property inventory:',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              Text(
+                provider.propertyType == 'CAMPING_SITE'
+                    ? 'Select an accommodation unit to add to your campsite inventory:'
+                    : 'Select a room type to add to your property inventory:',
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.55),
                 child: ListView.separated(
                   shrinkWrap: true,
-                  itemCount: _hotelRoomTypePresets.length,
+                  itemCount: provider.propertyType == 'CAMPING_SITE'
+                      ? _campsiteUnitPresets.length
+                      : _hotelRoomTypePresets.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, i) {
-                    final item = _hotelRoomTypePresets[i];
+                    final isCamping = provider.propertyType == 'CAMPING_SITE';
+                    final item = isCamping ? _campsiteUnitPresets[i] : _hotelRoomTypePresets[i];
                     return InkWell(
                       borderRadius: BorderRadius.circular(14),
                       onTap: () {
@@ -679,13 +740,19 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                             id: 'cat_${DateTime.now().millisecondsSinceEpoch}_$i',
                             categoryName: item['title']!,
                             quantity: 1,
-                            bedType: item['title']!.contains('Twin') ? 'Double / Twin Beds' : 'King Size Bed',
-                            bedCount: 1,
-                            maxGuests: item['title']!.contains('Family') ? 4 : 2,
-                            pricePerNight: provider.pricePerNight > 0 ? provider.pricePerNight : 3500.0,
-                            hasAttachedBathroom: true,
-                            hasAc: true,
-                            hasTv: true,
+                            bedType: item['title']!.contains('Pitch')
+                                ? 'Floor Mattress'
+                                : (item['title']!.contains('Twin') ? 'Double / Twin Beds' : 'Queen Bed'),
+                            bedCount: item['title']!.contains('Pitch') ? 0 : 1,
+                            maxGuests: item['title']!.contains('Pitch')
+                                ? 4
+                                : (item['title']!.contains('Family') ? 4 : 2),
+                            pricePerNight: item['title']!.contains('Pitch')
+                                ? 1200.0
+                                : (provider.pricePerNight > 0 ? provider.pricePerNight : 3500.0),
+                            hasAttachedBathroom: !item['title']!.contains('Pitch'),
+                            hasAc: item['title']!.contains('Dome') || item['title']!.contains('Deluxe') || item['title']!.contains('Suite'),
+                            hasTv: !isCamping,
                             hasBalcony: false,
                           ),
                         );
@@ -1081,7 +1148,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
 
         const SizedBox(height: 18),
 
-        // StayQ Groq AI Neighborhood Market Intelligence Radar
+        // StayQ AI Neighborhood Market Intelligence Radar
         NeighborhoodPriceRadarWidget(
           city: provider.city.isNotEmpty ? provider.city : 'Goa',
           locality: provider.address.isNotEmpty ? provider.address : null,

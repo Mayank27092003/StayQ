@@ -1,3 +1,4 @@
+import '../../services/booking_checkout.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
@@ -16,11 +17,13 @@ import 'booking_confirmation_screen.dart';
 class CampingCheckoutScreen extends StatefulWidget {
   final StayModel stay;
   final DateTimeRange selectedDates;
+  final List<DateTime>? blockedDates;
 
   const CampingCheckoutScreen({
     Key? key,
     required this.stay,
     required this.selectedDates,
+    this.blockedDates,
   }) : super(key: key);
 
   @override
@@ -28,6 +31,8 @@ class CampingCheckoutScreen extends StatefulWidget {
 }
 
 class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
+  final _checkout = BookingCheckout();
+
   late DateTimeRange _selectedDates;
   bool _isCalendarVisible = false;
   int _campersCount = 1;
@@ -120,52 +125,16 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
   double get _total => _subtotal + _serviceFee;
 
   Future<void> _confirmBooking() async {
-    AppMotion.tapHeavy();
-    final provider = Provider.of<AppProvider>(context, listen: false);
-    final calculatedTotal = (_subtotal + _serviceFee).toDouble();
-
-    final resolvedPhone = provider.userPhone.isNotEmpty
-        ? provider.userPhone
-        : (FirebaseAuth.instance.currentUser?.phoneNumber ?? '9876543210');
-    final resolvedName = provider.userName.isNotEmpty
-        ? provider.userName
-        : (FirebaseAuth.instance.currentUser?.displayName ?? 'Stay Q Guest');
-    final resolvedEmail = provider.userEmail.isNotEmpty
-        ? provider.userEmail
-        : (FirebaseAuth.instance.currentUser?.email ?? 'guest@stayq.space');
-
-    final paymentResult = await CashfreePaymentSheet.show(
-      context,
-      bookingId: 'sq_camp_${DateTime.now().millisecondsSinceEpoch}',
-      totalAmount: calculatedTotal,
-      propertyTitle: widget.stay.title,
-      customerName: resolvedName,
-      customerEmail: resolvedEmail,
-      customerPhone: resolvedPhone,
-    );
-
-    if (paymentResult != null && paymentResult.isSuccess && mounted) {
-      provider.addBooking(
-        widget.stay,
-        _selectedDates.start,
-        _selectedDates.end,
-        _campersCount,
-        totalAmount: calculatedTotal,
-      );
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => BookingConfirmationScreen(
-            stay: widget.stay,
-            totalAmount: calculatedTotal,
-            selectedDates: _selectedDates,
-            guests: _campersCount,
-            paymentMethod: paymentResult.paymentMethod,
-          ),
-        ),
-      );
-    }
+    if (_checkout.busy) return;
+    final provider = context.read<AppProvider>();
+    final booking = await _checkout.run(context, provider, widget.stay, _selectedDates, _campersCount,
+      estimate: _total, blockedDates: widget.blockedDates ?? widget.stay.blockedDates, options: {'category': 'CAMPING', 'tentType': _tentTypes[_selectedTentType]['title'],
+        'addOns': _selectedAddOns.map((i) => _addOns[i]['title']).toList(), 'campers': _campersCount});
+    if (booking == null || !mounted) return;
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => BookingConfirmationScreen(
+      booking: booking, stay: booking.stay, totalAmount: booking.totalAmount,
+      selectedDates: DateTimeRange(start: booking.checkIn, end: booking.checkOut),
+      guests: booking.adults + booking.children, paymentMethod: _checkout.payment?.paymentMethod ?? 'Server confirmed')));
   }
 
   @override
@@ -218,7 +187,7 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
             borderRadius: BorderRadius.circular(12),
             child: widget.stay.imageUrls.isNotEmpty
                 ? Image.network(
-                    widget.stay.imageUrls.first,
+                    widget.stay.firstImage,
                     width: 80,
                     height: 80,
                     fit: BoxFit.cover,
@@ -326,7 +295,7 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                 ),
                 if (_isCalendarVisible) ...[
                   const Divider(height: 24),
-                  AnimatedCalendarPicker(
+                  AnimatedCalendarPicker(blockedDates: widget.blockedDates ?? widget.stay.blockedDates, 
                     initialRange: _selectedDates,
                     onRangeSelected: (range) {
                       setState(() {
@@ -575,7 +544,7 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                     const SizedBox(height: 8),
                     _buildPriceRow('Add-ons', _addOnsTotal),
                     const SizedBox(height: 8),
-                    _buildPriceRow('Service Fee', _serviceFee),
+                    _buildPriceRow('Fee', _serviceFee),
                     const SizedBox(height: 12),
                     const Divider(),
                     const SizedBox(height: 12),

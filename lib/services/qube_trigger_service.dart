@@ -106,7 +106,7 @@ class QubeTriggerService {
       CustomToast.show(
         context: context,
         title: '🎉 Welcome to the Traveler\'s Club!',
-        subtitle: 'You just made your very first booking on Stay Q! You\'re officially a traveler. The world awaits!',
+        subtitle: 'You just made your very first booking on StayQ! You\'re officially a traveler. The world awaits!',
         type: ToastType.success,
       );
     }
@@ -123,7 +123,7 @@ class QubeTriggerService {
     CustomToast.show(
       context: context,
       title: 'How was $stayTitle? ✍️',
-      subtitle: 'Your recent stay is complete! Share your experience to help other travelers and earn Stay Q rewards.',
+      subtitle: 'Your recent stay is complete! Share your experience to help other travelers and earn StayQ rewards.',
       type: ToastType.success,
       durationSeconds: 15,
     );
@@ -142,7 +142,7 @@ class QubeTriggerService {
     if (context.mounted) {
       CustomToast.show(
         context: context,
-        title: 'Welcome to Stay Q! 🏨',
+        title: 'Welcome to StayQ! 🏨',
         subtitle: 'Discover amazing stays, get the best deals, and keep updated on your trips!',
         type: ToastType.info,
       );

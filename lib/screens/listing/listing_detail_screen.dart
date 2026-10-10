@@ -1,3 +1,5 @@
+import '../../services/api/api_client.dart';
+import '../../models/json_values.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -22,6 +24,7 @@ import '../booking/rv_checkout_screen.dart';
 import '../booking/camping_checkout_screen.dart';
 import '../inbox/chat_detail_screen.dart';
 import '../../providers/messaging_provider.dart';
+import '../profile/kyc_verification_screen.dart';
 
 class ListingDetailScreen extends StatefulWidget {
 
@@ -39,6 +42,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   DateTimeRange? _selectedDates;
   List<DateTime> _blockedDates = [];
   bool _isLoadingDates = true;
+  String? _availabilityError;
   bool _isAmenitiesExpanded = false;
 
   @override
@@ -49,21 +53,19 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
 
   Future<void> _fetchBlockedDates() async {
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('properties')
-          .doc(widget.stay.id)
-          .collection('availability')
-          .where('state', whereIn: ['booked', 'blocked'])
-          .get();
-      
-      final dates = snap.docs.map((doc) => DateTime.parse(doc.id)).toList();
-      setState(() {
-        _blockedDates = dates;
-        _isLoadingDates = false;
-      });
-    } catch (e) {
-      setState(() => _isLoadingDates = false);
-    }
+      final response = jsonMap(await ApiClient.instance.get('/properties/${Uri.encodeComponent(widget.stay.id)}', authenticated: false));
+      final data = response['property'] is Map ? jsonMap(response['property']) : response;
+      final values = data['blockedDates'] ?? jsonMap(data['availability'])['blockedDates'];
+      if (values is! List) throw const FormatException('Availability is not supplied for this property.');
+      final dates = <DateTime>[];
+      for (final value in values) {
+        final date = DateTime.tryParse(value.toString());
+        if (date == null) throw const FormatException('Invalid availability date returned.');
+        dates.add(DateUtils.dateOnly(date));
+      }
+      if (!mounted) return;
+      setState(() { _blockedDates = dates; _isLoadingDates = false; _availabilityError = null; });
+    } catch (e) { if (mounted) setState(() { _isLoadingDates = false; _availabilityError = 'Availability could not be verified. Reopen this listing to retry.'; }); }
   }
 
   @override
@@ -368,7 +370,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    stay.isStarHost ? 'Starhost • Identity Verified' : 'Verified Stay Q Host',
+                                    stay.isStarHost ? 'Starhost • Identity Verified' : 'Verified StayQ Host',
                                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                                   ),
                                 ],
@@ -386,6 +388,20 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                                 return;
                               }
 
+                              final isHostOwner = provider.userId == stay.hostId ||
+                                  (stay.hostName.isNotEmpty &&
+                                      provider.userName.trim().toLowerCase() == stay.hostName.trim().toLowerCase());
+
+                              if (isHostOwner) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('You are the host of this property. Guests use this button to message you directly.'),
+                                    duration: Duration(seconds: 3),
+                                  ),
+                                );
+                                return;
+                              }
+
                               final messaging = Provider.of<MessagingProvider>(context, listen: false);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Connecting to ${stay.hostName}...'), duration: const Duration(seconds: 1)),
@@ -396,18 +412,30 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                                 propertyId: stay.id,
                               );
 
-                              if (context.mounted) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ChatDetailScreen(
-                                      chatId: convId ?? 'conv_${stay.id}',
-                                      otherUserName: stay.hostName.isNotEmpty ? stay.hostName : 'Host',
-                                      otherUserAvatar: stay.hostAvatar,
-                                    ),
+                              if (!context.mounted) return;
+
+                              if (convId == null) {
+                                final err = messaging.error ?? 'Could not open conversation';
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(err.contains('yourself')
+                                        ? 'You are the host of this listing.'
+                                        : err),
                                   ),
                                 );
+                                return;
                               }
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ChatDetailScreen(
+                                    chatId: convId,
+                                    otherUserName: stay.hostName.isNotEmpty ? stay.hostName : 'Host',
+                                    otherUserAvatar: stay.hostAvatar,
+                                  ),
+                                ),
+                              );
                             },
                             icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: AppColors.primary),
                             label: const Text('Contact Host', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
@@ -702,6 +730,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                       const SizedBox(height: 14),
                       if (_isLoadingDates) 
                          const Center(child: CircularProgressIndicator())
+                      else if (_availabilityError != null) Text(_availabilityError!, style: const TextStyle(color: Colors.red))
                       else
                          Container(
                            padding: const EdgeInsets.all(16),
@@ -787,29 +816,32 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                     ),
                     BouncingWidget(
                       onTap: () {
-                        if (_selectedDates == null) return;
+                        if (_selectedDates == null || _isLoadingDates || _availabilityError != null) return;
                         AppMotion.tapMedium();
-                        Widget checkoutScreen;
-                        if (stay.propertyType == 'RV') {
-                          checkoutScreen = RVCheckoutScreen(stay: stay, selectedDates: _selectedDates!);
-                        } else if (stay.propertyType == 'CAMPING_SITE') {
-                          checkoutScreen = CampingCheckoutScreen(stay: stay, selectedDates: _selectedDates!);
-                        } else {
-                          checkoutScreen = CheckoutScreen(stay: stay, selectedDates: _selectedDates!);
+                        final provider = context.read<AppProvider>();
+                        if (!provider.isAadhaarVerified) {
+                          _showAadhaarRequiredSheet(context);
+                          return;
                         }
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => checkoutScreen),
+                          MaterialPageRoute(
+                            builder: (_) => CheckoutScreen(
+                              stay: stay,
+                              selectedDates: _selectedDates!,
+                              blockedDates: _blockedDates,
+                            ),
+                          ),
                         );
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
                         decoration: BoxDecoration(
-                          color: _selectedDates == null ? AppColors.textMuted.withValues(alpha: 0.5) : AppColors.primary,
+                          color: _selectedDates == null ? AppColors.textMuted.withValues(alpha: 0.5) : const Color(0xFF111111),
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: _selectedDates == null ? [] : [
                             BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.3),
+                              color: Colors.black.withValues(alpha: 0.2),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             )
@@ -865,6 +897,133 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
               style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAadhaarRequiredSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: const Icon(
+                Icons.verified_user_rounded,
+                color: Color(0xFF16A34A),
+                size: 38,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Aadhaar Verification Required',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF111111),
+                letterSpacing: -0.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'UIDAI Aadhaar verification is mandatory before booking any stay or vehicle on StayQ to ensure 100% verified guests and host security.',
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF64748B),
+                height: 1.45,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                children: const [
+                  Icon(Icons.shield_outlined, color: Color(0xFF0F172A), size: 20),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Official paperless UIDAI OTP verification. Takes only 30 seconds.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF334155),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF111111),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const KycVerificationScreen(initialTabIndex: 1),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Verify Aadhaar with OTP',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),

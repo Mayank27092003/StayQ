@@ -7,7 +7,11 @@ import '../../widgets/bouncing_widget.dart';
 import '../../widgets/custom_toast.dart';
 import '../../services/email_verification_service.dart';
 import 'dart:io';
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import '../../config/app_config.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -30,6 +34,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isEmailVerified = false;
   bool _isSaving = false;
 
+  String? _selectedGender;
+  List<String> _locationPredictions = [];
+  bool _isSearchingLocation = false;
+  Timer? _locationDebounce;
+
   @override
   void initState() {
     super.initState();
@@ -37,17 +46,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController = TextEditingController(text: provider.userName);
     _emailController = TextEditingController(text: provider.userEmail);
     _phoneController = TextEditingController(text: provider.userPhone);
-    _bioController = TextEditingController(text: provider.userBio.isEmpty ? 'Lover of sunsets, boutique stays, and roadtrips.' : provider.userBio);
+    _bioController = TextEditingController(text: provider.userBio);
     _locationController = TextEditingController(text: provider.userLocation);
     _genderController = TextEditingController(text: provider.userGender);
     _dobController = TextEditingController(text: provider.userDob);
 
+    const validGenders = ['Male', 'Female', 'Prefer not to say'];
+    _selectedGender = validGenders.contains(provider.userGender) ? provider.userGender : null;
+
     _initialEmail = provider.userEmail.trim().toLowerCase();
     _isEmailVerified = provider.isEmailVerified;
+
+    _locationController.addListener(_onLocationSearchChanged);
   }
 
   @override
   void dispose() {
+    _locationController.removeListener(_onLocationSearchChanged);
+    _locationDebounce?.cancel();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -56,6 +72,95 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _genderController.dispose();
     _dobController.dispose();
     super.dispose();
+  }
+
+  void _onLocationSearchChanged() {
+    _locationDebounce?.cancel();
+    _locationDebounce = Timer(const Duration(milliseconds: 350), () {
+      final input = _locationController.text.trim();
+      if (input.length >= 2) {
+        _fetchLocationAutocomplete(input);
+      } else {
+        if (mounted) {
+          setState(() {
+            _locationPredictions = [];
+            _isSearchingLocation = false;
+          });
+        }
+      }
+    });
+  }
+
+  Future<void> _fetchLocationAutocomplete(String input) async {
+    final apiKey = AppConfig.googlePlacesApiKey;
+    if (apiKey.isEmpty) return;
+    if (!mounted) return;
+    setState(() => _isSearchingLocation = true);
+    final url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${Uri.encodeComponent(input)}&key=$apiKey';
+    try {
+      final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 6));
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        if (data['status'] == 'OK' && mounted) {
+          setState(() {
+            _locationPredictions = (data['predictions'] as List)
+                .map((p) => p['description'] as String)
+                .toList();
+            _isSearchingLocation = false;
+          });
+          return;
+        }
+      }
+    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _locationPredictions = [];
+        _isSearchingLocation = false;
+      });
+    }
+  }
+
+  void _selectLocationPrediction(String prediction) {
+    _locationController.removeListener(_onLocationSearchChanged);
+    _locationController.text = prediction;
+    setState(() {
+      _locationPredictions = [];
+      _isSearchingLocation = false;
+    });
+    _locationController.addListener(_onLocationSearchChanged);
+    FocusScope.of(context).unfocus();
+  }
+
+  Future<void> _selectDateOfBirth() async {
+    DateTime initial = DateTime.now().subtract(const Duration(days: 365 * 20));
+    if (_dobController.text.isNotEmpty) {
+      final parsed = DateTime.tryParse(_dobController.text.trim());
+      if (parsed != null && parsed.isBefore(DateTime.now())) initial = parsed;
+    }
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(1920),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: AppColors.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      final formatted = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      setState(() {
+        _dobController.text = formatted;
+      });
+    }
   }
 
   bool get _hasEmailChanged =>
@@ -76,7 +181,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       userId: provider.userId,
     );
 
-    if (verified == true) {
+    if (verified == true && mounted) {
       setState(() {
         _isEmailVerified = true;
         _initialEmail = email.toLowerCase();
@@ -115,11 +220,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _initialEmail = email.toLowerCase();
     }
 
+    if (!mounted) return;
     setState(() => _isSaving = true);
     AppMotion.tapSelection();
 
-    await provider.saveProfileDetails(
-      name: _nameController.text.trim(),
+    try {
+      final cleanName = _nameController.text.trim();
+      await provider.saveProfileDetails(
+      name: cleanName.isNotEmpty ? cleanName : 'Stay Q Traveler',
       email: email,
       phone: _phoneController.text.trim(),
       bio: _bioController.text.trim(),
@@ -130,6 +238,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       isEmailVerified: _isEmailVerified,
     );
 
+    } catch (e) {
+      if (mounted) { setState(() => _isSaving = false); CustomToast.show(context: context, message: e.toString(), isError: true); }
+      return;
+    }
     if (mounted) {
       setState(() => _isSaving = false);
       CustomToast.show(context: context, message: 'Profile updated successfully!', isError: false);
@@ -212,19 +324,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             _buildTextField('Bio', _bioController, icon: Icons.format_quote_rounded, maxLines: 3),
             const SizedBox(height: 16),
 
-            // Location
-            _buildTextField('City / Location', _locationController, icon: Icons.location_on_rounded),
+            // City / Location with Google Maps Autocomplete
+            _buildLocationField(isDark),
             const SizedBox(height: 16),
 
             // Gender & DOB Row
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: _buildTextField('Gender', _genderController, icon: Icons.wc_rounded),
+                  child: _buildGenderDropdown(isDark),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildTextField('Date of Birth', _dobController, icon: Icons.cake_rounded),
+                  child: _buildDobField(isDark),
                 ),
               ],
             ),
@@ -278,16 +391,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 13),
             ),
             if (isEmailClean)
-              const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 16),
-                  SizedBox(width: 4),
-                  Text(
-                    'Verified via hello@stayq.space',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF10B981)),
-                  ),
-                ],
+              const Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 15),
+                    SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        'Verified via hello@stayq.space',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF10B981)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               )
             else
               TextButton.icon(
@@ -375,6 +493,195 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocationField(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'City / Location (Google Maps)',
+          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _locationController,
+          decoration: InputDecoration(
+            hintText: 'Search city or region...',
+            prefixIcon: const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 20),
+            suffixIcon: _isSearchingLocation
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+                  )
+                : (_locationController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textMuted),
+                        onPressed: () {
+                          _locationController.clear();
+                          setState(() {
+                            _locationPredictions = [];
+                          });
+                        },
+                      )
+                    : null),
+            filled: true,
+            fillColor: isDark ? const Color(0xFF1A1828) : Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+          ),
+        ),
+        if (_locationPredictions.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            constraints: const BoxConstraints(maxHeight: 200),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1C2E) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ListView.separated(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              itemCount: _locationPredictions.length,
+              separatorBuilder: (_, __) => Divider(height: 1, color: isDark ? Colors.white10 : AppColors.borderLight),
+              itemBuilder: (context, index) {
+                final prediction = _locationPredictions[index];
+                return ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.place_outlined, color: AppColors.primary, size: 18),
+                  title: Text(
+                    prediction,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                    ),
+                  ),
+                  onTap: () => _selectLocationPrediction(prediction),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildGenderDropdown(bool isDark) {
+    const options = ['Male', 'Female', 'Prefer not to say'];
+    final currentVal = options.contains(_selectedGender) ? _selectedGender : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Gender',
+          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          value: currentVal,
+          isExpanded: true,
+          dropdownColor: isDark ? const Color(0xFF1A1828) : Colors.white,
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.wc_rounded, color: AppColors.primary, size: 20),
+            filled: true,
+            fillColor: isDark ? const Color(0xFF1A1828) : Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+          ),
+          hint: const Text('Select', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+          items: options
+              .map((g) => DropdownMenuItem(
+                    value: g,
+                    child: Text(
+                      g,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ))
+              .toList(),
+          onChanged: (val) {
+            setState(() {
+              _selectedGender = val;
+              _genderController.text = val ?? '';
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDobField(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Date of Birth',
+          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: _selectDateOfBirth,
+          child: AbsorbPointer(
+            child: TextField(
+              controller: _dobController,
+              readOnly: true,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              decoration: InputDecoration(
+                hintText: 'YYYY-MM-DD',
+                hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+                prefixIcon: const Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 20),
+                filled: true,
+                fillColor: isDark ? const Color(0xFF1A1828) : Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+              ),
             ),
           ),
         ),

@@ -58,7 +58,7 @@ class _WelcomePopupContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final title = isHostMode ? "Welcome to Stay Q Hosting!" : "Welcome to Stay Q!";
+    final title = isHostMode ? "Welcome to StayQ Hosting!" : "Welcome to StayQ!";
     final subtitle = isHostMode
         ? "List luxury villas, campervans & unique stays."
         : "Discover luxury villas, campervans & scenic road trips.";

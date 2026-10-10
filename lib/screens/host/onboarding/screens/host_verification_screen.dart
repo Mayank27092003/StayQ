@@ -2,11 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../../../providers/host_onboarding_provider.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_motion.dart';
 import '../../../../widgets/bouncing_widget.dart';
+import '../../../../widgets/media_upload_sheet.dart';
 
 class HostVerificationScreen extends StatefulWidget {
   const HostVerificationScreen({Key? key}) : super(key: key);
@@ -16,41 +16,16 @@ class HostVerificationScreen extends StatefulWidget {
 }
 
 class _HostVerificationScreenState extends State<HostVerificationScreen> {
-  final ImagePicker _picker = ImagePicker();
-
-  Future<void> _pickDocument(String docType) async {
+  Future<void> _pickDocument(String docType, String docTitle) async {
     AppMotion.tapSelection();
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
-              title: const Text('Take a Photo of Document'),
-              onTap: () async {
-                Navigator.pop(ctx);
-                final picked = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
-                if (picked != null) {
-                  _saveDocPath(docType, picked.path);
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
-              title: const Text('Upload from Gallery / Files'),
-              onTap: () async {
-                Navigator.pop(ctx);
-                final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-                if (picked != null) {
-                  _saveDocPath(docType, picked.path);
-                }
-              },
-            ),
-          ],
-        ),
-      ),
+    await showStayQUploadSheet(
+      context,
+      title: 'Upload $docTitle',
+      subtitle: 'Take a clear photo, choose from gallery, or browse PDF / files',
+      type: MediaUploadType.documentOrImage,
+      onFilePicked: (pickedPath) {
+        _saveDocPath(docType, pickedPath);
+      },
     );
   }
 
@@ -85,6 +60,27 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<HostOnboardingProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isRv = provider.propertyType == 'RV';
+    final isCamping = provider.propertyType == 'CAMPING_SITE';
+    final isLongTerm = provider.propertyType == 'LONG_TERM_HOME';
+
+    String screenTitle = 'Property Documents & Compliance';
+    String screenSubtitle = 'Submit proof of legal ownership or authorization along with compliance certificates.';
+    String declarationText = 'I certify that I possess full legal authorization under Indian Law to host guests at this property, and all uploaded documents are genuine.';
+
+    if (isRv) {
+      screenTitle = 'RV Registration & Compliance';
+      screenSubtitle = 'Submit legal RTO registration (RC), commercial insurance, and fitness/PUC compliance.';
+      declarationText = 'I certify that I am the legal owner or authorized fleet manager of this vehicle with valid commercial permits and fitness under the Motor Vehicles Act.';
+    } else if (isCamping) {
+      screenTitle = 'Campsite Land & Tourism Compliance';
+      screenSubtitle = 'Submit land revenue title / 7/12 extract, local Panchayat/Tourism NOC, and safety clearance.';
+      declarationText = 'I certify that I hold legal rights to operate a campsite on these premises with necessary local panchayat/tourism permissions.';
+    } else if (isLongTerm) {
+      screenTitle = 'Ownership Deed & Tenancy NOC';
+      screenSubtitle = 'Submit title deed and society NOC for zero brokerage long-term tenancy listing.';
+      declarationText = 'I certify that I am authorized to lease this property and all terms comply with the local Tenancy Act.';
+    }
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -93,9 +89,9 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Screen Title
-          const Text(
-            'Property Documents & Host Verification',
-            style: TextStyle(
+          Text(
+            screenTitle,
+            style: const TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w900,
               color: AppColors.textPrimary,
@@ -103,9 +99,9 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
             ),
           ).animate().fadeIn().slideX(),
           const SizedBox(height: 6),
-          const Text(
-            'Submit proof of legal ownership or registered lease agreement, along with host ID and live selfie match.',
-            style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary, height: 1.4),
+          Text(
+            screenSubtitle,
+            style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary, height: 1.4),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 18),
 
@@ -156,42 +152,52 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
 
           const SizedBox(height: 24),
 
-          // 1. Ownership Type Selection (Two Options Only: Owned vs Leased)
-          const Text(
-            'Select Property Ownership Type',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 10),
-
-          Row(
-            children: [
-              _buildOwnershipTab(
-                provider,
-                type: 'OWNED',
-                icon: Icons.home_rounded,
-                label: 'Owned Property',
-                subtitle: 'I am the Legal Owner',
-                isDark: isDark,
-              ),
-              const SizedBox(width: 12),
-              _buildOwnershipTab(
-                provider,
-                type: 'LEASED_SUBLET',
-                icon: Icons.description_rounded,
-                label: 'Leased / Sublet',
-                subtitle: 'Rented + Landlord NOC',
-                isDark: isDark,
-              ),
-            ],
-          ).animate().fadeIn(delay: 200.ms),
-
-          const SizedBox(height: 24),
-
-          // 2. Dynamic Required Document Cards Based on Ownership
-          if (provider.ownershipType == 'OWNED') ...[
-            _buildOwnedDocumentsSection(provider, isDark),
+          // ══════════════════════════════════════════════════════════════════
+          // DYNAMIC DOCUMENTS BASED ON LISTING CATEGORY
+          // ══════════════════════════════════════════════════════════════════
+          if (isRv) ...[
+            _buildRvDocumentsSection(provider, isDark),
+          ] else if (isCamping) ...[
+            _buildCampingDocumentsSection(provider, isDark),
+          ] else if (isLongTerm) ...[
+            _buildLongTermDocumentsSection(provider, isDark),
           ] else ...[
-            _buildLeasedDocumentsSection(provider, isDark),
+            // Standard Residential Stays (Owned vs Leased)
+            const Text(
+              'Select Property Ownership Type',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 10),
+
+            Row(
+              children: [
+                _buildOwnershipTab(
+                  provider,
+                  type: 'OWNED',
+                  icon: Icons.home_rounded,
+                  label: 'Owned Property',
+                  subtitle: 'I am the Legal Owner',
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 12),
+                _buildOwnershipTab(
+                  provider,
+                  type: 'LEASED_SUBLET',
+                  icon: Icons.description_rounded,
+                  label: 'Leased / Sublet',
+                  subtitle: 'Rented + Landlord NOC',
+                  isDark: isDark,
+                ),
+              ],
+            ).animate().fadeIn(delay: 200.ms),
+
+            const SizedBox(height: 24),
+
+            if (provider.ownershipType == 'OWNED') ...[
+              _buildOwnedDocumentsSection(provider, isDark),
+            ] else ...[
+              _buildLeasedDocumentsSection(provider, isDark),
+            ],
           ],
 
           const SizedBox(height: 24),
@@ -214,12 +220,12 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
                     provider.updatePropertyDocuments(declarationAccepted: val ?? true);
                   },
                 ),
-                const Expanded(
+                Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(top: 10),
+                    padding: const EdgeInsets.only(top: 10),
                     child: Text(
-                      'I certify that I possess full legal authorization under Indian Law to host guests at this property, and all uploaded documents are genuine.',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+                      declarationText,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
                     ),
                   ),
                 ),
@@ -234,7 +240,163 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // OWNERSHIP TYPE SELECTOR TAB
+  // 1. RV DOCUMENTS SECTION
+  // ══════════════════════════════════════════════════════════════════════════
+  Widget _buildRvDocumentsSection(HostOnboardingProvider provider, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Required Vehicle & RTO Documents',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Ensure all vehicle documents reflect matching registration and commercial tourist carriage permits.',
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 14),
+
+        _buildUploadCard(
+          title: '1. Vehicle Registration Certificate (RC) *',
+          subtitle: 'Commercial / Tourist permit RC book or smart card showing chassis and engine numbers.',
+          docPath: provider.propertyRegistryDocPath,
+          icon: Icons.directions_bus_rounded,
+          isDark: isDark,
+          onUpload: () => _pickDocument('registry', 'Vehicle RC'),
+        ),
+
+        const SizedBox(height: 14),
+
+        _buildUploadCard(
+          title: '2. Commercial Vehicle Insurance Policy *',
+          subtitle: 'Active comprehensive insurance covering passenger liability and commercial self-drive / chauffeur operations.',
+          docPath: provider.leaseAgreementDocPath,
+          icon: Icons.shield_rounded,
+          isDark: isDark,
+          onUpload: () => _pickDocument('lease', 'Commercial Insurance Policy'),
+        ),
+
+        const SizedBox(height: 14),
+
+        _buildUploadCard(
+          title: '3. Vehicle Fitness Certificate & PUC *',
+          subtitle: 'Valid RTO fitness certificate and valid Pollution Under Control (PUC) clearance.',
+          docPath: provider.electricityBillDocPath,
+          icon: Icons.verified_rounded,
+          isDark: isDark,
+          onUpload: () => _pickDocument('electricity', 'Fitness & PUC Certificate'),
+        ),
+      ],
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 2. CAMPING DOCUMENTS SECTION
+  // ══════════════════════════════════════════════════════════════════════════
+  Widget _buildCampingDocumentsSection(HostOnboardingProvider provider, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Required Campsite Land & Tourism Permits',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Submit evidence of legal possession of the camping grounds and local authority permits.',
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 14),
+
+        _buildUploadCard(
+          title: '1. Land Ownership Title / 7/12 Extract / Lease *',
+          subtitle: 'Revenue extract, 7/12 document, sale deed, or registered long-term lease for campsite grounds.',
+          docPath: provider.propertyRegistryDocPath,
+          icon: Icons.landscape_rounded,
+          isDark: isDark,
+          onUpload: () => _pickDocument('registry', 'Land Ownership / 7/12 Extract'),
+        ),
+
+        const SizedBox(height: 14),
+
+        _buildUploadCard(
+          title: '2. Gram Panchayat / Tourism Department NOC *',
+          subtitle: 'Permission or registration certificate from local Gram Panchayat or state tourism board.',
+          docPath: provider.landlordNocDocPath,
+          icon: Icons.holiday_village_rounded,
+          isDark: isDark,
+          onUpload: () => _pickDocument('noc', 'Panchayat / Tourism NOC'),
+        ),
+
+        const SizedBox(height: 14),
+
+        _buildUploadCard(
+          title: '3. Fire & Environmental Safety Clearance (Optional)',
+          subtitle: 'Local fire safety clearance, eco-sensitive zone NOC, or power utility bill.',
+          docPath: provider.electricityBillDocPath,
+          icon: Icons.local_fire_department_rounded,
+          isDark: isDark,
+          onUpload: () => _pickDocument('electricity', 'Safety Clearance / Utility Bill'),
+        ),
+      ],
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 3. LONG-TERM HOME (ZERO BROKERAGE) DOCUMENTS SECTION
+  // ══════════════════════════════════════════════════════════════════════════
+  Widget _buildLongTermDocumentsSection(HostOnboardingProvider provider, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Required Ownership & Society NOC',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'For 0% brokerage long-term rentals, direct ownership deed and active utility records verify direct landlord listing.',
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 14),
+
+        _buildUploadCard(
+          title: '1. Property Ownership Deed / Allotment Letter *',
+          subtitle: 'Sale deed, registered conveyance deed, or builder allotment letter.',
+          docPath: provider.propertyRegistryDocPath,
+          icon: Icons.home_work_rounded,
+          isDark: isDark,
+          onUpload: () => _pickDocument('registry', 'Ownership Deed'),
+        ),
+
+        const SizedBox(height: 14),
+
+        _buildUploadCard(
+          title: '2. Electricity / Water Utility Bill (Latest 3 Months) *',
+          subtitle: 'Recent power or utility bill showing address & landlord name.',
+          docPath: provider.electricityBillDocPath,
+          icon: Icons.electric_bolt_rounded,
+          isDark: isDark,
+          onUpload: () => _pickDocument('electricity', 'Electricity Bill'),
+        ),
+
+        const SizedBox(height: 14),
+
+        _buildUploadCard(
+          title: '3. Society / Resident Welfare Association (RWA) NOC',
+          subtitle: 'Society manager or RWA committee clearance approving residential tenancy.',
+          docPath: provider.societyNocDocPath,
+          icon: Icons.domain_rounded,
+          isDark: isDark,
+          onUpload: () => _pickDocument('society_noc', 'Society NOC'),
+        ),
+      ],
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // OWNERSHIP TYPE SELECTOR TAB (FOR RESIDENTIAL)
   // ══════════════════════════════════════════════════════════════════════════
   Widget _buildOwnershipTab(
     HostOnboardingProvider provider, {
@@ -297,8 +459,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // ══════════════════════════════════════════════════════════════════════════
-  // OWNED PROPERTY DOCUMENTS (No Landlord NOC, Society NOC only for flats)
+  // OWNED RESIDENTIAL PROPERTY DOCUMENTS
   // ══════════════════════════════════════════════════════════════════════════
   Widget _buildOwnedDocumentsSection(HostOnboardingProvider provider, bool isDark) {
     return Column(
@@ -315,26 +476,24 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
         ),
         const SizedBox(height: 14),
 
-        // Document 1: Sale Deed / Registry Papers / Property Tax
         _buildUploadCard(
           title: '1. Sale Deed / Property Registry / Tax Receipt *',
           subtitle: 'Ownership title deed, 7/12 extract, or recent property tax receipt.',
           docPath: provider.propertyRegistryDocPath,
           icon: Icons.assignment_rounded,
           isDark: isDark,
-          onUpload: () => _pickDocument('registry'),
+          onUpload: () => _pickDocument('registry', 'Sale Deed / Registry'),
         ),
 
         const SizedBox(height: 14),
 
-        // Document 2: Electricity / Utility Bill
         _buildUploadCard(
           title: '2. Electricity / Water Utility Bill (Latest 3 Months) *',
           subtitle: 'Active utility bill showing property address & owner name.',
           docPath: provider.electricityBillDocPath,
           icon: Icons.electric_bolt_rounded,
           isDark: isDark,
-          onUpload: () => _pickDocument('electricity'),
+          onUpload: () => _pickDocument('electricity', 'Electricity Bill'),
         ),
 
         const SizedBox(height: 14),
@@ -390,49 +549,15 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
             docPath: provider.societyNocDocPath,
             icon: Icons.domain_rounded,
             isDark: isDark,
-            onUpload: () => _pickDocument('society_noc'),
+            onUpload: () => _pickDocument('society_noc', 'Society NOC'),
           ),
         ],
-
-        const SizedBox(height: 14),
-
-        // KYC Already Verified Banner
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF10B981).withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.verified_user_rounded, color: Color(0xFF10B981), size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Host ID & Live Selfie — Already Verified ✓',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF065F46)),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Your Aadhaar/PAN and face selfie were verified via Cashfree SecureID in the previous step.',
-                      style: TextStyle(fontSize: 11, color: const Color(0xFF047857)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // LEASED / SUBLET PROPERTY DOCUMENTS (Lease + Landlord NOC + Society NOC)
+  // LEASED / SUBLET RESIDENTIAL PROPERTY DOCUMENTS
   // ══════════════════════════════════════════════════════════════════════════
   Widget _buildLeasedDocumentsSection(HostOnboardingProvider provider, bool isDark) {
     return Column(
@@ -449,26 +574,24 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
         ),
         const SizedBox(height: 14),
 
-        // Document 1: Rent / Lease Agreement
         _buildUploadCard(
           title: '1. Registered Rent / Lease Agreement *',
           subtitle: 'Valid agreement showing active tenancy term and premises details.',
           docPath: provider.leaseAgreementDocPath,
           icon: Icons.article_rounded,
           isDark: isDark,
-          onUpload: () => _pickDocument('lease'),
+          onUpload: () => _pickDocument('lease', 'Rent / Lease Agreement'),
         ),
 
         const SizedBox(height: 14),
 
-        // Document 2: Landlord NOC
         _buildUploadCard(
           title: '2. Landlord No-Objection Certificate (NOC) *',
-          subtitle: 'Written & signed NOC from property owner permitting Stay Q hosting / sublease.',
+          subtitle: 'Written & signed NOC from property owner permitting StayQ hosting / sublease.',
           docPath: provider.landlordNocDocPath,
           icon: Icons.verified_rounded,
           isDark: isDark,
-          onUpload: () => _pickDocument('noc'),
+          onUpload: () => _pickDocument('noc', 'Landlord NOC'),
         ),
 
         const SizedBox(height: 14),
@@ -524,54 +647,19 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
             docPath: provider.societyNocDocPath,
             icon: Icons.domain_rounded,
             isDark: isDark,
-            onUpload: () => _pickDocument('society_noc'),
+            onUpload: () => _pickDocument('society_noc', 'Society NOC'),
           ),
         ],
 
         const SizedBox(height: 14),
 
-        // Document 4: Electricity / Utility Bill
         _buildUploadCard(
           title: '${provider.isInsideGatedSociety ? "4" : "3"}. Electricity / Utility Bill (Latest 3 Months) *',
           subtitle: 'Recent bill establishing active utility connection at premises.',
           docPath: provider.electricityBillDocPath,
           icon: Icons.electric_bolt_rounded,
           isDark: isDark,
-          onUpload: () => _pickDocument('electricity'),
-        ),
-
-        const SizedBox(height: 14),
-
-        // KYC Already Verified Banner
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF10B981).withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.verified_user_rounded, color: Color(0xFF10B981), size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Host ID & Live Selfie — Already Verified ✓',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF065F46)),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Your Aadhaar/PAN and face selfie were verified via Cashfree SecureID in the previous step.',
-                      style: TextStyle(fontSize: 11, color: const Color(0xFF047857)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          onUpload: () => _pickDocument('electricity', 'Electricity Bill'),
         ),
       ],
     );
@@ -589,6 +677,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
     required VoidCallback onUpload,
   }) {
     final hasFile = docPath.isNotEmpty;
+    final isPdf = docPath.toLowerCase().endsWith('.pdf');
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -653,17 +742,38 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
               if (hasFile) ...[
                 Row(
                   children: [
-                    if (!docPath.startsWith('http'))
+                    if (isPdf)
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                        ),
+                        child: const Icon(Icons.picture_as_pdf_rounded, color: Colors.red, size: 20),
+                      )
+                    else if (!docPath.startsWith('http'))
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(8),
                         child: Image.file(File(docPath), width: 36, height: 36, fit: BoxFit.cover),
                       )
                     else
                       const Icon(Icons.image_rounded, color: Color(0xFF10B981), size: 24),
-                    const SizedBox(width: 8),
-                    const Text(
-                      '✓ Document Attached',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF047857)),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '✓ Document Attached',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF047857)),
+                        ),
+                        if (isPdf)
+                          const Text(
+                            'PDF Document',
+                            style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                          ),
+                      ],
                     ),
                   ],
                 ),

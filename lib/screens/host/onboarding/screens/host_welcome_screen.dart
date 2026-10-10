@@ -48,7 +48,7 @@ class HostWelcomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Host with Stay Q',
+                        'Host with StayQ',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w900,

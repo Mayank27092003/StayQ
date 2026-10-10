@@ -1,11 +1,15 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { BroadcastStatus, NotificationType, Prisma, UserRole } from '@prisma/client';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { BroadcastStatus, Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminAuditService } from '../audit/admin-audit.service';
 import { NotificationsService } from '../../notifications/notifications.service';
-import { buildPaginatedResult, PaginatedResult, toSkipTake } from '../dto/pagination.dto';
-import { BroadcastQueryDto, CreateBroadcastDto } from './dto/broadcast.dto';
-
+import { toSkipTake } from '../dto/pagination.dto';
+import { BroadcastQueryDto } from './dto/broadcast.dto';
+import { text } from '../../common/utils/input.util';
 @Injectable()
 export class AdminBroadcastsService {
   constructor(
@@ -13,121 +17,141 @@ export class AdminBroadcastsService {
     private readonly audit: AdminAuditService,
     private readonly notifications: NotificationsService,
   ) {}
-
-  async list(query: BroadcastQueryDto): Promise<any> {
+  async list(query: BroadcastQueryDto) {
     const { skip, take } = toSkipTake(query);
     const where: Prisma.BroadcastWhereInput = {};
     if (query.status) where.status = query.status;
     if (query.audience) where.targetAudience = query.audience;
-    const [rows, total, totalUsers] = await Promise.all([
-      this.prisma.broadcast.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+    const [data, total, totals, activeUsers] = await Promise.all([
+      this.prisma.broadcast.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
       this.prisma.broadcast.count({ where }),
-      this.prisma.user.count(),
+      this.prisma.broadcast.aggregate({
+        _sum: { deliveredCount: true, failedCount: true },
+      }),
+      this.prisma.user.count({ where: { deletedAt: null } }),
     ]);
-
-    const deliveredSum = rows.reduce((acc, r) => acc + (r.deliveredCount || 0), 0);
-    const failedSum = rows.reduce((acc, r) => acc + (r.failedCount || 0), 0);
-    const rate = deliveredSum + failedSum > 0 ? ((deliveredSum / (deliveredSum + failedSum)) * 100).toFixed(1) + '%' : '99.4%';
-
+    const delivered = totals._sum.deliveredCount || 0,
+      failed = totals._sum.failedCount || 0;
     return {
-      data: rows,
+      data,
       total,
       summary: {
-        deliveryRate: rate,
-        deliveryTrend: '+1.5%',
-        dispatchedCount: (deliveredSum + 1420).toLocaleString(),
-        activeUsers: totalUsers,
+        deliveryRate:
+          delivered + failed
+            ? `${((100 * delivered) / (delivered + failed)).toFixed(1)}%`
+            : null,
+        deliveryMetric: 'IN_APP_NOTIFICATION_CREATED',
+        dispatchedCount: delivered,
+        activeUsers,
       },
     };
   }
+  async createAndDispatch(payload: any, adminId: string) {
+    const title = text(payload.title || payload.messageTitle, 'Title', 200),
+      body = text(payload.message || payload.body, 'Message', 4000);
+    let rawAudience = String(
+      payload.audience || payload.targetAudience || 'all',
+    ).toLowerCase().trim();
 
-  async createAndDispatch(payload: any) {
-    const title = payload.title || payload.messageTitle || 'Stay Q Announcement';
-    const body = payload.message || payload.body || '';
-    let rawAudience = (payload.audience || payload.targetAudience || 'all').toLowerCase();
-    
     let targetAudience = 'all';
-    if (rawAudience.includes('host')) targetAudience = 'hosts';
-    else if (rawAudience.includes('guest')) targetAudience = 'guests';
-
-    const created = await this.prisma.broadcast.create({
-      data: {
-        adminId: payload.adminId || 'SYSTEM_ADMIN',
-        title,
-        body,
-        targetAudience,
-        status: BroadcastStatus.DRAFT,
-      },
-    });
-
-    return this.send(created.id, payload.adminId || 'SYSTEM_ADMIN');
-  }
-
-  /**
-   * Sends a broadcast now. Recipients are resolved from the database so the
-   * count is real. FCM delivery is best-effort via the existing NotificationsService.
-   */
-  async send(id: string, adminId: string) {
-    const broadcast = await this.prisma.broadcast.findUnique({ where: { id } });
-    if (!broadcast) throw new NotFoundException('Broadcast not found.');
-    if (broadcast.status !== BroadcastStatus.DRAFT) {
-      throw new BadRequestException(`Cannot send a broadcast with status ${broadcast.status}.`);
+    if (rawAudience.includes('host') && !rawAudience.includes('guest')) {
+      targetAudience = 'hosts';
+    } else if (rawAudience.includes('guest') && !rawAudience.includes('host')) {
+      targetAudience = 'guests';
+    } else {
+      targetAudience = 'all';
     }
-
-    const where: Prisma.UserWhereInput = {};
-    if (broadcast.targetAudience === 'guests') where.roles = { has: UserRole.GUEST };
-    else if (broadcast.targetAudience === 'hosts') where.roles = { has: UserRole.HOST };
-
-    const recipients = await this.prisma.user.findMany({ where, select: { id: true, firebaseUid: true } });
-    const recipientCount = recipients.length;
-
-    // Mark sending immediately so a second concurrent request is blocked.
-    await this.prisma.broadcast.update({ where: { id }, data: { status: BroadcastStatus.SENDING, recipientCount } });
-
-    let delivered = 0;
-    let failed = 0;
-    let errorMessage: string | undefined;
-
-    try {
-      for (const user of recipients) {
-        try {
-          await this.notifications.sendNotification(
-            user.id,
-            NotificationType.PROMOTION,
-            broadcast.title,
-            broadcast.body,
-            { broadcastId: id },
-          );
-          delivered++;
-        } catch {
-          failed++;
-        }
-      }
-    } catch (err) {
-      errorMessage = err instanceof Error ? err.message : 'Delivery loop failed';
-    }
-
-    const finalStatus = errorMessage ? BroadcastStatus.FAILED : BroadcastStatus.SENT;
-    const updated = await this.audit.runWithAudit(
-      (tx) => tx.broadcast.update({
-        where: { id },
-        data: { status: finalStatus, sentAt: new Date(), deliveredCount: delivered, failedCount: failed, errorMessage: errorMessage ?? null },
+    const created = await this.audit.runWithAudit(
+      (tx) =>
+        tx.broadcast.create({
+          data: { adminId, title, body, targetAudience, status: 'DRAFT' },
+        }),
+      (r) => ({
+        adminId,
+        action: 'CREATE_BROADCAST',
+        targetType: 'BROADCAST',
+        targetId: r.id,
+        details: { targetAudience },
       }),
-      (r) => ({ adminId, action: 'SEND_BROADCAST', targetType: 'BROADCAST', targetId: r.id, details: { recipientCount, delivered, failed, status: finalStatus } }),
     );
-    return updated;
+    return this.send(created.id, adminId);
   }
-
-  async delete(id: string, adminId: string) {
-    const broadcast = await this.prisma.broadcast.findUnique({ where: { id } });
-    if (!broadcast) throw new NotFoundException('Broadcast not found.');
-    if (broadcast.status === BroadcastStatus.SENT || broadcast.status === BroadcastStatus.SENDING) {
-      throw new BadRequestException('Sent or in-progress broadcasts cannot be deleted.');
-    }
-    await this.audit.runWithAudit(
-      (tx) => tx.broadcast.delete({ where: { id } }),
-      (r) => ({ adminId, action: 'DELETE_BROADCAST', targetType: 'BROADCAST', targetId: r.id, details: {} }),
+  async send(id: string, adminId: string) {
+    return this.audit.runWithAudit(
+      async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Broadcast" WHERE id=${id} FOR UPDATE`;
+        const broadcast = await tx.broadcast.findUnique({ where: { id } });
+        if (!broadcast) throw new NotFoundException('Broadcast not found');
+        if (broadcast.status !== 'DRAFT')
+          throw new BadRequestException(
+            'Only a draft broadcast can be dispatched',
+          );
+        const where: Prisma.UserWhereInput = { deletedAt: null };
+        if (broadcast.targetAudience === 'hosts')
+          where.roles = { has: UserRole.HOST };
+        else if (broadcast.targetAudience === 'guests')
+          where.roles = { has: UserRole.GUEST };
+        const recipients = await tx.user.findMany({
+          where,
+          select: { id: true },
+          take: 5001,
+        });
+        if (recipients.length > 5000)
+          throw new BadRequestException(
+            'This audience exceeds the 5,000-recipient batch limit',
+          );
+        if (recipients.length)
+          await tx.domainJob.createMany({
+            data: recipients.map((u) => ({
+              key: `broadcast:${id}:${u.id}`,
+              type: 'BROADCAST_MESSAGE',
+              referenceId: `${id}:${u.id}`,
+            })),
+            skipDuplicates: true,
+          });
+        return tx.broadcast.update({
+          where: { id },
+          data: {
+            status: recipients.length
+              ? BroadcastStatus.SENDING
+              : BroadcastStatus.SENT,
+            recipientCount: recipients.length,
+            sentAt: recipients.length ? null : new Date(),
+          },
+        });
+      },
+      (r) => ({
+        adminId,
+        action: 'QUEUE_BROADCAST',
+        targetType: 'BROADCAST',
+        targetId: r.id,
+        details: { recipientCount: r.recipientCount, status: r.status },
+      }),
     );
-    return { id, deleted: true as const };
+  }
+  async delete(id: string, adminId: string) {
+    await this.audit.runWithAudit(
+      async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Broadcast" WHERE id=${id} FOR UPDATE`;
+        const b = await tx.broadcast.findUnique({ where: { id } });
+        if (!b) throw new NotFoundException('Broadcast not found');
+        if (b.status !== 'DRAFT')
+          throw new BadRequestException('Only draft broadcasts can be deleted');
+        return tx.broadcast.delete({ where: { id } });
+      },
+      (r) => ({
+        adminId,
+        action: 'DELETE_BROADCAST',
+        targetType: 'BROADCAST',
+        targetId: r.id,
+        details: {},
+      }),
+    );
+    return { id, deleted: true };
   }
 }

@@ -6,7 +6,7 @@ class AuthApi {
   AuthApi(this._client);
 
   Future<dynamic> syncProfile(Map<String, dynamic> profileData) async {
-    return await _client.post('/users/sync-profile', body: profileData);
+    return await _client.put('/auth/sync-profile', body: profileData);
   }
 
   Future<dynamic> getProfile() async {
@@ -18,6 +18,6 @@ class AuthApi {
   }
   
   Future<dynamic> becomeHost() async {
-    return await _client.post('/users/become-host');
+    return await _client.post('/auth/become-host');
   }
 }

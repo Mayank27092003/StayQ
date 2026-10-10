@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   UseGuards,
+  Headers,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminRole } from '@prisma/client';
@@ -38,13 +39,17 @@ export class AdminBookingsController {
   }
 
   @Get('refund-capability')
-  @ApiOperation({ summary: 'Whether the payment gateway is configured for refunds' })
+  @ApiOperation({
+    summary: 'Whether the payment gateway is configured for refunds',
+  })
   refundCapability() {
     return this.bookings.refundCapability();
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Booking detail with payment, refunds, and status timeline' })
+  @ApiOperation({
+    summary: 'Booking detail with payment, refunds, and status timeline',
+  })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.bookings.findOne(id);
   }
@@ -86,10 +91,11 @@ export class AdminBookingsController {
   @AdminRoles(AdminRole.FINANCE)
   @ApiOperation({ summary: 'Issue a real gateway refund and record it' })
   refund(
+    @Headers('idempotency-key') key: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateRefundDto,
     @CurrentUser('id') adminId: string,
   ) {
-    return this.bookings.refund(id, dto, adminId);
+    return this.bookings.refund(id, dto, adminId, key);
   }
 }

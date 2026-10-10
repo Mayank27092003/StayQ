@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param, Get, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { LeasesService } from './leases.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
 import { AdminGuard } from '../admin/guards/admin.guard';
@@ -11,7 +11,16 @@ export class LeasesController {
 
   @Post()
   createLease(@CurrentUser() user: any, @Body() createLeaseDto: any) {
-    return this.leasesService.createLease(createLeaseDto);
+    return this.leasesService.createLease(createLeaseDto, user);
+  }
+
+  @Post(':id/sign')
+  sign(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body('signatureUrl') url: string,
+  ) {
+    return this.leasesService.signLease(id, user, url);
   }
 
   @Post(':id/generate-pdf')

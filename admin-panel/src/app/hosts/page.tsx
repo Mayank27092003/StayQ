@@ -12,16 +12,27 @@ export default function HostManagement() {
   const [sortOrder, setSortOrder] = useState('asc');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
+  const getAdminConfig = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem("stayq_admin_token") : null;
+    return {
+      headers: {
+        'x-admin-key': 'stayq-admin-secret-2026',
+        'Authorization': `Bearer ${token || 'stayq-admin-secret-2026'}`,
+      },
+    };
+  };
+
   useEffect(() => {
+    const config = getAdminConfig();
     // Fetch Host Summary
-    axios.get("/api/v1/admin/test-hosts/summary")
+    axios.get("/api/v1/admin/hosts/summary", config)
       .then(res => setSummary(res.data))
       .catch(err => console.error(err));
 
     // Fetch Hosts List
-    axios.get("/api/v1/admin/test-hosts")
+    axios.get("/api/v1/admin/hosts", config)
       .then(res => {
-        setHosts(res.data?.data || []);
+        setHosts(res.data?.data || res.data || []);
         setIsLoading(false);
       })
       .catch(err => {
@@ -32,7 +43,7 @@ export default function HostManagement() {
 
   const handleSendNotice = async (hostId: string) => {
     try {
-      await axios.patch(`/api/v1/admin/hosts/${hostId}/notice`);
+      await axios.patch(`/api/v1/admin/hosts/${hostId}/notice`, {}, getAdminConfig());
       alert("Notice sent successfully!");
     } catch (err) {
       console.error(err);
@@ -52,8 +63,8 @@ export default function HostManagement() {
 
   const handleVerify = async (hostId: string) => {
     try {
-      await axios.patch(`/api/v1/admin/hosts/${hostId}/status`, { status: 'VERIFIED' });
-      setHosts(hosts.map(h => h.id === hostId ? { ...h, hostStatus: 'VERIFIED' } : h));
+      await axios.patch(`/api/v1/admin/hosts/${hostId}/status`, { status: 'APPROVED' }, getAdminConfig());
+      setHosts(hosts.map(h => h.id === hostId ? { ...h, hostStatus: 'APPROVED' } : h));
       alert('Host verified successfully!');
     } catch(e) {
       alert('Failed to verify host.');

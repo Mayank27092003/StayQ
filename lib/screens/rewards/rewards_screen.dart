@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,10 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
 import '../../widgets/bouncing_widget.dart';
 import '../../widgets/cashfree_payment_sheet.dart';
+import '../../models/payment_order.dart';
+import '../../models/json_values.dart';
+import '../../services/api/api_client.dart';
+import '../../services/api/payments_api.dart';
 import '../profile/edit_profile_screen.dart';
 
 class RewardsScreen extends StatefulWidget {
@@ -19,11 +24,16 @@ class RewardsScreen extends StatefulWidget {
 }
 
 class _RewardsScreenState extends State<RewardsScreen> {
+  bool _upgrading = false;
+  final String _purchaseKey = 'purchase:${DateTime.now().microsecondsSinceEpoch}:${Random.secure().nextInt(1 << 32)}';
+  PaymentOrder? _tierOrder;
+  String? _tierOrderKey;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       Provider.of<AppProvider>(context, listen: false).fetchLoyaltyProfile();
     });
   }
@@ -42,7 +52,6 @@ class _RewardsScreenState extends State<RewardsScreen> {
           final isDark = Theme.of(context).brightness == Brightness.dark;
           final safeMax = maxPoints < 100 ? 100.0 : maxPoints.toDouble();
           final safePointsToRedeem = pointsToRedeem.toDouble().clamp(100.0, safeMax).toInt();
-          final creditValue = safePointsToRedeem * 0.5;
 
           return Container(
             padding: EdgeInsets.only(
@@ -90,7 +99,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Redeem Stay Q Points',
+                          'Redeem StayQ Points',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -99,7 +108,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '500 Points = ₹250 Stay Q Credit',
+                          'Credits are calculated by the server',
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark ? Colors.white60 : AppColors.textSecondary,
@@ -179,7 +188,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '₹${creditValue.toStringAsFixed(0)}',
+                              'Pending',
                               style: const TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
@@ -229,20 +238,10 @@ class _RewardsScreenState extends State<RewardsScreen> {
                       Navigator.pop(ctx);
                       AppMotion.tapSelection();
                       final success = await provider.redeemLoyaltyPoints(safePointsToRedeem);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              success
-                                  ? '🎉 Successfully added ₹${creditValue.toStringAsFixed(0)} to your Stay Q Wallet!'
-                                  : 'Failed to redeem points. Please try again.',
-                            ),
-                            backgroundColor: success ? const Color(0xFF10B981) : Colors.red,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        );
-                      }
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text(success
+                        ? 'Reward redemption accepted. Your balance has been refreshed.'
+                        : 'Redemption was not confirmed. Refresh your balance before retrying.')));
                     },
                     child: Container(
                       width: double.infinity,
@@ -262,7 +261,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                       ),
                       child: Center(
                         child: Text(
-                          'Convert to ₹${creditValue.toStringAsFixed(0)} Credit',
+                          'Request redemption',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -348,58 +347,23 @@ class _RewardsScreenState extends State<RewardsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
               onPressed: () async {
-                Navigator.pop(ctx);
-
-                final resolvedPhone = provider.userPhone.isNotEmpty
-                    ? provider.userPhone
-                    : (FirebaseAuth.instance.currentUser?.phoneNumber ?? '9876543210');
-                final resolvedName = provider.userName.isNotEmpty
-                    ? provider.userName
-                    : (FirebaseAuth.instance.currentUser?.displayName ?? 'Club Member');
-                final resolvedEmail = provider.userEmail.isNotEmpty
-                    ? provider.userEmail
-                    : (FirebaseAuth.instance.currentUser?.email ?? 'hello@stayq.space');
-
-                final paymentResult = await CashfreePaymentSheet.show(
-                  context,
-                  bookingId: 'TIER_${tierKey}_${DateTime.now().millisecondsSinceEpoch}',
-                  totalAmount: price.toDouble(),
-                  propertyTitle: 'Stay Q Club - $tierTitle',
-                  customerName: resolvedName,
-                  customerEmail: resolvedEmail,
-                  customerPhone: resolvedPhone,
-                );
-
-                if (paymentResult == null) {
-                  // User cancelled or failed payment
-                  return;
-                }
-
-                // Payment verified -> activate tier & welcome points
-                final success = await provider.upgradeLoyaltyTier(tierKey);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          const Icon(Icons.stars_rounded, color: Colors.white),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              success
-                                  ? '👑 Payment Verified! Welcome to $tierTitle! Perks and welcome bonus are active.'
-                                  : 'Tier upgrade registered!',
-                              style: const TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ],
-                      ),
-                      backgroundColor: const Color(0xFF10B981),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  );
-                }
+                if (_upgrading) return;
+                Navigator.pop(ctx); _upgrading = true;
+                try {
+                  if (_tierOrderKey != tierKey) { _tierOrder = null; _tierOrderKey = tierKey; }
+                  _tierOrder ??= PaymentOrder.fromJson(jsonMap(await ApiClient.instance.post('/loyalty/upgrade-tier/create-order',
+                    body: {'tier': tierKey}, idempotencyKey: '$_purchaseKey:${tierKey}')));
+                  if (!mounted) return;
+                  final payment = await CashfreePaymentSheet.show(this.context, bookingId: _tierOrder!.id,
+                    existingOrder: _tierOrder, totalAmount: _tierOrder!.amount, propertyTitle: 'StayQ Club - $tierTitle',
+                    verifyOrder: (orderId) => PaymentsApi(ApiClient.instance).verifyPayment(orderId));
+                  if (payment == null || !mounted) return;
+                  final success = await provider.upgradeLoyaltyTier(tierKey, orderId: payment.orderId);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text(success
+                    ? 'Your membership tier is confirmed.' : 'Payment received. Membership activation is pending.')));
+                } catch (e) { if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+                finally { _upgrading = false; }
               },
               child: Text('Pay ₹$price/yr'),
             ),
@@ -424,7 +388,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Stay Q Rewards',
+          'StayQ Rewards',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w800,
@@ -592,7 +556,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            '≈ ₹${credit.toStringAsFixed(0)} Stay Q Credit (500 pts = ₹250)',
+            '₹${credit.toStringAsFixed(0)} server-reported credit equivalent',
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white70),
           ),
           const SizedBox(height: 20),
@@ -647,178 +611,36 @@ class _RewardsScreenState extends State<RewardsScreen> {
     );
   }
 
-  void _handleEarnAction(BuildContext context, String key, AppProvider provider) {
+  Future<void> _handleEarnAction(BuildContext context, String key, AppProvider provider) async {
     AppMotion.tapSelection();
     switch (key) {
-      case 'book':
-        Navigator.pop(context);
-        provider.setTabIndex(0);
-        break;
-      case 'review':
-        _showReviewPrompt(context, provider);
-        break;
-      case 'refer':
-        _showReferralSheet(context, provider);
-        break;
+      case 'book': Navigator.pop(context); provider.setTabIndex(0); break;
+      case 'review': _showReviewPrompt(context, provider); break;
+      case 'refer': _showReferralSheet(context, provider); break;
       case 'profile':
         if (provider.userName.isEmpty || !provider.isEmailVerified) {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
         } else {
-          provider.addBonusPoints(15, 'Profile & Email Verification Bonus');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.stars_rounded, color: Colors.white),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text('🎉 Verified Profile Bonus! +15 Points added to your Stay Q wallet!'),
-                  ),
-                ],
-              ),
-              backgroundColor: const Color(0xFF10B981),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
+          final accepted = await provider.claimProfileCompletionBonus();
+          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(accepted ? 'Profile reward claim confirmed. Your balance has been refreshed.' :
+              'The server did not confirm a new profile reward.')));
         }
         break;
-      case 'repeat':
-        Navigator.pop(context);
-        provider.setTabIndex(2);
-        break;
+      case 'repeat': Navigator.pop(context); provider.setTabIndex(2); break;
     }
   }
 
   void _showReviewPrompt(BuildContext context, AppProvider provider) {
-    int rating = 5;
-    final reviewController = TextEditingController();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) {
-          final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
-          final isDark = Theme.of(ctx).brightness == Brightness.dark;
-
-          return Container(
-            padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1B2E) : Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.star_rounded, color: Colors.amber, size: 28),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Review a Stay', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          Text('Earn +10 Stay Q Reward Points instantly', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                const Text('Rate your experience:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(5, (index) {
-                    final starIndex = index + 1;
-                    return IconButton(
-                      icon: Icon(
-                        starIndex <= rating ? Icons.star_rounded : Icons.star_border_rounded,
-                        color: Colors.amber,
-                        size: 34,
-                      ),
-                      onPressed: () => setModalState(() => rating = starIndex),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: reviewController,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    hintText: 'Share your feedback (amenities, cleanliness, host hospitality)...',
-                    filled: true,
-                    fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.surfaceLight,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                BouncingWidget(
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    provider.addBonusPoints(10, 'Verified Stay Review');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Row(
-                          children: [
-                            Icon(Icons.check_circle_rounded, color: Colors.white),
-                            SizedBox(width: 8),
-                            Expanded(child: Text('⭐ Review submitted! +10 Points added to your wallet!')),
-                          ],
-                        ),
-                        backgroundColor: const Color(0xFF10B981),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Center(
-                      child: Text('Submit Review & Claim +10 pts', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Review submission and review rewards are currently unavailable.')));
   }
 
   void _showReferralSheet(BuildContext context, AppProvider provider) {
-    final code = provider.userReferralCode.isNotEmpty ? provider.userReferralCode : 'SQ-STAYS';
+    final code = provider.userReferralCode;
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Your referral code is not available yet.'))); return;
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showModalBottomSheet(
@@ -862,7 +684,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Refer Friends & Earn +25 Pts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text('Plus ₹500 stay credit for you and your friend', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      Text('Referral credits appear after server approval', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ],
                   ),
                 ),
@@ -1013,7 +835,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
         'color': const Color(0xFF6B7280),
         'perks': [
           'Earn 1 pt per ₹100 spent',
-          '500 pts = ₹250 Stay Q Credit',
+          'Redemption value is confirmed by the server',
           'Standard guest concierge',
         ],
       },
@@ -1206,7 +1028,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
               ),
               const SizedBox(height: 2),
               Text(
-                'Book stays or leave reviews to start earning Stay Q Points!',
+                'Book stays or leave reviews to start earning StayQ Points!',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 11, color: isDark ? Colors.white38 : AppColors.textSecondary.withValues(alpha: 0.6)),
               ),

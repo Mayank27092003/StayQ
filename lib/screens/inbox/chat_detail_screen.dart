@@ -24,6 +24,7 @@ class ChatDetailScreen extends StatefulWidget {
 }
 
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
+  bool _sending = false;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
@@ -31,6 +32,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final messaging = Provider.of<MessagingProvider>(context, listen: false);
       messaging.initializeSocket();
       messaging.fetchConversationDetails(widget.chatId);
@@ -45,29 +47,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Future<void> _sendMessage() async {
-    final text = _messageController.text.trim();
-    if (text.isEmpty) return;
-
-    final provider = Provider.of<AppProvider>(context, listen: false);
-    if (!provider.isLoggedIn || FirebaseAuth.instance.currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please log in to send messages')));
-      return;
-    }
-
-    _messageController.clear();
-    
-    // Use MessagingProvider to send real-time WebSocket message
-    Provider.of<MessagingProvider>(context, listen: false)
-        .sendMessage(widget.chatId, text);
-    
-    // Scroll to bottom
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        0.0,
-        curve: Curves.easeOut,
-        duration: const Duration(milliseconds: 300),
-      );
-    }
+    if (_sending) return;
+    final text = _messageController.text.trim(); if (text.isEmpty) return;
+    _sending = true;
+    try {
+      await context.read<MessagingProvider>().sendMessage(widget.chatId, text);
+      if (!mounted) return;
+      if (_messageController.text.trim() == text) _messageController.clear();
+      if (_scrollController.hasClients) _scrollController.animateTo(0, curve: Curves.easeOut, duration: const Duration(milliseconds: 300));
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Message was not confirmed: $e'))); }
+    finally { _sending = false; }
   }
 
   @override
@@ -122,13 +111,59 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 
-                if (messaging.error != null) {
-                  return Center(child: Text(messaging.error!, style: const TextStyle(color: Colors.red)));
-                }
-                
                 if (messaging.currentMessages.isEmpty) {
-                  return const Center(
-                    child: Text('Say hello!', style: TextStyle(color: AppColors.textSecondary)),
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.chat_bubble_outline_rounded, size: 36, color: AppColors.primary),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            'Chat with ${widget.otherUserName}',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Ask questions about check-in, directions, or amenities before booking.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(height: 20),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.center,
+                            children: [
+                              'Hi! Is early check-in possible?',
+                              'What are the check-in timings?',
+                              'Is parking available on site?',
+                            ].map((prompt) {
+                              return ActionChip(
+                                label: Text(prompt, style: const TextStyle(fontSize: 12)),
+                                backgroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: const BorderSide(color: AppColors.borderLight),
+                                ),
+                                onPressed: () {
+                                  _messageController.text = prompt;
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
                   );
                 }
 
@@ -146,8 +181,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     
                     String timeStr = '';
                     if (msg['createdAt'] != null) {
-                      final time = DateTime.parse(msg['createdAt']);
-                      timeStr = DateFormat('hh:mm a').format(time.toLocal());
+                      final time = DateTime.tryParse(msg['createdAt'].toString());
+                      if (time != null) timeStr = DateFormat('hh:mm a').format(time.toLocal());
                     }
 
                     return Align(
@@ -172,7 +207,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                           children: [
                             Text(
-                              msg['text'] ?? '',
+                              (msg['text'] ?? '').toString(),
                               style: TextStyle(
                                 color: isMe ? Colors.white : AppColors.textPrimary,
                                 fontSize: 15,
@@ -180,7 +215,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              timeStr,
+                              '$timeStr ${msg['deliveryStatus'] == 'failed' ? '• Not sent' : msg['deliveryStatus'] == 'pending' ? '• Sending' : ''}',
                               style: TextStyle(
                                 color: isMe ? Colors.white70 : AppColors.textMuted,
                                 fontSize: 11,

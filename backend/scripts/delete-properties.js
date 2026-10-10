@@ -1,17 +1,2 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-
-async function main() {
-  console.log('Deleting all properties...');
-  const result = await prisma.property.deleteMany({});
-  console.log(`Deleted ${result.count} properties.`);
-}
-
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// Retired unsafe live-data utility. No external action is performed.
+throw new Error('This legacy utility is disabled. Read SETUP.md for safe database backup, Firebase admin provisioning, and offline regression tests.');

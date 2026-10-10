@@ -24,7 +24,7 @@ class HomeBentoBox extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Explore Stay Q',
+                'Explore StayQ',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,

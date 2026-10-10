@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   Prisma,
   SupportMessage,
@@ -9,7 +13,11 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminAuditService } from '../audit/admin-audit.service';
-import { buildPaginatedResult, PaginatedResult, toSkipTake } from '../dto/pagination.dto';
+import {
+  buildPaginatedResult,
+  PaginatedResult,
+  toSkipTake,
+} from '../dto/pagination.dto';
 import {
   CreateSupportMessageDto,
   SupportTicketQueryDto,
@@ -57,20 +65,24 @@ export interface SupportTicketResponse {
 }
 
 /** Transitions permitted from each state, so the queue statistics stay meaningful. */
-const ALLOWED_TRANSITIONS: Record<SupportTicketStatus, SupportTicketStatus[]> = {
-  [SupportTicketStatus.OPEN]: [
-    SupportTicketStatus.IN_PROGRESS,
-    SupportTicketStatus.RESOLVED,
-    SupportTicketStatus.CLOSED,
-  ],
-  [SupportTicketStatus.IN_PROGRESS]: [
-    SupportTicketStatus.OPEN,
-    SupportTicketStatus.RESOLVED,
-    SupportTicketStatus.CLOSED,
-  ],
-  [SupportTicketStatus.RESOLVED]: [SupportTicketStatus.CLOSED, SupportTicketStatus.IN_PROGRESS],
-  [SupportTicketStatus.CLOSED]: [SupportTicketStatus.IN_PROGRESS],
-};
+const ALLOWED_TRANSITIONS: Record<SupportTicketStatus, SupportTicketStatus[]> =
+  {
+    [SupportTicketStatus.OPEN]: [
+      SupportTicketStatus.IN_PROGRESS,
+      SupportTicketStatus.RESOLVED,
+      SupportTicketStatus.CLOSED,
+    ],
+    [SupportTicketStatus.IN_PROGRESS]: [
+      SupportTicketStatus.OPEN,
+      SupportTicketStatus.RESOLVED,
+      SupportTicketStatus.CLOSED,
+    ],
+    [SupportTicketStatus.RESOLVED]: [
+      SupportTicketStatus.CLOSED,
+      SupportTicketStatus.IN_PROGRESS,
+    ],
+    [SupportTicketStatus.CLOSED]: [SupportTicketStatus.IN_PROGRESS],
+  };
 
 const TERMINAL_STATUSES: SupportTicketStatus[] = [
   SupportTicketStatus.RESOLVED,
@@ -98,7 +110,10 @@ export class AdminSupportService {
   }
 
   private toResponse(
-    ticket: SupportTicket & { messages?: SupportMessage[]; _count?: { messages: number } },
+    ticket: SupportTicket & {
+      messages?: SupportMessage[];
+      _count?: { messages: number };
+    },
     assignee: AdminSummary | null,
   ): SupportTicketResponse {
     const ageMs = Date.now() - ticket.createdAt.getTime();
@@ -122,7 +137,9 @@ export class AdminSupportService {
       updatedAt: ticket.updatedAt,
       ageHours: Math.max(0, Math.round(ageMs / (60 * 60 * 1000))),
       messageCount: ticket._count?.messages ?? ticket.messages?.length ?? 0,
-      messages: ticket.messages?.map((message) => this.toMessageResponse(message)),
+      messages: ticket.messages?.map((message) =>
+        this.toMessageResponse(message),
+      ),
     };
   }
 
@@ -130,7 +147,9 @@ export class AdminSupportService {
    * `assignedTo` is a bare id column with no relation, so assignee identities
    * are resolved in one batched lookup rather than a join.
    */
-  private async loadAssignees(ids: Array<string | null>): Promise<Map<string, AdminSummary>> {
+  private async loadAssignees(
+    ids: Array<string | null>,
+  ): Promise<Map<string, AdminSummary>> {
     const unique = [...new Set(ids.filter((id): id is string => Boolean(id)))];
     if (unique.length === 0) return new Map();
 
@@ -142,7 +161,9 @@ export class AdminSupportService {
     return new Map(admins.map((admin) => [admin.id, admin]));
   }
 
-  async list(query: SupportTicketQueryDto): Promise<PaginatedResult<SupportTicketResponse>> {
+  async list(
+    query: SupportTicketQueryDto,
+  ): Promise<PaginatedResult<SupportTicketResponse>> {
     const { skip, take } = toSkipTake(query);
 
     const where: Prisma.SupportTicketWhereInput = {};
@@ -162,7 +183,11 @@ export class AdminSupportService {
     const [tickets, total] = await Promise.all([
       this.prisma.supportTicket.findMany({
         where,
-        orderBy: [{ status: 'asc' }, { priority: 'desc' }, { createdAt: 'desc' }],
+        orderBy: [
+          { status: 'asc' },
+          { priority: 'desc' },
+          { createdAt: 'desc' },
+        ],
         skip,
         take,
         include: { _count: { select: { messages: true } } },
@@ -170,11 +195,16 @@ export class AdminSupportService {
       this.prisma.supportTicket.count({ where }),
     ]);
 
-    const assignees = await this.loadAssignees(tickets.map((t) => t.assignedTo));
+    const assignees = await this.loadAssignees(
+      tickets.map((t) => t.assignedTo),
+    );
 
     return buildPaginatedResult(
       tickets.map((ticket) =>
-        this.toResponse(ticket, ticket.assignedTo ? assignees.get(ticket.assignedTo) ?? null : null),
+        this.toResponse(
+          ticket,
+          ticket.assignedTo ? (assignees.get(ticket.assignedTo) ?? null) : null,
+        ),
       ),
       total,
       query,
@@ -191,7 +221,7 @@ export class AdminSupportService {
     const assignees = await this.loadAssignees([ticket.assignedTo]);
     return this.toResponse(
       ticket,
-      ticket.assignedTo ? assignees.get(ticket.assignedTo) ?? null : null,
+      ticket.assignedTo ? (assignees.get(ticket.assignedTo) ?? null) : null,
     );
   }
 
@@ -200,7 +230,9 @@ export class AdminSupportService {
     dto: UpdateSupportTicketDto,
     adminId: string,
   ): Promise<SupportTicketResponse> {
-    const existing = await this.prisma.supportTicket.findUnique({ where: { id } });
+    const existing = await this.prisma.supportTicket.findUnique({
+      where: { id },
+    });
     if (!existing) throw new NotFoundException('Support ticket not found.');
 
     const data: Prisma.SupportTicketUpdateInput = {};
@@ -234,9 +266,12 @@ export class AdminSupportService {
           where: { id: dto.assignedTo },
           select: { id: true, isAdmin: true },
         });
-        if (!assignee) throw new NotFoundException('The assignee account was not found.');
+        if (!assignee)
+          throw new NotFoundException('The assignee account was not found.');
         if (!assignee.isAdmin) {
-          throw new BadRequestException('Tickets can only be assigned to an admin account.');
+          throw new BadRequestException(
+            'Tickets can only be assigned to an admin account.',
+          );
         }
         data.assignedTo = dto.assignedTo;
       }
@@ -248,7 +283,8 @@ export class AdminSupportService {
 
     // Resolving must carry an explanation so the record stays useful later.
     const becomingTerminal =
-      typeof data.status === 'string' && TERMINAL_STATUSES.includes(data.status);
+      typeof data.status === 'string' &&
+      TERMINAL_STATUSES.includes(data.status);
     if (becomingTerminal && !dto.resolution && !existing.resolution) {
       throw new BadRequestException(
         'A resolution note is required when resolving or closing a ticket.',
@@ -278,7 +314,7 @@ export class AdminSupportService {
     const assignees = await this.loadAssignees([updated.assignedTo]);
     return this.toResponse(
       updated,
-      updated.assignedTo ? assignees.get(updated.assignedTo) ?? null : null,
+      updated.assignedTo ? (assignees.get(updated.assignedTo) ?? null) : null,
     );
   }
 
@@ -292,7 +328,9 @@ export class AdminSupportService {
     dto: CreateSupportMessageDto,
     admin: { id: string; displayName: string | null; email: string | null },
   ): Promise<SupportMessageResponse> {
-    const ticket = await this.prisma.supportTicket.findUnique({ where: { id: ticketId } });
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id: ticketId },
+    });
     if (!ticket) throw new NotFoundException('Support ticket not found.');
 
     const internal = dto.internal ?? false;
@@ -319,7 +357,10 @@ export class AdminSupportService {
           ticketUpdate.status = SupportTicketStatus.IN_PROGRESS;
         }
         if (Object.keys(ticketUpdate).length > 0) {
-          await tx.supportTicket.update({ where: { id: ticketId }, data: ticketUpdate });
+          await tx.supportTicket.update({
+            where: { id: ticketId },
+            data: ticketUpdate,
+          });
         }
 
         return created;
@@ -338,26 +379,37 @@ export class AdminSupportService {
 
   /** Queue counters and response times computed from stored timestamps. */
   async summary() {
-    const [byStatus, byPriority, unassignedOpen, resolvedSample, respondedSample] =
-      await Promise.all([
-        this.prisma.supportTicket.groupBy({ by: ['status'], _count: { _all: true } }),
-        this.prisma.supportTicket.groupBy({ by: ['priority'], _count: { _all: true } }),
-        this.prisma.supportTicket.count({
-          where: { assignedTo: null, status: SupportTicketStatus.OPEN },
-        }),
-        this.prisma.supportTicket.findMany({
-          where: { resolvedAt: { not: null } },
-          select: { createdAt: true, resolvedAt: true },
-          orderBy: { resolvedAt: 'desc' },
-          take: 200,
-        }),
-        this.prisma.supportTicket.findMany({
-          where: { firstRespondedAt: { not: null } },
-          select: { createdAt: true, firstRespondedAt: true },
-          orderBy: { firstRespondedAt: 'desc' },
-          take: 200,
-        }),
-      ]);
+    const [
+      byStatus,
+      byPriority,
+      unassignedOpen,
+      resolvedSample,
+      respondedSample,
+    ] = await Promise.all([
+      this.prisma.supportTicket.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
+      this.prisma.supportTicket.groupBy({
+        by: ['priority'],
+        _count: { _all: true },
+      }),
+      this.prisma.supportTicket.count({
+        where: { assignedTo: null, status: SupportTicketStatus.OPEN },
+      }),
+      this.prisma.supportTicket.findMany({
+        where: { resolvedAt: { not: null } },
+        select: { createdAt: true, resolvedAt: true },
+        orderBy: { resolvedAt: 'desc' },
+        take: 200,
+      }),
+      this.prisma.supportTicket.findMany({
+        where: { firstRespondedAt: { not: null } },
+        select: { createdAt: true, firstRespondedAt: true },
+        orderBy: { firstRespondedAt: 'desc' },
+        take: 200,
+      }),
+    ]);
 
     const statusCounts = Object.fromEntries(
       Object.values(SupportTicketStatus).map((status) => [status, 0]),
@@ -367,7 +419,8 @@ export class AdminSupportService {
     const priorityCounts = Object.fromEntries(
       Object.values(SupportTicketPriority).map((priority) => [priority, 0]),
     ) as Record<SupportTicketPriority, number>;
-    for (const row of byPriority) priorityCounts[row.priority] = row._count._all;
+    for (const row of byPriority)
+      priorityCounts[row.priority] = row._count._all;
 
     // Null rather than 0 when there is no sample, so the UI can state that the
     // figure is not available yet instead of implying instant resolution.
@@ -377,7 +430,8 @@ export class AdminSupportService {
       const usable = rows.filter((row) => row.end !== null);
       if (usable.length === 0) return null;
       const totalMs = usable.reduce(
-        (sum, row) => sum + ((row.end as Date).getTime() - row.createdAt.getTime()),
+        (sum, row) =>
+          sum + ((row.end as Date).getTime() - row.createdAt.getTime()),
         0,
       );
       return Math.round(totalMs / usable.length / (60 * 60 * 1000));
@@ -389,10 +443,16 @@ export class AdminSupportService {
       byPriority: priorityCounts,
       unassignedOpen,
       averageResolutionHours: averageHours(
-        resolvedSample.map((t) => ({ createdAt: t.createdAt, end: t.resolvedAt })),
+        resolvedSample.map((t) => ({
+          createdAt: t.createdAt,
+          end: t.resolvedAt,
+        })),
       ),
       averageFirstResponseHours: averageHours(
-        respondedSample.map((t) => ({ createdAt: t.createdAt, end: t.firstRespondedAt })),
+        respondedSample.map((t) => ({
+          createdAt: t.createdAt,
+          end: t.firstRespondedAt,
+        })),
       ),
       resolutionSampleSize: resolvedSample.length,
       firstResponseSampleSize: respondedSample.length,

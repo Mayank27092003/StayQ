@@ -125,8 +125,14 @@ export default function NotificationsCenter() {
 
     try {
       setDispatching(true);
+      const audienceKey = audience.toLowerCase().includes("host") && !audience.toLowerCase().includes("guest")
+        ? "hosts"
+        : audience.toLowerCase().includes("guest") && !audience.toLowerCase().includes("host")
+        ? "guests"
+        : "all";
+
       await axios.post("/api/v1/admin/broadcasts", {
-        audience,
+        audience: audienceKey,
         title: title.trim(),
         message: message.trim(),
         channels: selectedChannels,

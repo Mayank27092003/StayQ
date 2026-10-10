@@ -1,4 +1,10 @@
-import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { AdminSettingValueType } from '@prisma/client';
 
 export class SettingQueryDto {
@@ -9,7 +15,9 @@ export class SettingQueryDto {
 export class UpsertSettingDto {
   @IsString() @MinLength(1) @MaxLength(120) key!: string;
   @IsString() @MaxLength(5000) value!: string;
-  @IsOptional() @IsEnum(AdminSettingValueType) valueType?: AdminSettingValueType;
+  @IsOptional()
+  @IsEnum(AdminSettingValueType)
+  valueType?: AdminSettingValueType;
   @IsString() @MinLength(1) @MaxLength(60) group!: string;
   @IsString() @MinLength(1) @MaxLength(120) label!: string;
   @IsOptional() @IsString() @MaxLength(500) description?: string;

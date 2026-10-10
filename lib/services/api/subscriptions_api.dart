@@ -14,12 +14,14 @@ class SubscriptionsApi {
   /// Create Cashfree Subscription Order
   Future<Map<String, dynamic>> createSubscriptionOrder({
     required String planId,
+    String? idempotencyKey,
     String? userEmail,
     String? userPhone,
     String? userName,
   }) async {
     final response = await _client.post(
       '/subscriptions/create-order',
+      idempotencyKey: idempotencyKey,
       body: {
         'planId': planId,
         if (userEmail != null) 'userEmail': userEmail,

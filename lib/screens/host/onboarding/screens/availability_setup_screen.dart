@@ -209,7 +209,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
           ).animate().fadeIn().slideX(),
           const SizedBox(height: 8),
           const Text(
-            'Choose your hosting schedule. You can list all days or pick specific open and blocked dates on Stay Q.',
+            'Choose your hosting schedule. You can list all days or pick specific open and blocked dates on StayQ.',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
@@ -223,7 +223,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
           ),
           const SizedBox(height: 12),
           _buildStrategyCard(
-            title: 'Full-Time on Stay Q (All Days)',
+            title: 'Full-Time on StayQ (All Days)',
             subtitle: 'Open 30 days/month • Maximize bookings with 0% host fee',
             icon: '⚡',
             presetKey: 'ALL_DAYS',
@@ -231,7 +231,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
             onTap: () => provider.setSchedulePreset('ALL_DAYS'),
           ),
           _buildStrategyCard(
-            title: 'Weekends Only on Stay Q',
+            title: 'Weekends Only on StayQ',
             subtitle: 'Friday, Saturday & Sunday open • Mon-Thu reserved/blocked',
             icon: '🏖️',
             presetKey: 'WEEKENDS_ONLY',
@@ -240,7 +240,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
           ),
           _buildStrategyCard(
             title: 'Custom Schedule Split (e.g. 10 Days)',
-            subtitle: 'Pick exact custom dates on Stay Q • Keep other days reserved',
+            subtitle: 'Pick exact custom dates on StayQ • Keep other days reserved',
             icon: '🔀',
             presetKey: 'CUSTOM_SPLIT',
             isSelected: provider.availabilityScheduleType == 'CUSTOM_SPLIT',
@@ -269,19 +269,21 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          DateFormat('MMMM yyyy').format(_currentMonth),
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'Tap dates to toggle Stay Q Open vs Blocked',
-                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                        ),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            DateFormat('MMMM yyyy').format(_currentMonth),
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Tap dates to toggle StayQ Open vs Blocked',
+                            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
                     ),
                     Row(
                       children: [
@@ -324,7 +326,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                         children: [
                           Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
                           const SizedBox(width: 6),
-                          Text('${stayQDaysCount} Days on Stay Q', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF047857))),
+                          Text('${stayQDaysCount} Days on StayQ', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF047857))),
                         ],
                       ),
                     ),
@@ -614,6 +616,155 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
               ],
             ),
           ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.1, end: 0),
+
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.cardBg,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text('Preparation Time (Turnaround Buffer)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                          SizedBox(height: 3),
+                          Text('Blocked days between bookings to clean and restock', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        provider.preparationTimeDays == 0 ? 'None' : '${provider.preparationTimeDays} Day${provider.preparationTimeDays > 1 ? 's' : ''}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    {'label': 'Same Day (0d)', 'days': 0},
+                    {'label': '1 Day Buffer', 'days': 1},
+                    {'label': '2 Days Buffer', 'days': 2},
+                  ].map((item) {
+                    final isSel = provider.preparationTimeDays == item['days'];
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () => provider.updatePreparationSettings(prepDays: item['days'] as int),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          padding: const EdgeInsets.symmetric(vertical: 9),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: isSel ? AppColors.primary : AppColors.surfaceLight,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: isSel ? AppColors.primary : AppColors.borderLight),
+                          ),
+                          child: Text(
+                            item['label'] as String,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color: isSel ? Colors.white : AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1, end: 0),
+
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.cardBg,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text('Advance Booking Notice', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                          SizedBox(height: 3),
+                          Text('Minimum lead time required before a guest check-in', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        provider.bookingNoticeHours == 0 ? 'Same Day' : '${provider.bookingNoticeHours}h Notice',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    {'label': 'Same Day', 'hours': 0},
+                    {'label': '12 Hours', 'hours': 12},
+                    {'label': '24 Hours', 'hours': 24},
+                    {'label': '48 Hours', 'hours': 48},
+                  ].map((item) {
+                    final isSel = provider.bookingNoticeHours == item['hours'];
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () => provider.updatePreparationSettings(noticeHours: item['hours'] as int),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          padding: const EdgeInsets.symmetric(vertical: 9),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: isSel ? AppColors.primary : AppColors.surfaceLight,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: isSel ? AppColors.primary : AppColors.borderLight),
+                          ),
+                          child: Text(
+                            item['label'] as String,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isSel ? Colors.white : AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ).animate().fadeIn(delay: 550.ms).slideY(begin: 0.1, end: 0),
         ],
       ),
     );

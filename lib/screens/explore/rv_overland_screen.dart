@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_provider.dart';
+import '../../models/stay_model.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
 import 'category_view_screen.dart';
+import '../listing/listing_detail_screen.dart';
 import '../../models/corridor_model.dart';
 import '../../models/corridor_region.dart';
 import '../../data/curated_corridors_dataset.dart';
@@ -193,6 +196,11 @@ class _RvOverlandScreenState extends State<RvOverlandScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<AppProvider>(context);
+    final fleetRvs = provider.stays
+        .where((s) => s.isRv || s.propertyType == 'RV' || s.category.toUpperCase().contains('RV'))
+        .toList();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       body: CustomScrollView(
@@ -332,6 +340,122 @@ class _RvOverlandScreenState extends State<RvOverlandScreen> {
             ),
           ),
 
+          // ─── 2B. ACTIVE FLEET INVENTORY ───
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF10B981),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'ACTIVE FLEET IN INDIA',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.6,
+                                  color: Color(0xFF10B981),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Available Campervans',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (fleetRvs.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE05638).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFE05638).withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            '${fleetRvs.length} Ready',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFFE05638),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Pre-inspected mobile suites ready for self-drive or with verified captain.',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  if (fleetRvs.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppColors.borderLight),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.airport_shuttle_rounded, color: AppColors.primary, size: 36),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Fleet Radar Searching...',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'Connecting to active campervans in network.',
+                                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => provider.fetchStays(),
+                            child: const Text('Refresh'),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Column(
+                      children: fleetRvs.map((stay) => _buildFleetCard(stay, provider)).toList(),
+                    ),
+                ],
+              ),
+            ),
+          ),
+
           // ─── 3. VISUAL EXPERIENCE WALKTHROUGH ───
           SliverToBoxAdapter(
             child: Padding(
@@ -342,34 +466,38 @@ class _RvOverlandScreenState extends State<RvOverlandScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'How RV Travel Works',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.textPrimary,
-                              letterSpacing: -0.5,
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'How RV Travel Works',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.5,
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 3),
-                          Text(
-                            'Simple, comfortable, and 100% hassle-free',
-                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                          ),
-                        ],
+                            SizedBox(height: 3),
+                            Text(
+                              'Simple, comfortable, and 100% hassle-free',
+                              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
+                          color: const Color(0xFF111111).withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Text(
                           'Visual Tour',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF111111)),
                         ),
                       ),
                     ],
@@ -689,16 +817,18 @@ class _RvOverlandScreenState extends State<RvOverlandScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const FittedBox(
+                  child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.directions_car_filled_rounded, size: 20),
-                        SizedBox(width: 8),
+                        const Icon(Icons.directions_car_filled_rounded, size: 20),
+                        const SizedBox(width: 8),
                         Text(
-                          'Browse Available Campervans',
-                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15.5),
+                          fleetRvs.isNotEmpty
+                              ? 'Browse All Campervans (${fleetRvs.length})'
+                              : 'Browse Available Campervans',
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15.5),
                         ),
                       ],
                     ),
@@ -706,6 +836,263 @@ class _RvOverlandScreenState extends State<RvOverlandScreen> {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFleetCard(StayModel stay, AppProvider provider) {
+    final currencyFormatter = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final photo = stay.imageUrls.isNotEmpty ? stay.imageUrls.first : 'assets/images/campervan_wide_8k.jpg';
+    final isNetwork = photo.startsWith('http://') || photo.startsWith('https://');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(22),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: () {
+            AppMotion.tapSelection();
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ListingDetailScreen(stay: stay)),
+            );
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(21)),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: isNetwork
+                          ? Image.network(
+                              photo,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Image.asset('assets/images/campervan_wide_8k.jpg', fit: BoxFit.cover),
+                            )
+                          : Image.asset(photo, fit: BoxFit.cover),
+                    ),
+                  ),
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 14),
+                          SizedBox(width: 4),
+                          Text(
+                            'STAYQ VERIFIED RV',
+                            style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          stay.isWishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                          color: stay.isWishlisted ? Colors.redAccent : Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                      onPressed: () => provider.toggleWishlist(stay),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                stay.title,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on_rounded, size: 14, color: AppColors.textSecondary),
+                                  const SizedBox(width: 3),
+                                  Expanded(
+                                    child: Text(
+                                      stay.location.isNotEmpty ? stay.location : (stay.city.isNotEmpty ? stay.city : 'India'),
+                                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (stay.rating > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFBBF24).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.star_rounded, size: 14, color: Color(0xFFD97706)),
+                                const SizedBox(width: 3),
+                                Text(
+                                  stay.rating.toStringAsFixed(1),
+                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Color(0xFFB45309)),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _buildFleetChip(Icons.airline_seat_flat_rounded, 'Queen Bed'),
+                        _buildFleetChip(Icons.ac_unit_rounded, 'Full AC'),
+                        _buildFleetChip(Icons.power_rounded, '220V Power'),
+                        _buildFleetChip(Icons.bathtub_outlined, 'Shower & Toilet'),
+                        if (stay.maxGuests > 0)
+                          _buildFleetChip(Icons.people_alt_outlined, '${stay.maxGuests} Berths'),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    const Divider(height: 1, color: AppColors.borderLight),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: currencyFormatter.format(stay.pricePerNight),
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: ' / day',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Text(
+                                'Includes Insurance & Roadside SOS',
+                                style: TextStyle(fontSize: 10.5, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            AppMotion.tapSelection();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => ListingDetailScreen(stay: stay)),
+                            );
+                          },
+                          icon: const Icon(Icons.key_rounded, size: 16),
+                          label: const Text('View & Book', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF111111),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFleetChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: AppColors.textSecondary),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
           ),
         ],
       ),

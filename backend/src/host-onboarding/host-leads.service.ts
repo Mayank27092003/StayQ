@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { text, money } from '../common/utils/input.util';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface HostLeadDto {
@@ -10,7 +11,8 @@ export interface HostLeadDto {
   phone: string;
   email?: string;
   channel?: 'INSTAGRAM' | 'WHATSAPP' | 'DIRECT' | 'WEBSITE_FORM';
-  status?: 'INVITED' | 'FORM_SUBMITTED' | 'CONTACTED' | 'ONBOARDED' | 'REJECTED';
+  status?:
+    'INVITED' | 'FORM_SUBMITTED' | 'CONTACTED' | 'ONBOARDED' | 'REJECTED';
   expectedPrice?: number;
   notes?: string;
   createdAt?: string;
@@ -19,35 +21,45 @@ export interface HostLeadDto {
 
 @Injectable()
 export class HostLeadsService {
-  // Live dynamic storage initialized completely empty with zero mock data
-  private static leads: HostLeadDto[] = [];
-
   constructor(private prisma: PrismaService) {}
-
-  async createLead(data: HostLeadDto): Promise<HostLeadDto> {
-    const newLead: HostLeadDto = {
-      ...data,
-      id: `lead-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      channel: data.channel || 'WEBSITE_FORM',
-      status: data.status || 'FORM_SUBMITTED',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    HostLeadsService.leads.unshift(newLead);
-    return newLead;
+  async createLead(data: HostLeadDto, user: any) {
+    return this.prisma.hostLead.create({
+      data: {
+        userId: user.id,
+        hostName: text(data.hostName, 'Host name', 100),
+        propertyName: text(data.propertyName, 'Property name', 200),
+        city: text(data.city, 'City', 100),
+        phone: text(data.phone, 'Phone', 30),
+        email: user.email || null,
+        instagramHandle: data.instagramHandle
+          ? text(data.instagramHandle, 'Instagram', 100)
+          : null,
+        expectedPrice:
+          data.expectedPrice === undefined
+            ? null
+            : money(data.expectedPrice, 'Expected price'),
+        status: 'FORM_SUBMITTED',
+        channel: 'WEBSITE_FORM',
+      },
+    });
   }
-
-  async getAllLeads(): Promise<HostLeadDto[]> {
-    return HostLeadsService.leads;
+  async getAllLeads() {
+    return this.prisma.hostLead.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+    });
   }
-
-  async updateLeadStatus(id: string, status: HostLeadDto['status']): Promise<HostLeadDto | null> {
-    const lead = HostLeadsService.leads.find((l) => l.id === id);
-    if (lead && status) {
-      lead.status = status;
-      lead.updatedAt = new Date().toISOString();
-      return lead;
-    }
-    return null;
+  async updateLeadStatus(id: string, status: HostLeadDto['status']) {
+    if (
+      ![
+        'INVITED',
+        'FORM_SUBMITTED',
+        'CONTACTED',
+        'ONBOARDED',
+        'REJECTED',
+      ].includes(status!)
+    )
+      throw new BadRequestException('Invalid lead status');
+    return this.prisma.hostLead.update({ where: { id }, data: { status } });
   }
 }

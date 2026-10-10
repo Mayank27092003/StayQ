@@ -13,7 +13,8 @@ import '../../constants/stay_amenities.dart';
 import 'search_results_screen.dart';
 
 class SearchFilterModal extends StatefulWidget {
-  const SearchFilterModal({super.key});
+  final bool isFromMap;
+  const SearchFilterModal({super.key, this.isFromMap = false});
 
   @override
   State<SearchFilterModal> createState() => _SearchFilterModalState();
@@ -600,7 +601,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
 
                         const SizedBox(height: 32),
 
-                        // Official 25 Stay Q Amenities Filter Section
+                        // Official 25 StayQ Amenities Filter Section
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -703,13 +704,15 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                       isStayingWithHost: _isStayingWithHost,
                     );
                     final nav = Navigator.of(context);
-                    // Close modal first, then navigate to results
+                    // Close modal first
                     nav.pop();
-                    nav.push(
-                      MaterialPageRoute(
-                        builder: (_) => const SearchResultsScreen(),
-                      ),
-                    );
+                    if (!widget.isFromMap) {
+                      nav.push(
+                        MaterialPageRoute(
+                          builder: (_) => const SearchResultsScreen(),
+                        ),
+                      );
+                    }
                   },
                   child: Container(
                     width: double.infinity,

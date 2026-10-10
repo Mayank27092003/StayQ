@@ -1,0 +1,15 @@
+{
+  "result": "PASS",
+  "checks": {
+    "dart_files": 147,
+    "relative_directives": 572,
+    "json_files": 7,
+    "xml_files": 7,
+    "plist_files": 5,
+    "entitlement_files": 1,
+    "yaml_files": 3,
+    "dart_syntax_files": 147
+  },
+  "errors": [],
+  "scope": "Source integrity only; Flutter analyzer, tests and builds are separate."
+}

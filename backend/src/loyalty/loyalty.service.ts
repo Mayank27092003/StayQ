@@ -1,29 +1,31 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoyaltyTier, PointsTransactionType } from '@prisma/client';
-
+import { PaymentsService } from '../payments/payments.service';
+import { integer, idempotencyKey } from '../common/utils/input.util';
 export interface TierBenefit {
   tier: LoyaltyTier;
   title: string;
-  price: number; // in INR per year (0 for Starter)
+  price: number;
   multiplier: number;
   badge: string;
   perks: string[];
 }
-
 export const TIER_CONFIGS: Record<LoyaltyTier, TierBenefit> = {
   Q_STARTER: {
     tier: LoyaltyTier.Q_STARTER,
     title: 'Q Starter',
     price: 0,
-    multiplier: 1.0,
+    multiplier: 1,
     badge: 'Starter',
-    perks: [
-      'Earn 1 pt per ₹100 spent',
-      'Redeem 500 pts for ₹250 Stay Q Credit',
-      'Exclusive member-only discounts',
-      'Standard guest support',
-    ],
+    perks: ['1 point per INR 100 spent', 'Redeem points for wallet credit'],
   },
   Q_PLUS: {
     tier: LoyaltyTier.Q_PLUS,
@@ -31,431 +33,438 @@ export const TIER_CONFIGS: Record<LoyaltyTier, TierBenefit> = {
     price: 499,
     multiplier: 1.5,
     badge: 'Plus Member',
-    perks: [
-      '1.5x Points multiplier on all bookings',
-      'Early check-in & late checkout (subject to availability)',
-      'Priority 24/7 VIP guest concierge',
-      '5% extra discount on select luxury villas & RVs',
-      'Free welcome drink / hamper at participating stays',
-    ],
+    perks: ['1.5x booking points for one year'],
   },
   Q_PREMIUM: {
     tier: LoyaltyTier.Q_PREMIUM,
     title: 'Q Premium',
     price: 999,
-    multiplier: 2.0,
+    multiplier: 2,
     badge: 'Elite VIP',
-    perks: [
-      '2.0x Double points multiplier on all bookings',
-      'Complimentary room/stay upgrades when available',
-      'Zero cancellation penalty on flexible tier properties',
-      'Dedicated personal trip designer & concierge',
-      'VIP airport / city transfer coordination discounts',
-      'Priority invitation to curated Stay Q experiences',
-    ],
+    perks: ['2x booking points for one year'],
   },
 };
-
 @Injectable()
 export class LoyaltyService {
-  constructor(private readonly prisma: PrismaService) {}
-
-  /**
-   * Get or automatically initialize a user's LoyaltyProfile.
-   */
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => PaymentsService))
+    private readonly payments: PaymentsService,
+  ) {}
   async getOrCreateProfile(userId: string) {
-    let profile = await this.prisma.loyaltyProfile.findUnique({
+    const p = await this.prisma.loyaltyProfile.upsert({
       where: { userId },
-      include: {
-        transactions: {
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-        },
-      },
+      create: { userId },
+      update: {},
+      include: { transactions: { orderBy: { createdAt: 'desc' }, take: 10 } },
     });
-
-    if (!profile) {
-      profile = await this.prisma.loyaltyProfile.create({
-        data: {
-          userId,
-          tier: LoyaltyTier.Q_STARTER,
-          pointsMultiplier: 1.0,
-        },
-        include: {
-          transactions: {
-            orderBy: { createdAt: 'desc' },
-            take: 10,
-          },
-        },
-      });
-    }
-
-    // Check if paid tier expired
-    if (profile.tierExpiresAt && profile.tierExpiresAt < new Date() && profile.tier !== LoyaltyTier.Q_STARTER) {
-      profile = await this.prisma.loyaltyProfile.update({
-        where: { id: profile.id },
-        data: {
-          tier: LoyaltyTier.Q_STARTER,
-          pointsMultiplier: 1.0,
-          tierExpiresAt: null,
-        },
-        include: {
-          transactions: {
-            orderBy: { createdAt: 'desc' },
-            take: 10,
-          },
-        },
-      });
-    }
-
-    const currentConfig = TIER_CONFIGS[profile.tier];
-
+    const expired = p.tierExpiresAt && p.tierExpiresAt <= new Date();
+    const tier = expired ? LoyaltyTier.Q_STARTER : p.tier;
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { referralCode: true },
+    });
+    const entries = await this.prisma.walletEntry.findMany({
+      where: { userId },
+    });
+    const referralBalance =
+      entries.reduce(
+        (sum, e) =>
+          sum +
+          Math.round(Number(e.amount) * 100) * (e.type === 'CREDIT' ? 1 : -1),
+        0,
+      ) / 100;
     return {
-      ...profile,
-      tierDetails: currentConfig,
-      creditEquivalent: profile.availablePoints * 0.5, // 500 pts = ₹250 credit (0.5 ratio)
+      ...p,
+      tier,
+      pointsMultiplier: TIER_CONFIGS[tier].multiplier,
+      tierDetails: TIER_CONFIGS[tier],
+      creditEquivalent: p.availablePoints * 0.5,
       allTiers: Object.values(TIER_CONFIGS),
+      referralCode: user?.referralCode || null,
+      referralBalance,
     };
   }
-
-  /**
-   * Award points when a guest completes a booking.
-   * ₹100 spent = 1 point * multiplier.
-   */
-  async awardBookingPoints(userId: string, bookingId: string, totalAmount: number) {
-    if (totalAmount <= 0) return null;
-
-    const profile = await this.prisma.loyaltyProfile.upsert({
-      where: { userId },
-      create: { userId, tier: LoyaltyTier.Q_STARTER, pointsMultiplier: 1.0 },
-      update: {},
-    });
-
-    const basePoints = Math.floor(totalAmount / 100);
-    const earnedPoints = Math.max(1, Math.floor(basePoints * profile.pointsMultiplier));
-
-    if (earnedPoints <= 0) return null;
-
+  private async award(
+    userId: string,
+    type: PointsTransactionType,
+    referenceId: string,
+    points: number,
+    reason: string,
+  ) {
+    integer(points, 'Points', 0, 100000000);
+    if (!points) return null;
     return this.prisma.$transaction(async (tx) => {
-      const updatedProfile = await tx.loyaltyProfile.update({
-        where: { id: profile.id },
-        data: {
-          totalPoints: { increment: earnedPoints },
-          availablePoints: { increment: earnedPoints },
-        },
+      const p = await tx.loyaltyProfile.upsert({
+        where: { userId },
+        create: { userId },
+        update: {},
       });
-
+      await tx.$queryRaw`SELECT id FROM "LoyaltyProfile" WHERE id=${p.id} FOR UPDATE`;
+      const existing = await tx.pointsTransaction.findFirst({
+        where: { loyaltyId: p.id, type, referenceId },
+      });
+      if (existing)
+        return tx.loyaltyProfile.findUnique({ where: { id: p.id } });
       await tx.pointsTransaction.create({
-        data: {
-          loyaltyId: profile.id,
-          points: earnedPoints,
-          type: PointsTransactionType.BOOKING_EARN,
-          reason: `Earned for booking #${bookingId.substring(0, 8).toUpperCase()} (₹${Math.round(totalAmount).toLocaleString()})`,
-          referenceId: bookingId,
-        },
+        data: { loyaltyId: p.id, type, referenceId, points, reason },
       });
-
-      return updatedProfile;
-    });
-  }
-
-  /**
-   * Award 10 points when a guest writes a verified review.
-   */
-  async awardReviewPoints(userId: string, reviewId: string, propertyTitle?: string) {
-    const profile = await this.prisma.loyaltyProfile.upsert({
-      where: { userId },
-      create: { userId, tier: LoyaltyTier.Q_STARTER, pointsMultiplier: 1.0 },
-      update: {},
-    });
-
-    const points = 10;
-
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.loyaltyProfile.update({
-        where: { id: profile.id },
+      return tx.loyaltyProfile.update({
+        where: { id: p.id },
         data: {
-          totalPoints: { increment: points },
           availablePoints: { increment: points },
-        },
-      });
-
-      await tx.pointsTransaction.create({
-        data: {
-          loyaltyId: profile.id,
-          points,
-          type: PointsTransactionType.REVIEW_EARN,
-          reason: propertyTitle ? `Review bonus for ${propertyTitle}` : `Review bonus for stay review`,
-          referenceId: reviewId,
-        },
-      });
-
-      return updated;
-    });
-  }
-
-  /**
-   * Award 25 points when a friend referred by user completes their first stay.
-   */
-  async awardReferralPoints(userId: string, referralId: string, friendName?: string) {
-    const profile = await this.prisma.loyaltyProfile.upsert({
-      where: { userId },
-      create: { userId, tier: LoyaltyTier.Q_STARTER, pointsMultiplier: 1.0 },
-      update: {},
-    });
-
-    const points = 25;
-
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.loyaltyProfile.update({
-        where: { id: profile.id },
-        data: {
           totalPoints: { increment: points },
-          availablePoints: { increment: points },
+          ...(type === 'PROFILE_EARN'
+            ? { profileCompletionRewarded: true }
+            : {}),
         },
       });
-
-      await tx.pointsTransaction.create({
-        data: {
-          loyaltyId: profile.id,
-          points,
-          type: PointsTransactionType.REFERRAL_EARN,
-          reason: friendName ? `Referral reward for inviting ${friendName}` : `Referral reward for successful invite`,
-          referenceId: referralId,
-        },
-      });
-
-      return updated;
     });
   }
+  async awardBookingPoints(
+    userId: string,
+    bookingId: string,
+    totalAmount: number,
+  ) {
+    const b = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { payment: true },
+    });
+    if (
+      !b ||
+      b.guestId !== userId ||
+      b.status !== 'COMPLETED' ||
+      !['CAPTURED', 'RELEASED'].includes(b.payment?.status || '')
+    )
+      throw new ConflictException(
+        'Only completed paid stays earn booking points',
+      );
+    const p = await this.getOrCreateProfile(userId);
+    const points = Math.floor(
+      (Number(b.totalAmount) / 100) * p.pointsMultiplier,
+    );
+    return this.award(
+      userId,
+      PointsTransactionType.BOOKING_EARN,
+      bookingId,
+      points,
+      'Completed stay reward',
+    );
+  }
+  private async reverse(
+    userId: string,
+    referenceId: string,
+    type: PointsTransactionType,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const p = await tx.loyaltyProfile.findUnique({ where: { userId } });
+      if (!p) return null;
+      await tx.$queryRaw`SELECT id FROM "LoyaltyProfile" WHERE id=${p.id} FOR UPDATE`;
+      const earn = await tx.pointsTransaction.findFirst({
+        where: { loyaltyId: p.id, type, referenceId },
+      });
+      if (!earn) return p;
+      const ref = `reversal:${type}:${referenceId}`;
+      if (
+        await tx.pointsTransaction.findFirst({
+          where: { loyaltyId: p.id, referenceId: ref },
+        })
+      )
+        return p;
+      const fresh = await tx.loyaltyProfile.findUniqueOrThrow({
+        where: { id: p.id },
+      });
+      // Keep debt if already redeemed; cancellation cannot preserve unearned wallet value.
+      await tx.pointsTransaction.create({
+        data: {
+          loyaltyId: p.id,
+          type: 'ADMIN_ADJUST',
+          referenceId: ref,
+          points: -earn.points,
+          reason: 'Reward reversal',
+        },
+      });
+      return tx.loyaltyProfile.update({
+        where: { id: p.id },
+        data: {
+          totalPoints: { decrement: earn.points },
+          availablePoints: { decrement: earn.points },
+        },
+      });
+    });
+  }
+  reverseBookingPoints(userId: string, id: string) {
+    return this.reverse(userId, id, PointsTransactionType.BOOKING_EARN);
+  }
+  private async reconcileReviewPoints(userId: string, id: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Review" WHERE id=${id} FOR UPDATE`;
+      const r = await tx.review.findUnique({ where: { id } });
+      if (!r || r.guestId !== userId) return null;
+      const p = await tx.loyaltyProfile.upsert({
+        where: { userId },
+        create: { userId },
+        update: {},
+      });
+      await tx.$queryRaw`SELECT id FROM "LoyaltyProfile" WHERE id=${p.id} FOR UPDATE`;
+      const entries = await tx.pointsTransaction.findMany({
+        where: {
+          loyaltyId: p.id,
+          OR: [
+            { referenceId: id },
+            { referenceId: `reversal:REVIEW_EARN:${id}` },
+          ],
+        },
+      });
+      const delta =
+        (r.moderationStatus === 'APPROVED' ? 10 : 0) -
+        entries.reduce((n, e) => n + e.points, 0);
+      if (!delta) return p;
+      await tx.pointsTransaction.create({
+        data: {
+          loyaltyId: p.id,
+          type: delta > 0 ? 'REVIEW_EARN' : 'ADMIN_ADJUST',
+          referenceId: id,
+          points: delta,
+          reason: 'Reconciled review moderation reward',
+        },
+      });
+      return tx.loyaltyProfile.update({
+        where: { id: p.id },
+        data: {
+          availablePoints: { increment: delta },
+          totalPoints: { increment: delta },
+        },
+      });
+    });
+  }
+  reverseReviewPoints(userId: string, id: string) {
+    return this.reconcileReviewPoints(userId, id);
+  }
+  awardReviewPoints(userId: string, id: string, title?: string) {
+    return this.reconcileReviewPoints(userId, id);
+  }
 
-  /**
-   * Award 15 points one-time for completing profile & verification.
-   */
+  awardReferralPoints(userId: string, id: string, name?: string) {
+    return this.award(
+      userId,
+      PointsTransactionType.REFERRAL_EARN,
+      id,
+      25,
+      'Completed referral reward',
+    );
+  }
   async awardProfileCompletionPoints(userId: string) {
-    const profile = await this.prisma.loyaltyProfile.upsert({
-      where: { userId },
-      create: { userId, tier: LoyaltyTier.Q_STARTER, pointsMultiplier: 1.0 },
-      update: {},
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const id = await this.prisma.verificationChallenge.findFirst({
+      where: {
+        userId,
+        kind: { in: ['AADHAAR', 'PAN'] },
+        status: 'VERIFIED',
+        expiresAt: { gt: new Date() },
+      },
     });
-
-    if (profile.profileCompletionRewarded) {
-      return profile;
-    }
-
-    const points = 15;
-
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.loyaltyProfile.update({
-        where: { id: profile.id },
-        data: {
-          totalPoints: { increment: points },
-          availablePoints: { increment: points },
-          profileCompletionRewarded: true,
-        },
-      });
-
-      await tx.pointsTransaction.create({
-        data: {
-          loyaltyId: profile.id,
-          points,
-          type: PointsTransactionType.PROFILE_EARN,
-          reason: 'Profile & KYC Completion Bonus',
-          referenceId: userId,
-        },
-      });
-
-      return updated;
-    });
+    if (!user?.displayName || !user.emailVerified || !id)
+      throw new BadRequestException(
+        'Complete the profile, verify email and identity before claiming this bonus',
+      );
+    return this.award(
+      userId,
+      PointsTransactionType.PROFILE_EARN,
+      userId,
+      15,
+      'Verified profile reward',
+    );
   }
-
-  /**
-   * Award 20 bonus points for repeat stay at the same property.
-   */
-  async awardRepeatStayPoints(userId: string, bookingId: string, propertyTitle: string) {
-    const profile = await this.prisma.loyaltyProfile.upsert({
-      where: { userId },
-      create: { userId, tier: LoyaltyTier.Q_STARTER, pointsMultiplier: 1.0 },
-      update: {},
+  async awardRepeatStayPoints(userId: string, id: string, title: string) {
+    const b = await this.prisma.booking.findUnique({ where: { id } });
+    if (!b || b.status !== 'COMPLETED' || b.guestId !== userId)
+      throw new ConflictException('Repeat rewards require a completed stay');
+    const previous = await this.prisma.booking.count({
+      where: {
+        guestId: userId,
+        propertyId: b.propertyId,
+        id: { not: id },
+        status: 'COMPLETED',
+      },
     });
-
-    const points = 20;
-
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.loyaltyProfile.update({
-        where: { id: profile.id },
-        data: {
-          totalPoints: { increment: points },
-          availablePoints: { increment: points },
-        },
-      });
-
-      await tx.pointsTransaction.create({
-        data: {
-          loyaltyId: profile.id,
-          points,
-          type: PointsTransactionType.REPEAT_STAY_EARN,
-          reason: `Repeat loyalty bonus at ${propertyTitle}`,
-          referenceId: bookingId,
-        },
-      });
-
-      return updated;
-    });
+    return previous
+      ? this.award(
+          userId,
+          PointsTransactionType.REPEAT_STAY_EARN,
+          id,
+          20,
+          'Repeat stay reward',
+        )
+      : null;
   }
-
-  /**
-   * Redeem points for Stay Q Wallet Credit.
-   * 500 points = ₹250 credit.
-   */
-  async redeemPoints(userId: string, pointsToRedeem: number) {
-    if (!pointsToRedeem || pointsToRedeem < 100) {
-      throw new BadRequestException('Minimum 100 points required for redemption');
-    }
-
-    const profile = await this.prisma.loyaltyProfile.findUnique({
-      where: { userId },
-    });
-
-    if (!profile) {
-      throw new NotFoundException('Loyalty profile not found');
-    }
-
-    if (profile.availablePoints < pointsToRedeem) {
-      throw new BadRequestException(`Insufficient points balance. You have ${profile.availablePoints} points.`);
-    }
-
-    // 500 pts = ₹250 (1 pt = ₹0.50 credit)
-    const creditAmount = pointsToRedeem * 0.5;
-
+  async redeemPoints(userId: string, points: number, key?: string) {
+    integer(points, 'Points', 100, 100000000);
+    const clean = idempotencyKey(key);
+    if (!clean)
+      throw new BadRequestException(
+        'Idempotency-Key is required for redemption',
+      );
     return this.prisma.$transaction(async (tx) => {
-      // 1. Deduct points
-      const updatedProfile = await tx.loyaltyProfile.update({
-        where: { id: profile.id },
+      // Consistent wallet lock precedes the loyalty lock for every redemption.
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id=${userId} FOR UPDATE`;
+      const p = await tx.loyaltyProfile.findUnique({ where: { userId } });
+      if (!p) throw new NotFoundException('Loyalty profile not found');
+      await tx.$queryRaw`SELECT id FROM "LoyaltyProfile" WHERE id=${p.id} FOR UPDATE`;
+      const ref = `redeem:${userId}:${clean}`;
+      const previous = await tx.pointsTransaction.findFirst({
+        where: { loyaltyId: p.id, referenceId: ref, type: 'REDEEM' },
+      });
+      if (previous) {
+        if (previous.points !== -points)
+          throw new ConflictException(
+            'Redemption key has a different points amount',
+          );
+        return {
+          success: true,
+          redeemedPoints: points,
+          creditEarned: points * 0.5,
+          remainingPoints: (
+            await tx.loyaltyProfile.findUniqueOrThrow({ where: { id: p.id } })
+          ).availablePoints,
+        };
+      }
+      const current = await tx.loyaltyProfile.findUniqueOrThrow({
+        where: { id: p.id },
+      });
+      if (current.availablePoints < points)
+        throw new BadRequestException('Insufficient points');
+      const updated = await tx.loyaltyProfile.update({
+        where: { id: p.id },
         data: {
-          availablePoints: { decrement: pointsToRedeem },
-          redeemedPoints: { increment: pointsToRedeem },
+          availablePoints: { decrement: points },
+          redeemedPoints: { increment: points },
         },
       });
-
-      // 2. Add points transaction
       await tx.pointsTransaction.create({
         data: {
-          loyaltyId: profile.id,
-          points: -pointsToRedeem,
-          type: PointsTransactionType.REDEEM,
-          reason: `Redeemed ${pointsToRedeem} points for ₹${creditAmount} Stay Q Credit`,
+          loyaltyId: p.id,
+          type: 'REDEEM',
+          points: -points,
+          referenceId: ref,
+          reason: 'Wallet credit redemption',
         },
       });
-
-      // 3. Credit user's wallet
       await tx.walletEntry.create({
         data: {
           userId,
-          amount: creditAmount,
           type: 'CREDIT',
-          reason: `Stay Q Rewards Points Redemption (${pointsToRedeem} pts)`,
+          amount: points * 0.5,
+          referenceId: ref,
+          reason: 'Points redemption',
         },
       });
-
       return {
         success: true,
-        redeemedPoints: pointsToRedeem,
-        creditEarned: creditAmount,
-        remainingPoints: updatedProfile.availablePoints,
+        redeemedPoints: points,
+        creditEarned: points * 0.5,
+        remainingPoints: updated.availablePoints,
       };
     });
   }
-
-  /**
-   * Upgrade user membership tier (Q_PLUS or Q_PREMIUM).
-   */
-  async upgradeTier(userId: string, targetTier: LoyaltyTier) {
-    const config = TIER_CONFIGS[targetTier];
-    if (!config || targetTier === LoyaltyTier.Q_STARTER) {
-      throw new BadRequestException('Invalid upgrade tier selected');
-    }
-
-    const profile = await this.prisma.loyaltyProfile.upsert({
-      where: { userId },
-      create: { userId, tier: LoyaltyTier.Q_STARTER, pointsMultiplier: 1.0 },
-      update: {},
+  async createTierOrder(userId: string, tier: LoyaltyTier, key?: string) {
+    const config = TIER_CONFIGS[tier];
+    if (!config || tier === 'Q_STARTER')
+      throw new BadRequestException('Invalid paid membership tier');
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
     });
-
-    const now = new Date();
-    const oneYearLater = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
-    const welcomeBonusPoints = targetTier === LoyaltyTier.Q_PREMIUM ? 100 : 50;
-
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.loyaltyProfile.update({
-        where: { id: profile.id },
-        data: {
-          tier: targetTier,
-          pointsMultiplier: config.multiplier,
-          tierPurchasedAt: now,
-          tierExpiresAt: oneYearLater,
-          totalPoints: { increment: welcomeBonusPoints },
-          availablePoints: { increment: welcomeBonusPoints },
-        },
-      });
-
-      await tx.pointsTransaction.create({
-        data: {
-          loyaltyId: profile.id,
-          points: welcomeBonusPoints,
-          type: PointsTransactionType.TIER_PURCHASE_EARN,
-          reason: `Welcome bonus for joining ${config.title}`,
-        },
-      });
-
-      return {
-        success: true,
-        tier: updated.tier,
-        tierTitle: config.title,
-        multiplier: updated.pointsMultiplier,
-        expiresAt: updated.tierExpiresAt,
-        welcomeBonus: welcomeBonusPoints,
-        availablePoints: updated.availablePoints,
-      };
+    return this.payments.createCashfreeOrder({
+      authenticatedUser: user,
+      purpose: 'LOYALTY',
+      referenceId: userId,
+      sku: tier,
+      amount: config.price,
+      idempotencyKey: key,
     });
   }
-
-  /**
-   * Get paginated points history for user.
-   */
-  async getPointsHistory(userId: string, page: number = 1, limit: number = 20) {
-    const profile = await this.prisma.loyaltyProfile.findUnique({
+  async upgradeTier(userId: string, tier: LoyaltyTier, orderId?: string) {
+    const config = TIER_CONFIGS[tier];
+    if (!config || tier === 'Q_STARTER' || !orderId)
+      throw new BadRequestException(
+        'Paid order and valid membership tier are required',
+      );
+    return this.payments.consumePaidOrder(
+      orderId,
+      { id: userId },
+      'LOYALTY',
+      userId,
+      tier,
+      async (tx, order) => {
+        const p = await tx.loyaltyProfile.upsert({
+          where: { userId },
+          create: { userId },
+          update: {},
+        });
+        await tx.$queryRaw`SELECT id FROM "LoyaltyProfile" WHERE id=${p.id} FOR UPDATE`;
+        const current = await tx.loyaltyProfile.findUniqueOrThrow({
+          where: { id: p.id },
+        });
+        const now = new Date();
+        const base =
+          current.tier === tier &&
+          current.tierExpiresAt &&
+          current.tierExpiresAt > now
+            ? current.tierExpiresAt
+            : now;
+        const expiresAt = new Date(base.getTime() + 365 * 86400000);
+        const bonus = tier === 'Q_PREMIUM' ? 100 : 50;
+        const updated = await tx.loyaltyProfile.update({
+          where: { id: p.id },
+          data: {
+            tier,
+            pointsMultiplier: config.multiplier,
+            tierPurchasedAt: now,
+            tierExpiresAt: expiresAt,
+            totalPoints: { increment: bonus },
+            availablePoints: { increment: bonus },
+          },
+        });
+        await tx.pointsTransaction.create({
+          data: {
+            loyaltyId: p.id,
+            type: 'TIER_PURCHASE_EARN',
+            points: bonus,
+            referenceId: order.orderId,
+            reason: 'Paid membership welcome bonus',
+          },
+        });
+        return {
+          success: true,
+          orderId: order.orderId,
+          isPaid: true,
+          isActive: true,
+          tier,
+          expiresAt,
+          availablePoints: updated.availablePoints,
+          welcomeBonus: bonus,
+        };
+      },
+    );
+  }
+  async getPointsHistory(userId: string, page = 1, limit = 20) {
+    page = integer(page, 'Page', 1, 100000);
+    limit = integer(limit, 'Limit', 1, 100);
+    const p = await this.prisma.loyaltyProfile.findUnique({
       where: { userId },
     });
-
-    if (!profile) {
-      return { transactions: [], total: 0, page, totalPages: 0 };
-    }
-
-    const skip = (page - 1) * limit;
+    if (!p) return { transactions: [], total: 0, page, totalPages: 0 };
     const [transactions, total] = await Promise.all([
       this.prisma.pointsTransaction.findMany({
-        where: { loyaltyId: profile.id },
+        where: { loyaltyId: p.id },
         orderBy: { createdAt: 'desc' },
-        skip,
+        skip: (page - 1) * limit,
         take: limit,
       }),
-      this.prisma.pointsTransaction.count({
-        where: { loyaltyId: profile.id },
-      }),
+      this.prisma.pointsTransaction.count({ where: { loyaltyId: p.id } }),
     ]);
-
-    return {
-      transactions,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-    };
+    return { transactions, total, page, totalPages: Math.ceil(total / limit) };
   }
-
-  /**
-   * Get all tiers metadata.
-   */
   getAllTiers() {
     return Object.values(TIER_CONFIGS);
   }

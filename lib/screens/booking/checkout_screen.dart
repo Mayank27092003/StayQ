@@ -1,30 +1,30 @@
+import '../../services/booking_checkout.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../models/stay_model.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
-import '../../widgets/bouncing_widget.dart';
 import '../../widgets/price_breakdown_accordion.dart';
 import '../../widgets/animated_calendar_picker.dart';
-import '../../widgets/cashfree_payment_sheet.dart';
 import 'booking_confirmation_screen.dart';
+import '../profile/kyc_verification_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final StayModel stay;
   final DateTimeRange selectedDates;
+  final List<DateTime>? blockedDates;
 
-  const CheckoutScreen({super.key, required this.stay, required this.selectedDates});
+  const CheckoutScreen({super.key, required this.stay, required this.selectedDates, this.blockedDates});
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  String _selectedPaymentMethod = 'Apple Pay';
+  final _checkout = BookingCheckout();
+
   bool _showCalendar = false;
-  bool _applyReferral = false;
   late DateTimeRange _tripDates;
 
   @override
@@ -94,9 +94,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: (stay.imageUrls.isNotEmpty && stay.imageUrls.first.startsWith('http'))
+                          child: (stay.imageUrls.isNotEmpty && stay.firstImage.startsWith('http'))
                               ? Image.network(
-                                  stay.imageUrls.first,
+                                  stay.firstImage,
                                   width: 84,
                                   height: 84,
                                   fit: BoxFit.cover,
@@ -104,7 +104,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 )
                               : stay.imageUrls.isNotEmpty
                                   ? Image.asset(
-                                      stay.imageUrls.first,
+                                      stay.firstImage,
                                       width: 84,
                                       height: 84,
                                       fit: BoxFit.cover,
@@ -182,70 +182,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
               // Referral Rewards Redemption Card (10% Checkout Cap)
               if (provider.referralBalance > 0)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.primary.withValues(alpha: 0.06),
-                        const Color(0xFF6366F1).withValues(alpha: 0.08),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.card_giftcard_rounded, color: AppColors.primary, size: 20),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Redeem Referral Balance',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                            ],
-                          ),
-                          Switch(
-                            value: _applyReferral,
-                            activeThumbColor: Colors.white,
-                            activeTrackColor: AppColors.primary,
-                            onChanged: (val) {
-                              AppMotion.tapSelection();
-                              setState(() => _applyReferral = val);
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Available: ₹${provider.referralBalance.toStringAsFixed(0)}',
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFECFDF5),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: const Color(0xFFA7F3D0)),
-                            ),
-                            child: Text(
-                              'Max 10% Cap: -₹${((stay.pricePerNight * (nights > 0 ? nights : 1)) * 0.10).floor().toString()}',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text('Referral balance: ₹${provider.referralBalance.toStringAsFixed(0)}. '
+                    'Credit redemption is currently unavailable at checkout.'),
                 ),
 
               // Interactive Price Accordion with Number Roll-Up Counter
@@ -255,10 +195,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 final double cleaning = stay.cleaningFee;
                 final double service = (subtotal * 0.10).roundToDouble();
                 final double taxes = (service * 0.18).roundToDouble();
-                final double maxCap = (subtotal * 0.10).floorToDouble();
-                final double discount = _applyReferral && provider.referralBalance > 0
-                    ? (provider.referralBalance < maxCap ? provider.referralBalance : maxCap)
-                    : 0.0;
+                const double discount = 0;
                 return PriceBreakdownAccordion(
                   nightRate: stay.pricePerNight,
                   nights: finalNights,
@@ -298,7 +235,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: AppColors.borderLight),
                   ),
-                  child: AnimatedCalendarPicker(
+                  child: AnimatedCalendarPicker(blockedDates: widget.blockedDates ?? widget.stay.blockedDates, 
                     initialRange: _tripDates,
                     onRangeSelected: (range) {
                       setState(() => _tripDates = range);
@@ -338,42 +275,125 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
               const SizedBox(height: 24),
 
-              // Payment Methods
-              const Text('Payment method', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 14),
-
-              _PaymentOptionTile(
-                title: 'UPI (Instant Pay)',
-                subtitle: 'Google Pay, PhonePe, Paytm, BHIM, UPI ID',
-                icon: Icons.qr_code_scanner_rounded,
-                isSelected: _selectedPaymentMethod == 'UPI',
-                onTap: () => setState(() => _selectedPaymentMethod = 'UPI'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Payment Methods', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.shield_rounded, size: 13, color: Color(0xFF059669)),
+                        SizedBox(width: 4),
+                        Text(
+                          'RBI Licensed PG',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 10),
-              _PaymentOptionTile(
-                title: 'Credit or Debit Card',
-                subtitle: 'Visa, Mastercard, RuPay',
-                icon: Icons.credit_card_rounded,
-                isSelected: _selectedPaymentMethod == 'Credit or Debit Card',
-                onTap: () => setState(() => _selectedPaymentMethod = 'Credit or Debit Card'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.borderLight),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF111111).withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.flash_on_rounded, color: Color(0xFF111111), size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Instant UPI & QR Code',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Google Pay, PhonePe, Paytm, CRED & BHIM',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text('0% Fee', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+                        ),
+                      ],
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Divider(height: 1, color: AppColors.borderLight),
+                    ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF111111).withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.credit_card_rounded, color: Color(0xFF111111), size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Cards & Net Banking',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Visa, Mastercard, RuPay & 50+ Banks',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.lock_outline_rounded, size: 16, color: AppColors.textSecondary),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 10),
-              _PaymentOptionTile(
-                title: 'Netbanking',
-                subtitle: 'HDFC, ICICI, SBI, Axis & all Indian banks',
-                icon: Icons.account_balance_rounded,
-                isSelected: _selectedPaymentMethod == 'Netbanking',
-                onTap: () => setState(() => _selectedPaymentMethod = 'Netbanking'),
+              const SizedBox(height: 12),
+              Row(
+                children: const [
+                  Icon(Icons.lock_rounded, size: 14, color: Color(0xFF10B981)),
+                  SizedBox(width: 6),
+                  Text(
+                    '256-bit encrypted checkout powered by Cashfree Payments',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                  ),
+                ],
               ),
-              const SizedBox(height: 10),
-              _PaymentOptionTile(
-                title: 'Apple Pay / Google Wallet',
-                subtitle: 'One-tap biometric checkout',
-                icon: Icons.apple_rounded,
-                isSelected: _selectedPaymentMethod == 'Apple Pay',
-                onTap: () => setState(() => _selectedPaymentMethod = 'Apple Pay'),
-              ),
-
               const SizedBox(height: 24),
 
               // Cancellation Policy
@@ -386,67 +406,88 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
               const SizedBox(height: 32),
 
+              if (!provider.isAadhaarVerified)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFFECACA)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.shield_outlined, color: Color(0xFFDC2626)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'Aadhaar Verification Required',
+                              style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF991B1B), fontSize: 14),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'UIDAI verification is mandatory before booking.',
+                              style: TextStyle(color: Color(0xFFB91C1C), fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const KycVerificationScreen(initialTabIndex: 1)),
+                          );
+                        },
+                        child: const Text('Verify Now', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                      ),
+                    ],
+                  ),
+                ),
+
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF111111),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
                   onPressed: () async {
-                    AppMotion.tapHeavy();
-                    final int finalNights = nights > 0 ? nights : 1;
-                    final double subtotal = stay.pricePerNight * finalNights;
-                    final double cleaning = stay.cleaningFee;
-                    final double service = (subtotal * 0.10).roundToDouble();
-                    final double taxes = (service * 0.18).roundToDouble();
-                    final double maxCap = (subtotal * 0.10).floorToDouble();
-                    final double discount = _applyReferral && provider.referralBalance > 0
-                        ? (provider.referralBalance < maxCap ? provider.referralBalance : maxCap)
-                        : 0.0;
-                    final double calculatedTotal = (subtotal + cleaning + service + taxes - discount).clamp(0.0, double.infinity);
-                    final effectiveGuests = provider.adultsCount + provider.childrenCount;
-
-                    final resolvedPhone = provider.userPhone.isNotEmpty
-                        ? provider.userPhone
-                        : (FirebaseAuth.instance.currentUser?.phoneNumber ?? '9876543210');
-                    final resolvedName = provider.userName.isNotEmpty
-                        ? provider.userName
-                        : (FirebaseAuth.instance.currentUser?.displayName ?? 'Stay Q Guest');
-                    final resolvedEmail = provider.userEmail.isNotEmpty
-                        ? provider.userEmail
-                        : (FirebaseAuth.instance.currentUser?.email ?? 'guest@stayq.space');
-
-                    final paymentResult = await CashfreePaymentSheet.show(
-                      context,
-                      bookingId: 'sq_book_${DateTime.now().millisecondsSinceEpoch}',
-                      totalAmount: calculatedTotal,
-                      propertyTitle: stay.title,
-                      customerName: resolvedName,
-                      customerEmail: resolvedEmail,
-                      customerPhone: resolvedPhone,
-                    );
-
-                    if (paymentResult != null && paymentResult.isSuccess && mounted) {
-                      provider.addBooking(
-                        stay,
-                        _tripDates.start,
-                        _tripDates.end,
-                        effectiveGuests > 0 ? effectiveGuests : 2,
-                        totalAmount: calculatedTotal,
-                      );
-                      Navigator.pushReplacement(
+                    if (_checkout.busy) return;
+                    if (!provider.isAadhaarVerified) {
+                      Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => BookingConfirmationScreen(
-                            stay: stay,
-                            totalAmount: calculatedTotal,
-                            selectedDates: _tripDates,
-                            guests: effectiveGuests > 0 ? effectiveGuests : 2,
-                            paymentMethod: paymentResult.paymentMethod,
-                          ),
-                        ),
+                        MaterialPageRoute(builder: (_) => const KycVerificationScreen(initialTabIndex: 1)),
                       );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please verify your Aadhaar with OTP before booking.')),
+                      );
+                      return;
                     }
+                    final guests = provider.adultsCount + provider.childrenCount;
+                    final nights = _tripDates.end.difference(_tripDates.start).inDays;
+                    final subtotal = stay.pricePerNight * nights;
+                    final service = (subtotal * 0.10).roundToDouble();
+                    final estimate = subtotal + stay.cleaningFee + service + (service * 0.18).roundToDouble();
+                    final booking = await _checkout.run(context, provider, stay, _tripDates, guests,
+                      estimate: estimate, blockedDates: widget.blockedDates ?? widget.stay.blockedDates, options: {'children': provider.childrenCount,
+                        'infants': provider.infantsCount, 'pets': provider.petsCount});
+                    if (booking == null || !mounted) return;
+                    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => BookingConfirmationScreen(
+                      booking: booking, stay: booking.stay, totalAmount: booking.totalAmount,
+                      selectedDates: DateTimeRange(start: booking.checkIn, end: booking.checkOut),
+                      guests: booking.adults + booking.children,
+                      paymentMethod: _checkout.payment?.paymentMethod ?? 'Server confirmed')));
                   },
-                  child: const Text('Pay & Confirm Booking', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: Text(provider.isAadhaarVerified ? 'Pay & Confirm Booking' : 'Verify Aadhaar to Pay & Confirm', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 24),
@@ -458,66 +499,3 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 }
 
-class _PaymentOptionTile extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _PaymentOptionTile({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return BouncingWidget(
-      onTap: () {
-        AppMotion.tapSelection();
-        onTap();
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.04) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.borderLight,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: AppColors.textPrimary, size: 24),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                ],
-              ),
-            ),
-            Icon(
-              isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-              color: isSelected ? AppColors.primary : AppColors.textMuted,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

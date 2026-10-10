@@ -124,7 +124,7 @@ class ZeroBrokerModal extends StatelessWidget {
                         icon: Icons.verified_user_rounded,
                         color: AppColors.starYellow,
                         title: 'Verified Owners',
-                        subtitle: 'Every property owner is strictly vetted. Connect directly with total trust & security on Stay Q.',
+                        subtitle: 'Every property owner is strictly vetted. Connect directly with total trust & security on StayQ.',
                         delay: 400,
                       ),
                     ],

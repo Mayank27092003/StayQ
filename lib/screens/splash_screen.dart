@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/app_provider.dart';
 import '../providers/host_onboarding_provider.dart';
 import '../navigation/app_router.dart';
@@ -59,7 +58,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       ),
     );
 
-    // 3.0s -> 3.6s: "Stay Q" text fades in
+    // 3.0s -> 3.6s: "StayQ" text fades in
     _textFadeAnimation = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.75, 0.90, curve: Curves.easeOut),
@@ -69,54 +68,20 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       if (status == AnimationStatus.completed) {
         // A tiny delay before navigating to let the final frame linger
         Future.delayed(const Duration(milliseconds: 300), () async {
-          if (mounted) {
-            final provider = context.read<AppProvider>();
-            final hostProvider = context.read<HostOnboardingProvider>();
-            
-            try {
-              final prefs = await SharedPreferences.getInstance();
-              
-              // 1. Check for persistent KYC Lock / Pending Review (ONLY if currently in Host Mode)
-              final kycStatus = prefs.getString('kyc_status');
-              if (provider.isHostMode && kycStatus == 'pending_review' && mounted) {
-                if (provider.isLoggedIn) {
-                  Navigator.pushReplacementNamed(context, AppRoutes.mainShell);
-                  return;
-                }
-              }
-
-              // 2. Strict Authentication Check: No unauthenticated/guest bypass allowed
-              if (!provider.isLoggedIn && mounted) {
-                if (!provider.hasSeenWalkthrough) {
-                  Navigator.pushReplacementNamed(context, AppRoutes.walkthrough);
-                } else {
-                  Navigator.pushReplacementNamed(context, AppRoutes.login);
-                }
-                return;
-              }
-
-              // 3. Check for in-progress Host Onboarding (ONLY if user is in Host Mode)
-              final hostOnboardingInProgress = prefs.getBool('host_onboarding_in_progress') ?? false;
-              if (provider.isHostMode && hostOnboardingInProgress && mounted) {
-                await hostProvider.restoreDraftFromPrefs();
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const HostOnboardingScreen()),
-                );
-                return;
-              }
-
-              // 4. Default Authenticated Flow
-              if (mounted) {
-                Navigator.pushReplacementNamed(context, AppRoutes.mainShell);
-              }
-            } catch (e) {
-              debugPrint('Error reading SharedPreferences: $e');
-              if (mounted) {
-                Navigator.pushReplacementNamed(context, AppRoutes.login);
-              }
-            }
+          if (!mounted) return;
+          final provider = context.read<AppProvider>();
+          if (!provider.isLoggedIn) {
+            Navigator.pushReplacementNamed(context, provider.hasSeenWalkthrough ? AppRoutes.login : AppRoutes.walkthrough); return;
           }
+          final complete = await provider.checkProfileComplete();
+          if (!mounted) return;
+          if (!complete) { Navigator.pushReplacementNamed(context, AppRoutes.completeProfile); return; }
+          final draft = context.read<HostOnboardingProvider>();
+          await draft.ready;
+          if (!mounted) return;
+          if (provider.isHostMode && draft.currentPage > 0 && draft.title.isNotEmpty) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HostOnboardingScreen(startAtBeginning: false)));
+          } else Navigator.pushReplacementNamed(context, AppRoutes.mainShell);
         });
       }
     });
@@ -169,7 +134,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   child: Transform.translate(
                     offset: Offset(0, (1 - _textFadeAnimation.value) * 15),
                     child: const Text(
-                      'STAY Q',
+                      'STAYQ',
                       style: TextStyle(
                         fontSize: 40,
                         fontWeight: FontWeight.w800,

@@ -134,8 +134,8 @@ export function Footer() {
               <a href="/partner" onClick={(e) => navigateTo("/partner", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>List Your Property (Host Onboarding)</a>
               <a href="/partner" onClick={(e) => navigateTo("/partner", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Earnings &amp; Payout Terms</a>
               <a href="/policy/host-protection" onClick={(e) => navigateTo("/policy/host-protection", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Host Protection &amp; Standards</a>
-              <a href="/partner" onClick={(e) => navigateTo("/partner", e)} style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Automated Payout Settlements</a>
-              <a href="/StayQ-Release.apk" onClick={(e) => navigateTo("/StayQ-Release.apk", e)} download style={{ color: '#A1A1AA', fontSize: '0.82rem', textDecoration: 'none' }}>Download Host Mobile APK</a>
+              <a href="https://play.google.com/store/apps/details?id=com.stayq.stay_q" target="_blank" rel="noopener noreferrer" style={{ color: '#A78BFA', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Download Android App (Google Play)</a>
+              <span style={{ color: '#71717A', fontSize: '0.78rem' }}>iOS App: In Review with Apple Team</span>
             </div>
           </div>
 

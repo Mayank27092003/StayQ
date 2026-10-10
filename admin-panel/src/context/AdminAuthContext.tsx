@@ -28,7 +28,12 @@ interface AdminAuthContextType {
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://stayq-api-608570851336.asia-south1.run.app";
+
+if (typeof window !== "undefined") {
+  axios.defaults.baseURL = API_BASE;
+  axios.defaults.headers.common["x-admin-key"] = "stayq-admin-secret-2026";
+}
 
 // Default fallback master credentials for instant administrative bootstrap if DB is initializing
 const MASTER_ADMIN_USER: AdminUser = {

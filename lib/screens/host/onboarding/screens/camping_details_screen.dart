@@ -1,3 +1,4 @@
+import '../../../../models/json_values.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -30,6 +31,46 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
   bool _tentsProvided = true;
   bool _drinkingWater = true;
   bool _chargingStations = true;
+
+  void initState() {
+    super.initState();
+    _draft = context.read<HostOnboardingProvider>();
+    final data = _draft.campingDetails;
+    _campsiteLocationController.text = data['campsiteLocationController']?.toString() ?? _campsiteLocationController.text;
+    _bedsProvided = jsonInt(data['bedsProvided'], _bedsProvided);
+    _hasFoodOptions = data['hasFoodOptions'] is bool ? data['hasFoodOptions'] as bool : _hasFoodOptions;
+    _hasTrekking = data['hasTrekking'] is bool ? data['hasTrekking'] as bool : _hasTrekking;
+    _hasFirstAid = data['hasFirstAid'] is bool ? data['hasFirstAid'] as bool : _hasFirstAid;
+    _isEcoFriendly = data['isEcoFriendly'] is bool ? data['isEcoFriendly'] as bool : _isEcoFriendly;
+    _washroomType = data['washroomType']?.toString() ?? _washroomType;
+    _hasHotWater = data['hasHotWater'] is bool ? data['hasHotWater'] as bool : _hasHotWater;
+    _mealPlan = data['mealPlan']?.toString() ?? _mealPlan;
+    _tentsProvided = data['tentsProvided'] is bool ? data['tentsProvided'] as bool : _tentsProvided;
+    _drinkingWater = data['drinkingWater'] is bool ? data['drinkingWater'] as bool : _drinkingWater;
+    _chargingStations = data['chargingStations'] is bool ? data['chargingStations'] as bool : _chargingStations;
+    _campsiteLocationController.addListener(_persist);
+  }
+
+  late HostOnboardingProvider _draft;
+  void _editState(VoidCallback change) { if (!mounted) return; setState(change); _persist(); }
+  void _persist() {
+    if (!mounted) return;
+    _draft.campingDetails = {
+      'campsiteLocationController': _campsiteLocationController.text,
+      'bedsProvided': _bedsProvided,
+      'hasFoodOptions': _hasFoodOptions,
+      'hasTrekking': _hasTrekking,
+      'hasFirstAid': _hasFirstAid,
+      'isEcoFriendly': _isEcoFriendly,
+      'washroomType': _washroomType,
+      'hasHotWater': _hasHotWater,
+      'mealPlan': _mealPlan,
+      'tentsProvided': _tentsProvided,
+      'drinkingWater': _drinkingWater,
+      'chargingStations': _chargingStations,
+    };
+    _draft.notifyListeners();
+  }
 
   @override
   void dispose() {
@@ -181,10 +222,10 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
                   subtitle: 'Mats, cots, or mattresses',
                   value: _bedsProvided,
                   onDecrement: () {
-                    if (_bedsProvided > 0) setState(() => _bedsProvided--);
+                    if (_bedsProvided > 0) _editState(() => _bedsProvided--);
                   },
                   onIncrement: () {
-                    setState(() => _bedsProvided++);
+                    _editState(() => _bedsProvided++);
                   },
                 ),
               ],
@@ -216,7 +257,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
                   icon: Icons.fastfood,
                   value: _hasFoodOptions,
                   activeColor: Colors.green,
-                  onChanged: (val) => setState(() => _hasFoodOptions = val),
+                  onChanged: (val) => _editState(() => _hasFoodOptions = val),
                 ).animate().fadeIn(delay: 600.ms).slideX(begin: 0.1),
               ),
             ],
@@ -241,7 +282,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
                 selectedColor: AppColors.primary,
                 backgroundColor: AppColors.surfaceLight,
                 onSelected: (sel) {
-                  if (sel) setState(() => _washroomType = ws);
+                  if (sel) _editState(() => _washroomType = ws);
                 },
               );
             }).toList(),
@@ -252,7 +293,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             subtitle: 'Warm showers available for campers',
             icon: Icons.hot_tub,
             value: _hasHotWater,
-            onChanged: (val) => setState(() => _hasHotWater = val),
+            onChanged: (val) => _editState(() => _hasHotWater = val),
           ),
           const SizedBox(height: 28),
 
@@ -276,7 +317,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
                   selectedColor: AppColors.primary,
                   backgroundColor: AppColors.surfaceLight,
                   onSelected: (sel) {
-                    if (sel) setState(() => _mealPlan = m);
+                    if (sel) _editState(() => _mealPlan = m);
                   },
                 );
               }).toList(),
@@ -292,7 +333,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             subtitle: 'All setup completed before guest arrives',
             icon: Icons.night_shelter,
             value: _tentsProvided,
-            onChanged: (val) => setState(() => _tentsProvided = val),
+            onChanged: (val) => _editState(() => _tentsProvided = val),
           ),
           const SizedBox(height: 10),
           _buildSwitchTile(
@@ -300,7 +341,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             subtitle: 'Fresh RO/natural spring drinking water on site',
             icon: Icons.local_drink,
             value: _drinkingWater,
-            onChanged: (val) => setState(() => _drinkingWater = val),
+            onChanged: (val) => _editState(() => _drinkingWater = val),
           ),
           const SizedBox(height: 10),
           _buildSwitchTile(
@@ -308,7 +349,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             subtitle: 'Solar / generator charging points available',
             icon: Icons.battery_charging_full,
             value: _chargingStations,
-            onChanged: (val) => setState(() => _chargingStations = val),
+            onChanged: (val) => _editState(() => _chargingStations = val),
           ),
           const SizedBox(height: 28),
 
@@ -320,7 +361,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             subtitle: 'Access to nearby hiking paths',
             icon: Icons.hiking,
             value: _hasTrekking,
-            onChanged: (val) => setState(() => _hasTrekking = val),
+            onChanged: (val) => _editState(() => _hasTrekking = val),
           ).animate().fadeIn(delay: 700.ms).scale(),
           const SizedBox(height: 32),
 
@@ -332,7 +373,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             subtitle: 'Medical kits and emergency support',
             icon: Icons.medical_services,
             value: _hasFirstAid,
-            onChanged: (val) => setState(() => _hasFirstAid = val),
+            onChanged: (val) => _editState(() => _hasFirstAid = val),
           ).animate().fadeIn(delay: 800.ms).scale(),
           const SizedBox(height: 12),
           _buildSwitchTile(
@@ -340,7 +381,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             subtitle: 'Solar power, waste recycling, etc.',
             icon: Icons.eco,
             value: _isEcoFriendly,
-            onChanged: (val) => setState(() => _isEcoFriendly = val),
+            onChanged: (val) => _editState(() => _isEcoFriendly = val),
           ).animate().fadeIn(delay: 850.ms).scale(),
           
           const SizedBox(height: 60),

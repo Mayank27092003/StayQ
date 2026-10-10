@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { assertPublishable } from '../../common/publication.util';
+import { decryptSensitive } from '../../common/utils/encryption.util';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   ContentReport,
   ContentReportStatus,
@@ -7,7 +13,11 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminAuditService } from '../audit/admin-audit.service';
-import { buildPaginatedResult, PaginatedResult, toSkipTake } from '../dto/pagination.dto';
+import {
+  buildPaginatedResult,
+  PaginatedResult,
+  toSkipTake,
+} from '../dto/pagination.dto';
 import {
   ContentReportQueryDto,
   CreateContentReportDto,
@@ -23,17 +33,27 @@ const DECISIONS_REQUIRING_NOTE: ReviewModerationStatus[] = [
 ];
 
 const REVIEW_INCLUDE = {
-  guest: { select: { id: true, displayName: true, email: true, photoUrl: true } },
+  guest: {
+    select: { id: true, displayName: true, email: true, photoUrl: true },
+  },
   property: { select: { id: true, title: true, city: true, hostId: true } },
 } satisfies Prisma.ReviewInclude;
 
-type ReviewWithRelations = Prisma.ReviewGetPayload<{ include: typeof REVIEW_INCLUDE }>;
+type ReviewWithRelations = Prisma.ReviewGetPayload<{
+  include: typeof REVIEW_INCLUDE;
+}>;
+
+import { EmailService } from '../../notifications/email.service';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { NotificationType } from '@prisma/client';
 
 @Injectable()
 export class AdminModerationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
+    private readonly emailService: EmailService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private toReviewResponse(review: ReviewWithRelations) {
@@ -71,7 +91,9 @@ export class AdminModerationService {
       where.OR = [
         { text: { contains: query.search, mode: 'insensitive' } },
         { reportReason: { contains: query.search, mode: 'insensitive' } },
-        { property: { title: { contains: query.search, mode: 'insensitive' } } },
+        {
+          property: { title: { contains: query.search, mode: 'insensitive' } },
+        },
       ];
     }
 
@@ -95,7 +117,10 @@ export class AdminModerationService {
   }
 
   async findReview(id: string) {
-    const review = await this.prisma.review.findUnique({ where: { id }, include: REVIEW_INCLUDE });
+    const review = await this.prisma.review.findUnique({
+      where: { id },
+      include: REVIEW_INCLUDE,
+    });
     if (!review) throw new NotFoundException('Review not found.');
     return this.toReviewResponse(review);
   }
@@ -125,7 +150,7 @@ export class AdminModerationService {
       moderatedAt: now,
       moderatedById: adminId,
       moderated: dto.moderationStatus !== ReviewModerationStatus.PENDING,
-      visibleAt: hides ? null : existing.visibleAt ?? now,
+      visibleAt: hides ? null : (existing.visibleAt ?? now),
     };
 
     if (dto.note !== undefined) data.moderationNote = dto.note;
@@ -135,7 +160,26 @@ export class AdminModerationService {
     }
 
     const updated = await this.audit.runWithAudit(
-      (tx) => tx.review.update({ where: { id }, data, include: REVIEW_INCLUDE }),
+      async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Review" WHERE id=${id} FOR UPDATE`;
+        const result = await tx.review.update({
+          where: { id },
+          data,
+          include: REVIEW_INCLUDE,
+        });
+        const type =
+          dto.moderationStatus === 'APPROVED'
+            ? 'REVIEW_REWARD'
+            : 'REVIEW_REVERSAL';
+        await tx.domainJob.create({
+          data: {
+            key: type + ':' + id + ':' + now.toISOString(),
+            type,
+            referenceId: id,
+          },
+        });
+        return result;
+      },
       (review) => ({
         adminId,
         action: 'MODERATE_REVIEW',
@@ -158,38 +202,38 @@ export class AdminModerationService {
    * unexamined item cannot be destroyed before a decision is recorded.
    */
   async deleteReview(id: string, adminId: string) {
-    const existing = await this.prisma.review.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException('Review not found.');
-
-    if (existing.moderationStatus !== ReviewModerationStatus.REJECTED) {
-      throw new BadRequestException(
-        'Only a review already marked REJECTED can be deleted. Record that decision first so the removal is auditable.',
-      );
-    }
-
-    await this.audit.runWithAudit(
-      (tx) => tx.review.delete({ where: { id } }),
-      (review) => ({
+    return this.audit.runWithAudit(
+      async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Review" WHERE id=${id} FOR UPDATE`;
+        const r = await tx.review.findUnique({ where: { id } });
+        if (!r) throw new NotFoundException('Review not found');
+        if (r.moderationStatus !== 'REJECTED')
+          throw new BadRequestException('Reject the review before removing it');
+        return {
+          id,
+          removedFromPublic: true,
+          retainedForRewardReconciliation: true,
+        };
+      },
+      () => ({
         adminId,
-        action: 'DELETE_REVIEW',
+        action: 'RETAIN_REJECTED_REVIEW',
         targetType: 'REVIEW',
-        targetId: review.id,
-        details: {
-          propertyId: review.propertyId,
-          rating: review.rating,
-          moderationNote: review.moderationNote,
-        },
+        targetId: id,
       }),
     );
-
-    return { id, deleted: true as const };
   }
 
   async reviewQueueSummary() {
     const [byStatus, reported, unmoderated] = await Promise.all([
-      this.prisma.review.groupBy({ by: ['moderationStatus'], _count: { _all: true } }),
+      this.prisma.review.groupBy({
+        by: ['moderationStatus'],
+        _count: { _all: true },
+      }),
       this.prisma.review.count({ where: { reported: true } }),
-      this.prisma.review.count({ where: { moderationStatus: ReviewModerationStatus.PENDING } }),
+      this.prisma.review.count({
+        where: { moderationStatus: ReviewModerationStatus.PENDING },
+      }),
     ]);
 
     const counts = Object.fromEntries(
@@ -264,10 +308,17 @@ export class AdminModerationService {
         : [],
     ]);
 
-    for (const row of properties) labels.set(key('PROPERTY', row.id), { label: row.title, exists: true });
-    for (const row of images) labels.set(key('PROPERTY_IMAGE', row.id), { label: row.url, exists: true });
-    for (const row of reviews) labels.set(key('REVIEW', row.id), { label: row.text, exists: true });
-    for (const row of messages) labels.set(key('MESSAGE', row.id), { label: row.text, exists: true });
+    for (const row of properties)
+      labels.set(key('PROPERTY', row.id), { label: row.title, exists: true });
+    for (const row of images)
+      labels.set(key('PROPERTY_IMAGE', row.id), {
+        label: row.url,
+        exists: true,
+      });
+    for (const row of reviews)
+      labels.set(key('REVIEW', row.id), { label: row.text, exists: true });
+    for (const row of messages)
+      labels.set(key('MESSAGE', row.id), { label: row.text, exists: true });
     for (const row of users) {
       labels.set(key('USER_PROFILE', row.id), {
         label: row.displayName ?? row.email,
@@ -280,7 +331,11 @@ export class AdminModerationService {
 
   private async loadUserSummaries(ids: Array<string | null>) {
     const unique = [...new Set(ids.filter((id): id is string => Boolean(id)))];
-    if (unique.length === 0) return new Map<string, { id: string; displayName: string | null; email: string | null }>();
+    if (unique.length === 0)
+      return new Map<
+        string,
+        { id: string; displayName: string | null; email: string | null }
+      >();
 
     const users = await this.prisma.user.findMany({
       where: { id: { in: unique } },
@@ -290,7 +345,9 @@ export class AdminModerationService {
     return new Map(users.map((user) => [user.id, user]));
   }
 
-  async listReports(query: ContentReportQueryDto): Promise<PaginatedResult<unknown>> {
+  async listReports(
+    query: ContentReportQueryDto,
+  ): Promise<PaginatedResult<unknown>> {
     const { skip, take } = toSkipTake(query);
 
     const where: Prisma.ContentReportWhereInput = {};
@@ -316,7 +373,9 @@ export class AdminModerationService {
 
     const [targets, users] = await Promise.all([
       this.loadReportTargets(reports),
-      this.loadUserSummaries(reports.flatMap((r) => [r.reportedById, r.reviewedById])),
+      this.loadUserSummaries(
+        reports.flatMap((r) => [r.reportedById, r.reviewedById]),
+      ),
     ]);
 
     const data = reports.map((report) => {
@@ -333,8 +392,12 @@ export class AdminModerationService {
         reason: report.reason,
         description: report.description,
         status: report.status,
-        reportedBy: report.reportedById ? users.get(report.reportedById) ?? null : null,
-        reviewedBy: report.reviewedById ? users.get(report.reviewedById) ?? null : null,
+        reportedBy: report.reportedById
+          ? (users.get(report.reportedById) ?? null)
+          : null,
+        reviewedBy: report.reviewedById
+          ? (users.get(report.reviewedById) ?? null)
+          : null,
         reviewedAt: report.reviewedAt,
         resolutionNote: report.resolutionNote,
         createdAt: report.createdAt,
@@ -382,15 +445,25 @@ export class AdminModerationService {
         action: 'CREATE_CONTENT_REPORT',
         targetType: 'REVIEW',
         targetId: report.targetId,
-        details: { reportId: report.id, reason: report.reason, targetType: report.targetType },
+        details: {
+          reportId: report.id,
+          reason: report.reason,
+          targetType: report.targetType,
+        },
       }),
     );
 
     return created;
   }
 
-  async resolveReport(id: string, dto: ResolveContentReportDto, adminId: string) {
-    const existing = await this.prisma.contentReport.findUnique({ where: { id } });
+  async resolveReport(
+    id: string,
+    dto: ResolveContentReportDto,
+    adminId: string,
+  ) {
+    const existing = await this.prisma.contentReport.findUnique({
+      where: { id },
+    });
     if (!existing) throw new NotFoundException('Report not found.');
 
     if (
@@ -404,7 +477,8 @@ export class AdminModerationService {
     }
 
     const terminal =
-      dto.status === ContentReportStatus.ACTIONED || dto.status === ContentReportStatus.DISMISSED;
+      dto.status === ContentReportStatus.ACTIONED ||
+      dto.status === ContentReportStatus.DISMISSED;
 
     const updated = await this.audit.runWithAudit(
       (tx) =>
@@ -435,16 +509,31 @@ export class AdminModerationService {
 
   async reportSummary() {
     const [byStatus, byTargetType, byReason] = await Promise.all([
-      this.prisma.contentReport.groupBy({ by: ['status'], _count: { _all: true } }),
-      this.prisma.contentReport.groupBy({ by: ['targetType'], _count: { _all: true } }),
-      this.prisma.contentReport.groupBy({ by: ['reason'], _count: { _all: true } }),
+      this.prisma.contentReport.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
+      this.prisma.contentReport.groupBy({
+        by: ['targetType'],
+        _count: { _all: true },
+      }),
+      this.prisma.contentReport.groupBy({
+        by: ['reason'],
+        _count: { _all: true },
+      }),
     ]);
 
     return {
       total: byStatus.reduce((sum, row) => sum + row._count._all, 0),
-      byStatus: Object.fromEntries(byStatus.map((row) => [row.status, row._count._all])),
-      byTargetType: Object.fromEntries(byTargetType.map((row) => [row.targetType, row._count._all])),
-      byReason: Object.fromEntries(byReason.map((row) => [row.reason, row._count._all])),
+      byStatus: Object.fromEntries(
+        byStatus.map((row) => [row.status, row._count._all]),
+      ),
+      byTargetType: Object.fromEntries(
+        byTargetType.map((row) => [row.targetType, row._count._all]),
+      ),
+      byReason: Object.fromEntries(
+        byReason.map((row) => [row.reason, row._count._all]),
+      ),
     };
   }
 
@@ -457,17 +546,17 @@ export class AdminModerationService {
           {
             properties: {
               some: {
-                status: { in: ['PENDING_REVIEW', 'DRAFT'] as any }
-              }
-            }
+                status: { in: ['PENDING_REVIEW', 'DRAFT'] as any },
+              },
+            },
           },
           {
             isHostVerified: false,
             properties: {
-              some: {}
-            }
-          }
-        ]
+              some: {},
+            },
+          },
+        ],
       },
       include: {
         payoutAccount: true,
@@ -476,123 +565,203 @@ export class AdminModerationService {
           take: 5,
           include: {
             images: true,
-            roomTypes: true
-          }
-        }
-      }
-    });
-
-    return users
-      .map(u => ({
-        userId: u.id,
-        displayName: u.displayName || u.email || 'Host Applicant',
-        email: u.email,
-        phone: u.phone,
-        photoUrl: u.photoUrl,
-        payoutAccount: u.payoutAccount,
-        property: u.properties[0]
-      }))
-      .filter(app => !!app.property);
-  }
-
-  async approveHostApplication(userId: string, adminId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        payoutAccount: true,
-        properties: {
-          where: { status: { in: ['PENDING_REVIEW', 'DRAFT'] as any } },
+            roomTypes: true,
+          },
         },
       },
     });
-    if (!user) throw new NotFoundException('User not found');
-    
-    return this.prisma.$transaction(async (tx) => {
-      // 1. Make user a verified HOST
-      const updatedRoles = [...new Set([...user.roles, 'HOST' as any])];
-      await tx.user.update({
-        where: { id: userId },
-        data: {
-          roles: updatedRoles,
-          isHostVerified: true,
-          hostVerifiedAt: new Date(),
-          hostStatus: 'APPROVED' as any,
-        },
-      });
 
-      // 2. Verify payout account if present
-      if (user.payoutAccount) {
+    return users
+      .map((u) => {
+        let cleanGovId = u.payoutAccount?.govIdNumber || '';
+        if (cleanGovId.startsWith('enc:v1:')) {
+          try {
+            cleanGovId = decryptSensitive(cleanGovId);
+          } catch {
+            cleanGovId = 'Verified (KYC)';
+          }
+        }
+        return {
+          userId: u.id,
+          displayName: u.displayName || u.email || 'Host Applicant',
+          email: u.email,
+          phone: u.phone,
+          photoUrl: u.photoUrl,
+          payoutAccount: u.payoutAccount
+            ? {
+                ...u.payoutAccount,
+                govIdNumber: cleanGovId,
+              }
+            : null,
+          property: u.properties[0],
+        };
+      })
+      .filter((app) => !!app.property);
+  }
+
+  async approveHostApplication(userId: string, adminId: string) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Property" WHERE "hostId"=${userId} ORDER BY id FOR UPDATE`;
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id=${userId} FOR UPDATE`;
+      const u = await tx.user.findUnique({
+        where: { id: userId },
+        include: { payoutAccount: true },
+      });
+      if (!u || u.deletedAt)
+        throw new NotFoundException('Active host not found');
+      if (u.hostStatus === 'SUSPENDED')
+        throw new BadRequestException(
+          'Resolve the suspension before approving an application',
+        );
+
+      // Auto-verify payout account upon admin approval
+      if (u.payoutAccount && !u.payoutAccount.verified) {
         await tx.hostPayoutAccount.update({
-          where: { userId },
+          where: { id: u.payoutAccount.id },
           data: {
             verified: true,
             verifiedAt: new Date(),
             verifiedBy: adminId || 'admin',
           },
         });
+        u.payoutAccount.verified = true;
       }
 
-      // 3. Approve all pending & draft properties → ACTIVE
-      for (const prop of user.properties) {
+      // Auto-verify email upon admin approval
+      if (!u.emailVerified && u.email) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { emailVerified: true },
+        });
+        u.emailVerified = true;
+      }
+
+      const props = await tx.property.findMany({
+        where: { hostId: userId, status: 'PENDING_REVIEW' },
+        include: { images: true },
+      });
+      if (!props.length)
+        throw new BadRequestException('No submitted property awaits review');
+      for (const p of props) {
+        await tx.$queryRaw`SELECT id FROM "Property" WHERE id=${p.id} FOR UPDATE`;
+        const fresh = await tx.property.findUnique({
+          where: { id: p.id },
+          include: { images: true },
+        });
+        if (!fresh || fresh.status !== 'PENDING_REVIEW') continue;
+        assertPublishable({
+          ...fresh,
+          propertyDocsVerified: true,
+          host: {
+            ...u,
+            isHostVerified: true,
+            hostStatus: 'APPROVED',
+            payoutAccount: { ...u.payoutAccount, verified: true },
+            emailVerified: true,
+          },
+        });
         await tx.property.update({
-          where: { id: prop.id },
+          where: { id: p.id },
           data: {
             status: 'ACTIVE',
             propertyDocsVerified: true,
             propertyDocsVerifiedAt: new Date(),
           },
         });
+
       }
-
-      // 4. Audit Log (safely executed, does not block approval if adminId is not a valid User FK)
-      try {
-        const adminUser = adminId ? await tx.user.findUnique({ where: { id: adminId } }) : null;
-        if (adminUser) {
-          await tx.adminAuditLog.create({
-            data: {
-              adminId,
-              action: 'APPROVE_HOST_APP',
-              targetType: 'USER',
-              targetId: userId,
-              details: { approvedProperties: user.properties.length },
-            },
-          });
-        }
-      } catch (_) {}
-
-      return { success: true, approvedPropertiesCount: user.properties.length };
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          roles: [...new Set([...u.roles, 'HOST' as const])],
+          isHostVerified: true,
+          hostVerifiedAt: new Date(),
+          hostStatus: 'APPROVED',
+        },
+      });
+      await tx.adminAuditLog.create({
+        data: {
+          adminId,
+          action: 'APPROVE_HOST_APPLICATION',
+          targetType: 'HOST',
+          targetId: userId,
+          details: { approvedProperties: props.length },
+        },
+      });
+      return { success: true, approvedPropertiesCount: props.length, user: u, properties: props };
     });
+
+    // Await delivery outside transaction so Cloud Run socket remains active:
+    if (result.user?.email && Array.isArray(result.properties)) {
+      for (const p of result.properties) {
+        try {
+          await Promise.allSettled([
+            this.emailService.sendHostApprovedEmail({
+              to: result.user.email,
+              hostName: result.user.displayName || 'Host',
+              propertyTitle: p.title,
+            }),
+            this.emailService.sendPropertyLiveEmail({
+              to: result.user.email,
+              hostName: result.user.displayName || 'Host',
+              propertyTitle: p.title,
+              propertyCode: p.id.slice(0, 8).toUpperCase(),
+            }),
+            this.notificationsService.sendNotification(
+              userId,
+              NotificationType.BOOKING_CONFIRMED,
+              '🎉 Listing Approved & Live on StayQ!',
+              `Congratulations! Your listing "${p.title}" has been approved and is now live on StayQ. You can now host guests and start receiving reservations!`,
+              {
+                propertyId: p.id,
+                eventKey: `approved:${p.id}`,
+              },
+            ),
+          ]);
+        } catch (e: any) {
+          // Log but don't fail
+        }
+      }
+    }
+    return { success: true, approvedPropertiesCount: result.approvedPropertiesCount };
   }
 
   async rejectHostApplication(userId: string, adminId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { properties: { where: { status: { in: ['PENDING_REVIEW', 'DRAFT'] as any } } } } });
-    if (!user) throw new NotFoundException('User not found');
-    
     return this.prisma.$transaction(async (tx) => {
-      // Reject properties
-      for (const prop of user.properties) {
-        await tx.property.update({
-          where: { id: prop.id },
-          data: { status: 'REJECTED' }
-        });
+      const result = await tx.property.updateMany({
+        where: { hostId: userId, status: 'PENDING_REVIEW' },
+        data: { status: 'REJECTED' },
+      });
+      await tx.adminAuditLog.create({
+        data: {
+          adminId,
+          action: 'REJECT_HOST_APPLICATION',
+          targetType: 'HOST',
+          targetId: userId,
+          details: { rejectedProperties: result.count },
+        },
+      });
+      const u = await tx.user.findUnique({ where: { id: userId } });
+      if (u?.email) {
+        this.emailService
+          .sendEmail(
+            u.email,
+            'StayQ Host Application Update',
+            '<div style="font-family:sans-serif;padding:24px"><h2 style="color:#DC2626">Application Needs Update</h2><p>Hi ' + (u.displayName || 'Host') + ', your property application requires additional document verification. Please check your host dashboard to update details.</p></div>',
+            true,
+          )
+          .catch(() => {});
       }
-
-      try {
-        const adminUser = adminId ? await tx.user.findUnique({ where: { id: adminId } }) : null;
-        if (adminUser) {
-          await tx.adminAuditLog.create({
-            data: {
-              adminId,
-              action: 'REJECT_HOST_APP',
-              targetType: 'USER',
-              targetId: userId,
-              details: { rejectedProperties: user.properties.length },
-            },
-          });
-        }
-      } catch (_) {}
-
-      return { success: true };
+      this.notificationsService
+        .sendNotification(
+          userId,
+          NotificationType.SYSTEM,
+          'Host Application Needs Update',
+          'Your host application requires document verification updates before approval.',
+          { eventKey: `rejected:${userId}` },
+        )
+        .catch(() => {});
+      return { success: true, rejectedProperties: result.count };
     });
   }
 }

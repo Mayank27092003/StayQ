@@ -1,3 +1,4 @@
+import '../../services/api/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -167,9 +168,9 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
                   height: 200,
                   width: double.infinity,
                   child: stay.imageUrls.isNotEmpty
-                      ? (stay.imageUrls.first.startsWith('http')
+                      ? (stay.firstImage.startsWith('http')
                           ? Image.network(
-                              stay.imageUrls.first,
+                              stay.firstImage,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(
                                 color: AppColors.surfaceLight,
@@ -179,7 +180,7 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
                               ),
                             )
                           : Image.asset(
-                              stay.imageUrls.first,
+                              stay.firstImage,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(
                                 color: AppColors.surfaceLight,
@@ -287,31 +288,20 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
                     ),
                     child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
                   ),
-                  onSelected: (value) {
-                    final hostId = _getHostId(context);
-                    if (hostId == null) return;
-                    if (value == 'toggle') {
-                      provider.toggleListingStatus(stay.id, stay.status, hostId);
-                    } else if (value == 'delete') {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Delete Listing'),
-                          content: const Text('Are you sure you want to delete this listing?'),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                            TextButton(
-                              onPressed: () {
-                                provider.deleteListing(stay.id, hostId);
-                                Navigator.pop(ctx);
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Listing deleted')));
-                              }, 
-                              child: const Text('Delete', style: TextStyle(color: Colors.red)),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+                  onSelected: (value) async {
+                    final hostId = _getHostId(context); if (hostId == null) return;
+                    try {
+                      if (value == 'toggle') await provider.toggleListingStatus(stay.id, stay.status, hostId);
+                      else if (value == 'delete') {
+                        final accepted = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+                          title: const Text('Delete listing?'), content: const Text('This removes the listing from your account.'),
+                          actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete'))]));
+                        if (accepted != true) return;
+                        await provider.deleteListing(stay.id, hostId);
+                      }
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Listing change saved.')));
+                    } catch (e) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
                   },
                   itemBuilder: (context) => [
                     PopupMenuItem(
@@ -559,38 +549,25 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: isSaving ? null : () async {
+                      final price = double.tryParse(priceController.text.trim());
+                      if (titleController.text.trim().isEmpty || price == null || !price.isFinite || price <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a title and positive price.'))); return;
+                      }
                       setSheetState(() => isSaving = true);
                       try {
-                        final token = await FirebaseAuth.instance.currentUser?.getIdToken();
-                        await http.patch(
-                          Uri.parse('https://stayq-api-608570851336.asia-south1.run.app/api/v1/properties/${stay.id}'),
-                          headers: {
-                            'Content-Type': 'application/json',
-                            if (token != null) 'Authorization': 'Bearer $token',
-                          },
-                          body: json.encode({
-                            'title': titleController.text,
-                            'price': double.tryParse(priceController.text) ?? stay.pricePerNight,
-                            'description': descController.text,
-                          }),
-                        );
-                        if (ctx.mounted) {
-                          Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Listing updated successfully!')),
-                          );
-                          // Refresh listings
-                          final appProvider = context.read<AppProvider>();
-                          final hostId = appProvider.userId ?? '';
-                          context.read<HostListingsProvider>().fetchHostListings(hostId);
-                        }
+                        await ApiClient.instance.patch('/properties/${stay.id}', body: {
+                          'title': titleController.text.trim(), 'pricePerNight': price, 'description': descController.text.trim(),
+                        });
+                        if (!ctx.mounted || !context.mounted) return;
+                        final hostId = context.read<AppProvider>().userId;
+                        if (hostId != null) await context.read<HostListingsProvider>().fetchHostListings(hostId);
+                        if (!ctx.mounted || !context.mounted) return;
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Listing updated.')));
                       } catch (e) {
+                        if (!ctx.mounted) return;
                         setSheetState(() => isSaving = false);
-                        if (ctx.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: $e')),
-                          );
-                        }
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
                       }
                     },
                     style: ElevatedButton.styleFrom(

@@ -17,7 +17,10 @@ import 'screens/policies_and_rules_screen.dart';
 import 'screens/host_verification_screen.dart';
 import 'screens/bank_details_screen.dart';
 import 'screens/property_review_and_submit_screen.dart';
-import 'screens/rv_details_screen.dart';
+import 'screens/rv_specs_screen.dart';
+import 'screens/rv_living_comfort_screen.dart';
+import 'screens/rv_mobility_pricing_screen.dart';
+import 'screens/rv_guidelines_screen.dart';
 import 'screens/camping_details_screen.dart';
 import 'screens/host_success_passport_screen.dart';
 
@@ -41,7 +44,7 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
     List<Widget> base = [];
     
     if (!widget.isAddingNewProperty) {
-      base.addAll([
+      base.add(
         HostWelcomeScreen(
           onGetStarted: () {
             if (_currentIndex < base.length - 1) {
@@ -51,40 +54,61 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
             }
           },
         ),
-        const HostAccountSetupScreen(),
-      ]);
+      );
     }
 
-    base.addAll([
-      const PropertyTypeScreen(),
-      const PropertyBasicInfoScreen(),
-      const PropertyLocationScreen(),
-      const PropertyPhotosScreen(),
-      const AmenitiesScreen(),
-    ]);
+    // Only ask for account details if host profile is completely empty
+    final bool hasAccount = provider.firstName.trim().isNotEmpty &&
+        (provider.email.trim().isNotEmpty || provider.phone.trim().isNotEmpty);
+    if (!hasAccount) {
+      base.add(const HostAccountSetupScreen());
+    }
 
+    // 1. What are you listing? (Master category & rental mode selector)
+    base.add(const PropertyTypeScreen());
+
+    // 2. Tailored accommodation details based on propertyType
     if (provider.propertyType == 'RV') {
-      base.add(const RvDetailsScreen());
-    } else if (provider.propertyType == 'CAMPING_SITE') {
-      base.add(const CampingDetailsScreen());
-    }
-
-    base.addAll([
-      const RoomSetupAndPricingScreen(),
-      const AvailabilitySetupScreen(),
-      const PoliciesAndRulesScreen(),
-    ]);
-
-    if (!widget.isAddingNewProperty) {
       base.addAll([
-        const BankDetailsScreen(),
-        const HostVerificationScreen(),
+        const PropertyBasicInfoScreen(), // RV Title, Description, Passenger capacity
+        const RvSpecsScreen(), // Page 1: Rig Identity, Make, Model, Year, Fuel, Transmission
+        const RvLivingComfortScreen(), // Page 2: Berths, Bed Layouts, Galley, Bathroom, Off-grid Gear
+        const RvMobilityPricingScreen(), // Page 3: Mobility mode, Daily Km, Tariffs, Corridors
+        const RvGuidelinesScreen(), // Page 4: Driver Eligibility, Speed limiter, Night policy
+        const PropertyLocationScreen(), // Pickup location & hub
+        const PropertyPhotosScreen(),
+        const AvailabilitySetupScreen(), // Calendar & blocked dates
+        const PoliciesAndRulesScreen(), // Driving rules & vehicle security deposit
+      ]);
+    } else if (provider.propertyType == 'CAMPING_SITE') {
+      base.addAll([
+        const PropertyBasicInfoScreen(), // Campsite Name & Description
+        const CampingDetailsScreen(), // Terrain & wilderness facilities
+        const RoomSetupAndPricingScreen(), // Campsite units setup (pitches, domes, capacity)
+        const PropertyLocationScreen(), // GPS location & access
+        const PropertyPhotosScreen(),
+        const AvailabilitySetupScreen(), // Calendar & blocked dates
+        const PoliciesAndRulesScreen(), // Camp rules & campfire safety
       ]);
     } else {
-      base.add(const HostVerificationScreen());
+      // Standard residential stays (Villa, Apartment, Cabin, Homestay, etc.)
+      base.addAll([
+        const PropertyBasicInfoScreen(),
+        const PropertyLocationScreen(),
+        const PropertyPhotosScreen(),
+        const AmenitiesScreen(),
+        const RoomSetupAndPricingScreen(),
+        const AvailabilitySetupScreen(),
+        const PoliciesAndRulesScreen(),
+      ]);
     }
 
-    base.add(const PropertyReviewAndSubmitScreen());
+    // Shared KYC, verification, and preview
+    base.addAll([
+      const BankDetailsScreen(),
+      const HostVerificationScreen(),
+      const PropertyReviewAndSubmitScreen(),
+    ]);
 
     return base;
   }
@@ -92,25 +116,21 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      final hostProvider = context.read<HostOnboardingProvider>();
-      final total = _getScreens(hostProvider).length;
+      final provider = context.read<HostOnboardingProvider>();
+      await provider.ready;
+      if (!mounted) return;
       if (widget.isAddingNewProperty) {
-        setState(() {
-          _currentIndex = 0;
-        });
-        hostProvider.resetForNewProperty();
-      } else if (widget.startAtBeginning) {
-        setState(() {
-          _currentIndex = 0;
-        });
-      } else if (hostProvider.currentPage > 0) {
-        final safeIdx = hostProvider.currentPage.clamp(0, total > 0 ? total - 1 : 0);
-        setState(() {
-          _currentIndex = safeIdx;
-        });
+        provider.isAddingSubsequentProperty = true;
+        await provider.resetForNewProperty();
+      } else {
+        await provider.checkHostListingStatus();
       }
+      if (!mounted) return;
+      final total = _getScreens(provider).length;
+      setState(() => _currentIndex = widget.startAtBeginning || widget.isAddingNewProperty
+        ? 0 : provider.currentPage.clamp(0, total - 1));
     });
   }
 
@@ -119,30 +139,66 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
     super.dispose();
   }
 
-  bool _validateCurrentScreen(HostOnboardingProvider provider, Widget currentScreen) {
-    if (currentScreen is HostAccountSetupScreen) {
-      return provider.firstName.isNotEmpty && provider.lastName.isNotEmpty && provider.email.isNotEmpty && provider.phone.isNotEmpty;
+  String? _getValidationErrorMessage(HostOnboardingProvider provider, Widget screen) {
+    if (screen is HostAccountSetupScreen) {
+      if ([provider.firstName, provider.email, provider.phone].any((s) => s.trim().isEmpty)) {
+        return 'Please enter your name, email, and phone number';
+      }
     }
-    if (currentScreen is PropertyBasicInfoScreen) {
-      return provider.title.isNotEmpty && provider.description.isNotEmpty;
+    if (screen is PropertyBasicInfoScreen) {
+      if (provider.title.trim().isEmpty || provider.description.trim().isEmpty) {
+        return 'Please provide a listing title and description';
+      }
     }
-    if (currentScreen is PropertyLocationScreen) {
-      return provider.city.isNotEmpty && provider.state.isNotEmpty;
+    if (screen is RvSpecsScreen) {
+      final make = provider.rvDetails['makeController']?.toString() ?? '';
+      final model = provider.rvDetails['modelController']?.toString() ?? '';
+      if (make.trim().isEmpty && model.trim().isEmpty) {
+        return 'Please select your vehicle make and model';
+      }
     }
-    if (currentScreen is BankDetailsScreen) {
-      return (provider.accountNumber.isNotEmpty && provider.ifscCode.isNotEmpty) || provider.upiId.isNotEmpty;
+    if (screen is RvMobilityPricingScreen) {
+      if (provider.pricePerNight <= 0) {
+        return 'Please specify the daily rental tariff for your RV';
+      }
     }
-    return true;
+    if (screen is PropertyLocationScreen) {
+      if (provider.city.trim().isEmpty && provider.pickupLocation.trim().isEmpty && provider.address.trim().isEmpty) {
+        return 'Please enter your location or city';
+      }
+    }
+    if (screen is PropertyPhotosScreen) {
+      if (!provider.allRequiredCategoriesFilled) {
+        return 'Please upload all required photos';
+      }
+    }
+    if (screen is BankDetailsScreen) {
+      final hasPayout = (provider.accountNumber.isNotEmpty && provider.ifscCode.isNotEmpty) || provider.upiId.isNotEmpty || provider.payoutVerified;
+      if (!hasPayout) {
+        return 'Please enter your bank account or UPI ID for payouts';
+      }
+      final hasSelfie = provider.selfieFaceProofDocPath.isNotEmpty || provider.selfieFaceProofDocUrl.isNotEmpty || provider.faceVerified;
+      if (!hasSelfie) {
+        return 'Please upload your selfie photo to continue';
+      }
+    }
+    if (screen is HostVerificationScreen) {
+      if (!provider.isLegalDeclarationAccepted) {
+        return 'Please accept the host declaration to proceed';
+      }
+    }
+    return null;
   }
 
   Future<void> _nextPage(HostOnboardingProvider provider, List<Widget> currentScreens) async {
     if (currentScreens.isEmpty) return;
     final safeIdx = _currentIndex.clamp(0, currentScreens.length - 1);
     
-    if (!_validateCurrentScreen(provider, currentScreens[safeIdx])) {
+    final validationError = _getValidationErrorMessage(provider, currentScreens[safeIdx]);
+    if (validationError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill all required fields'),
+        SnackBar(
+          content: Text(validationError),
           backgroundColor: Colors.redAccent,
         )
       );
@@ -155,7 +211,7 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
       if (!success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Submission failed. Please check network and try again.')),
+            SnackBar(content: Text(provider.lastError ?? 'Submission failed. Your draft is preserved.')),
           );
         }
         return;
@@ -167,9 +223,9 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => HostSuccessPassportScreen(
-              propertyTitle: provider.title.isNotEmpty ? provider.title : 'Luxury Boutique Stay',
-              city: provider.city.isNotEmpty ? provider.city : 'Goa',
-              pricePerNight: provider.pricePerNight > 0 ? provider.pricePerNight : 12500,
+              propertyTitle: provider.title,
+              city: provider.city,
+              pricePerNight: provider.pricePerNight,
             ),
           ),
         );
@@ -203,13 +259,16 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
     return Consumer<HostOnboardingProvider>(
       builder: (context, provider, child) {
         final currentScreens = _getScreens(provider);
-        if (currentScreens.isEmpty) {
+        if (currentScreens.isEmpty || provider.isRestoring) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
 
         final safeIndex = _currentIndex.clamp(0, currentScreens.length - 1);
-        bool isNextDisabled = provider.isUploading;
-        bool isWelcomeScreen = safeIndex < currentScreens.length && currentScreens[safeIndex] is HostWelcomeScreen;
+        final bool isNextDisabled = provider.isUploading;
+        final bool isWelcomeScreen = safeIndex < currentScreens.length && currentScreens[safeIndex] is HostWelcomeScreen;
+        final bool hasWelcome = currentScreens.isNotEmpty && currentScreens.first is HostWelcomeScreen;
+        final int totalFormSteps = hasWelcome ? (currentScreens.length - 1) : currentScreens.length;
+        final int currentFormStep = hasWelcome ? safeIndex : (safeIndex + 1);
 
         return PopScope(
           canPop: safeIndex == 0 || isWelcomeScreen,
@@ -258,7 +317,7 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
                           Text(
                             isWelcomeScreen
                                 ? 'Host Onboarding'
-                                : 'Step ${safeIndex + 1} of ${currentScreens.length}',
+                                : 'Step $currentFormStep of $totalFormSteps',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -297,7 +356,7 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
                   duration: const Duration(milliseconds: 300),
                   tween: Tween<double>(
                     begin: 0,
-                    end: (safeIndex + 1) / currentScreens.length,
+                    end: isWelcomeScreen ? 0.0 : (currentFormStep / totalFormSteps).clamp(0.0, 1.0),
                   ),
                   builder: (context, value, child) {
                     return LinearProgressIndicator(
@@ -396,9 +455,11 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
                                     safeIndex == currentScreens.length - 2 
                                         ? 'Submit' 
                                         : safeIndex == currentScreens.length - 1 
-                                            ? 'Finish' 
+                                            ? (provider.isAddingSubsequentProperty || widget.isAddingNewProperty
+                                                ? 'Submit for Property Application'
+                                                : 'Apply for Host Application') 
                                             : 'Next', 
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                                    style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold),
                                   ),
                             ),
                         ],

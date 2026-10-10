@@ -11,7 +11,8 @@ import '../../widgets/bouncing_widget.dart';
 
 class KycVerificationScreen extends StatefulWidget {
   final bool initialIsHost;
-  const KycVerificationScreen({super.key, this.initialIsHost = false});
+  final int initialTabIndex;
+  const KycVerificationScreen({super.key, this.initialIsHost = false, this.initialTabIndex = 0});
 
   @override
   State<KycVerificationScreen> createState() => _KycVerificationScreenState();
@@ -22,6 +23,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
   late TabController _tabController;
   late VerificationApi _verificationApi;
 
+  int _credentialRevision = 0;
   bool _isLoadingStatus = true;
   Map<String, dynamic>? _verificationStatus;
 
@@ -43,6 +45,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
   final _aadhaarController = TextEditingController();
   final _aadhaarOtpController = TextEditingController();
   String? _aadhaarRefId;
+  String? _challengeAadhaar;
   bool _isGeneratingAadhaarOtp = false;
   bool _isVerifyingAadhaarOtp = false;
   Map<String, dynamic>? _aadhaarResult;
@@ -65,11 +68,29 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
     _tabController = TabController(
       length: 4,
       vsync: this,
-      initialIndex: widget.initialIsHost ? 0 : 0,
+      initialIndex: widget.initialTabIndex,
     );
-    final apiClient = ApiClient(baseUrl: 'https://stayq-api-608570851336.asia-south1.run.app/api/v1');
+    final apiClient = ApiClient.instance;
     _verificationApi = VerificationApi(apiClient);
+    _accountController.addListener(() => _invalidate('bank'));
+    _ifscController.addListener(() => _invalidate('bank'));
+    _aadhaarController.addListener(() { _aadhaarRefId = null; _challengeAadhaar = null; _invalidate('aadhaar'); });
+    _panController.addListener(() => _invalidate('pan'));
+    _upiController.addListener(() => _invalidate('upi'));
     _loadStatus();
+  }
+
+  void _invalidate(String type) {
+    if (!mounted) return;
+    _credentialRevision++;
+    context.read<AppProvider>().invalidateVerification(type);
+    _safeSetState(() {
+      _verificationStatus = {...?_verificationStatus,
+        if (type == 'bank') ...{'isBankVerified': false, 'bankAccountVerified': false},
+        if (type == 'upi') ...{'isUpiVerified': false, 'upiVerified': false},
+        if (type == 'aadhaar') ...{'isAadhaarVerified': false, 'aadhaarVerified': false},
+        if (type == 'pan') ...{'isPanVerified': false, 'panVerified': false}};
+    });
   }
 
   @override
@@ -89,19 +110,20 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
   }
 
   Future<void> _loadStatus() async {
-    setState(() => _isLoadingStatus = true);
+    final revision = _credentialRevision;
+    _safeSetState(() => _isLoadingStatus = true);
     try {
       final res = await _verificationApi.getVerificationStatus();
-      if (mounted) {
-        setState(() {
+      if (mounted && revision == _credentialRevision) {
+        _safeSetState(() {
           _verificationStatus = res;
           _isLoadingStatus = false;
         });
         context.read<AppProvider>().syncVerificationFromBackend(res);
-      }
+      } else { _safeSetState(() => _isLoadingStatus = false); }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoadingStatus = false);
+        _safeSetState(() => _isLoadingStatus = false);
       }
     }
   }
@@ -115,7 +137,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
       return;
     }
 
-    setState(() {
+    _safeSetState(() {
       _isVerifyingBank = true;
       _bankResult = null;
     });
@@ -128,13 +150,14 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
         isHost: widget.initialIsHost,
       );
+      if (!mounted || _accountController.text.trim() != acc || _ifscController.text.trim() != ifsc) return;
 
-      setState(() {
+      _safeSetState(() {
         _bankResult = res;
         _isVerifyingBank = false;
       });
 
-      if (res['verified'] == true || res['accountStatus'] == 'VALID' || res['status'] == 'SUCCESS') {
+      if (res['verified'] == true || res['accountStatus'] == 'VALID') {
         final bankName = res['bankName'] ?? ifsc.substring(0, 4);
         final holderName = res['nameAtBank'] ?? res['name'] ?? _accountHolderController.text.trim();
         if (mounted) {
@@ -152,9 +175,9 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         _showSnackbar(res['message'] ?? 'Bank verification failed. Check account details.', isError: true);
       }
     } catch (e) {
-      setState(() => _isVerifyingBank = false);
+      _safeSetState(() => _isVerifyingBank = false);
       _showSnackbar('Verification request error: $e', isError: true);
-    }
+    } finally { _safeSetState(() => _isVerifyingBank = false); }
   }
 
   // 2. Aadhaar OKYC - Step 1: Send OTP
@@ -165,79 +188,55 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
       return;
     }
 
-    setState(() {
+    _safeSetState(() {
       _isGeneratingAadhaarOtp = true;
       _aadhaarResult = null;
     });
 
+    _aadhaarRefId = null; _challengeAadhaar = null;
     try {
       final res = await _verificationApi.generateAadhaarOtp(aadhaarNumber: cleanAadhaar);
-      setState(() {
+      if (!mounted || _aadhaarController.text.replaceAll(' ', '').trim() != cleanAadhaar) return;
+      _safeSetState(() {
         _isGeneratingAadhaarOtp = false;
         _aadhaarRefId = res['referenceId']?.toString() ?? res['refId']?.toString();
+        _challengeAadhaar = _aadhaarRefId?.isNotEmpty == true ? cleanAadhaar : null;
       });
 
-      if (_aadhaarRefId != null) {
+      if (_aadhaarRefId?.isNotEmpty == true) {
         AppMotion.tapLight();
         _showSnackbar(res['message'] ?? 'OTP sent to mobile linked with Aadhaar! 📲');
       } else {
         _showSnackbar(res['message'] ?? 'Failed to send Aadhaar OTP', isError: true);
       }
     } catch (e) {
-      setState(() => _isGeneratingAadhaarOtp = false);
+      _safeSetState(() => _isGeneratingAadhaarOtp = false);
       _showSnackbar('Aadhaar OTP request error: $e', isError: true);
-    }
+    } finally { _safeSetState(() => _isGeneratingAadhaarOtp = false); }
   }
 
   // 2. Aadhaar OKYC - Step 2: Verify OTP
   Future<void> _verifyAadhaarOtp() async {
+    if (_isVerifyingAadhaarOtp) return;
     final otp = _aadhaarOtpController.text.trim();
-    if (otp.length != 6 || _aadhaarRefId == null) {
-      _showSnackbar('Please enter the 6-digit OTP received from UIDAI', isError: true);
-      return;
+    final aadhaar = _aadhaarController.text.replaceAll(' ', '').trim();
+    final reference = _aadhaarRefId;
+    if (!RegExp(r'^\d{6}$').hasMatch(otp) || reference == null || _challengeAadhaar != aadhaar) {
+      _showSnackbar('Request an OTP for this Aadhaar and enter the six-digit code.', isError: true); return;
     }
-
-    setState(() {
-      _isVerifyingAadhaarOtp = true;
-      _aadhaarResult = null;
-    });
-
+    _safeSetState(() { _isVerifyingAadhaarOtp = true; _aadhaarResult = null; });
     try {
-      final res = await _verificationApi.verifyAadhaarOtp(
-        referenceId: _aadhaarRefId!,
-        otp: otp,
-      );
-
-      setState(() {
-        _aadhaarResult = res;
-        _isVerifyingAadhaarOtp = false;
-      });
-
+      final res = await _verificationApi.verifyAadhaarOtp(referenceId: reference, otp: otp);
+      if (!mounted || _aadhaarRefId != reference || _challengeAadhaar != aadhaar ||
+          _aadhaarController.text.replaceAll(' ', '').trim() != aadhaar) return;
+      _safeSetState(() => _aadhaarResult = res);
       if (res['verified'] == true || res['status'] == 'VALID' || res['status'] == 'VERIFIED') {
-        final verifiedName = res['name'] ?? 'Verified Aadhaar Holder';
-        final address = res['address'] ?? 'India';
-        final dob = res['dob']?.toString();
-        final aadhaarNum = _aadhaarController.text.replaceAll(' ', '').trim();
-
-        if (mounted) {
-          context.read<AppProvider>().setAadhaarVerified(
-            name: verifiedName,
-            aadhaarNumber: aadhaarNum,
-            address: address,
-            dob: dob,
-          );
-        }
-
-        AppMotion.tapHeavy();
-        _showSnackbar('UIDAI Aadhaar Verified Successfully! 🛡️');
-        _loadStatus();
-      } else {
-        _showSnackbar(res['message'] ?? 'Invalid Aadhaar OTP', isError: true);
-      }
-    } catch (e) {
-      setState(() => _isVerifyingAadhaarOtp = false);
-      _showSnackbar('Aadhaar verification error: $e', isError: true);
-    }
+        context.read<AppProvider>().setAadhaarVerified(name: res['name']?.toString() ?? '',
+          aadhaarNumber: aadhaar, address: res['address']?.toString() ?? '', dob: res['dob']?.toString());
+        AppMotion.tapHeavy(); _showSnackbar('Aadhaar verification confirmed.'); await _loadStatus();
+      } else { _showSnackbar(res['message']?.toString() ?? 'Invalid Aadhaar OTP', isError: true); }
+    } catch (e) { if (mounted) _showSnackbar('Aadhaar verification error: $e', isError: true); }
+    finally { _safeSetState(() => _isVerifyingAadhaarOtp = false); }
   }
 
   // 3. PAN Verification
@@ -249,7 +248,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
       return;
     }
 
-    setState(() {
+    _safeSetState(() {
       _isVerifyingPan = true;
       _panResult = null;
     });
@@ -259,14 +258,15 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         pan: pan,
         name: name.isNotEmpty ? name : null,
       );
+      if (!mounted || _panController.text.trim().toUpperCase() != pan) return;
 
-      setState(() {
+      _safeSetState(() {
         _panResult = res;
         _isVerifyingPan = false;
       });
 
-      if (res['valid'] == true || res['status'] == 'SUCCESS' || res['verified'] == true) {
-        final resolvedName = res['registeredName'] ?? res['name'] ?? res['registered_name'] ?? 'Valid PAN';
+      if (res['valid'] == true || res['verified'] == true) {
+        final resolvedName = res['registeredName'] ?? res['name'] ?? res['registered_name'] ?? '';
         if (resolvedName.isNotEmpty) {
           _panNameController.text = resolvedName;
         }
@@ -285,9 +285,9 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         _showSnackbar(res['message'] ?? 'PAN verification failed', isError: true);
       }
     } catch (e) {
-      setState(() => _isVerifyingPan = false);
+      _safeSetState(() => _isVerifyingPan = false);
       _showSnackbar('PAN verification error: $e', isError: true);
-    }
+    } finally { _safeSetState(() => _isVerifyingPan = false); }
   }
 
   // 4. UPI Verification
@@ -298,7 +298,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
       return;
     }
 
-    setState(() {
+    _safeSetState(() {
       _isVerifyingUpi = true;
       _upiResult = null;
     });
@@ -308,13 +308,14 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         vpa: vpa,
         name: _upiNameController.text.trim().isNotEmpty ? _upiNameController.text.trim() : null,
       );
+      if (!mounted || _upiController.text.trim().toLowerCase() != vpa) return;
 
-      setState(() {
+      _safeSetState(() {
         _upiResult = res;
         _isVerifyingUpi = false;
       });
 
-      if (res['valid'] == true || res['status'] == 'SUCCESS') {
+      if (res['valid'] == true) {
         final holderName = res['nameAtVpa'] ?? res['name'] ?? _upiNameController.text.trim();
         if (mounted) {
           context.read<AppProvider>().setUpiVerified(
@@ -329,10 +330,12 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         _showSnackbar(res['message'] ?? 'UPI verification failed', isError: true);
       }
     } catch (e) {
-      setState(() => _isVerifyingUpi = false);
+      _safeSetState(() => _isVerifyingUpi = false);
       _showSnackbar('UPI verification error: $e', isError: true);
-    }
+    } finally { _safeSetState(() => _isVerifyingUpi = false); }
   }
+
+  void _safeSetState(VoidCallback change) { if (mounted) setState(change); }
 
   void _showSnackbar(String msg, {bool isError = false}) {
     if (!mounted) return;
@@ -629,7 +632,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
                 const MapEntry('Status', 'Active for Instant 60-Sec Refund & Payouts'),
               ],
               onEdit: () {
-                setState(() => _editBank = true);
+                _safeSetState(() => _editBank = true);
               },
               editLabel: 'Change or Re-verify Bank Account',
             ),
@@ -645,7 +648,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         children: [
           if (isBankVerified && _editBank) ...[
             TextButton.icon(
-              onPressed: () => setState(() => _editBank = false),
+              onPressed: () => _safeSetState(() => _editBank = false),
               icon: const Icon(Icons.arrow_back, size: 16),
               label: const Text('Back to Verified Bank Details'),
             ),
@@ -740,7 +743,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
                 const MapEntry('Status', 'UIDAI Digital Identity Confirmed'),
               ],
               onEdit: () {
-                setState(() => _editAadhaar = true);
+                _safeSetState(() => _editAadhaar = true);
               },
               editLabel: 'Re-verify Aadhaar',
             ),
@@ -756,7 +759,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         children: [
           if (isAadhaarVerified && _editAadhaar) ...[
             TextButton.icon(
-              onPressed: () => setState(() => _editAadhaar = false),
+              onPressed: () => _safeSetState(() => _editAadhaar = false),
               icon: const Icon(Icons.arrow_back, size: 16),
               label: const Text('Back to Verified Aadhaar Details'),
             ),
@@ -889,7 +892,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
                 const MapEntry('Status', 'Active & Govt Validated'),
               ],
               onEdit: () {
-                setState(() => _editPan = true);
+                _safeSetState(() => _editPan = true);
               },
               editLabel: 'Re-verify PAN Card',
             ),
@@ -905,7 +908,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         children: [
           if (isPanVerified && _editPan) ...[
             TextButton.icon(
-              onPressed: () => setState(() => _editPan = false),
+              onPressed: () => _safeSetState(() => _editPan = false),
               icon: const Icon(Icons.arrow_back, size: 16),
               label: const Text('Back to Verified PAN Details'),
             ),
@@ -988,7 +991,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
                 const MapEntry('Status', '60-Sec Automated Refund Enabled'),
               ],
               onEdit: () {
-                setState(() => _editUpi = true);
+                _safeSetState(() => _editUpi = true);
               },
               editLabel: 'Change UPI ID',
             ),
@@ -1004,7 +1007,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
         children: [
           if (isUpiVerified && _editUpi) ...[
             TextButton.icon(
-              onPressed: () => setState(() => _editUpi = false),
+              onPressed: () => _safeSetState(() => _editUpi = false),
               icon: const Icon(Icons.arrow_back, size: 16),
               label: const Text('Back to Verified UPI Details'),
             ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../host/onboarding/host_onboarding_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:pinput/pinput.dart';
@@ -20,27 +19,9 @@ class _OtpScreenState extends State<OtpScreen> {
   final TextEditingController _otpController = TextEditingController();
 
   Future<void> _handleSuccess(AppProvider provider) async {
-    final isComplete = await provider.checkProfileComplete();
+    final complete = await provider.checkProfileComplete();
     if (!mounted) return;
-    if (provider.isHostMode) {
-      final prefs = await SharedPreferences.getInstance();
-      final kycStatus = prefs.getString('kyc_status');
-      final hostOnboardingInProgress = prefs.getBool('host_onboarding_in_progress') ?? false;
-
-      if (kycStatus == 'pending_review' || !hostOnboardingInProgress) {
-        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);
-      } else {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const HostOnboardingScreen()),
-          (route) => false,
-        );
-      }
-    } else if (isComplete) {
-      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);
-    } else {
-      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.completeProfile, (route) => false);
-    }
+    Navigator.pushNamedAndRemoveUntil(context, complete ? AppRoutes.mainShell : AppRoutes.completeProfile, (_) => false);
   }
 
   void _verifyOTP(String code) async {
@@ -53,15 +34,13 @@ class _OtpScreenState extends State<OtpScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      // If user got verified in background during the error, still succeed:
-      if (provider.isLoggedIn) {
-        await _handleSuccess(provider);
-        return;
-      }
       CustomToast.show(context: context, message: e.toString(), isError: true);
       _otpController.clear();
     }
   }
+
+  @override
+  void dispose() { _otpController.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +79,8 @@ class _OtpScreenState extends State<OtpScreen> {
             ),
           ),
           SafeArea(
-            child: Padding(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

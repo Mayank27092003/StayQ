@@ -141,8 +141,9 @@ export const HostAppModal: React.FC = () => {
         {/* Download App CTA Buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginBottom: '1rem' }}>
           <a
-            href="/StayQ-Release.apk"
-            download="StayQ-Release.apk"
+            href="https://play.google.com/store/apps/details?id=com.stayq.stay_q"
+            target="_blank"
+            rel="noopener noreferrer"
             className="btn btn--primary"
             style={{
               width: '100%',
@@ -156,8 +157,27 @@ export const HostAppModal: React.FC = () => {
             }}
           >
             <Download size={18} />
-            <span>Download Stay Q App (Android APK)</span>
+            <span>Get Stay Q on Google Play Store</span>
           </a>
+
+          <div
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              padding: '0.6rem 1rem',
+              borderRadius: '12px',
+              background: 'var(--gray-100)',
+              color: 'var(--gray-700)',
+              border: '1px dashed var(--border)',
+              gap: '0.4rem',
+            }}
+          >
+            <span>🍎 iOS App: In Review with Apple Team</span>
+          </div>
 
           <a
             href="https://wa.me/919225270718?text=Hi%20Stay%20Q%20Team%2C%20I%20am%20a%20property%20owner%20and%20want%20to%20list%20my%20stay."
@@ -183,7 +203,7 @@ export const HostAppModal: React.FC = () => {
 
         {/* Footer Note */}
         <p style={{ textAlign: 'center', fontSize: '0.74rem', color: 'var(--gray-500)', margin: 0, lineHeight: 1.4 }}>
-          iOS App coming soon to Apple App Store · QUATALYST PRIVATE LIMITED (CIN: U62011GA2026PTC018230)
+          Google Play Store Live · iOS App In Review with Apple Team · QUATALYST PRIVATE LIMITED (CIN: U62011GA2026PTC018230)
         </p>
       </div>
     </div>

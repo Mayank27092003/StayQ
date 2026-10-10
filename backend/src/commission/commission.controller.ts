@@ -1,3 +1,4 @@
+import { Public } from '../common/decorators/public.decorator';
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { CommissionService, CommissionSettingsDto } from './commission.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
@@ -19,6 +20,7 @@ export class CommissionController {
     return this.commissionService.updateSettings(dto);
   }
 
+  @Public()
   @Get('commission/settings')
   getPublicSettings() {
     return this.commissionService.getSettings();

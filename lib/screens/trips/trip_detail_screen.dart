@@ -25,16 +25,15 @@ class TripDetailScreen extends StatelessWidget {
     final checkInStr = df.format(booking.checkIn);
     final checkOutStr = df.format(booking.checkOut);
     final nights = booking.checkOut.difference(booking.checkIn).inDays;
-    final digits = booking.confirmationCode.replaceAll(RegExp(r'[^0-9]'), '');
-    final pin = digits.length >= 4 ? digits.substring(digits.length - 4) : '8492';
+    final pin = booking.accessPin?.isNotEmpty == true ? booking.accessPin! : 'Awaiting host instructions';
 
-    final itineraryText = '''STAY Q TRIP ITINERARY
+    final itineraryText = '''STAYQ TRIP ITINERARY
 Property: ${stay.title}
 Location: ${stay.location}
 Booking Code: ${booking.confirmationCode}
 Dates: $checkInStr to $checkOutStr ($nights nights)
-Access: ${stay.isStayingWithHost ? "In-Person Check-in with ${stay.hostName}" : "Door PIN: $pin#"}
-Total Paid: ₹${booking.totalAmount.toStringAsFixed(0)}
+Access: ${stay.isStayingWithHost ? "In-Person Check-in with ${stay.hostName}" : "Access: $pin"}
+Booking total: ₹${booking.totalAmount.toStringAsFixed(0)}
 Official Desk: hello@stayq.space''';
 
     await Clipboard.setData(ClipboardData(text: itineraryText));
@@ -104,6 +103,8 @@ Official Desk: hello@stayq.space''';
 
     DigitalBoardingPassSheet.show(
       context,
+      accessPin: booking.isConfirmed && booking.isPaid ? booking.accessPin : null,
+      isPaid: booking.isPaid,
       confirmationCode: booking.confirmationCode,
       guestName: guestName,
       stayTitle: stay.title,
@@ -171,9 +172,9 @@ Official Desk: hello@stayq.space''';
                       child: SizedBox(
                         width: 90,
                         height: 90,
-                        child: (stay.imageUrls.isNotEmpty && stay.imageUrls.first.startsWith('http'))
+                        child: (stay.imageUrls.isNotEmpty && stay.firstImage.startsWith('http'))
                             ? Image.network(
-                                stay.imageUrls.first,
+                                stay.firstImage,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Container(
                                   color: AppColors.surfaceLight,
@@ -331,11 +332,11 @@ Official Desk: hello@stayq.space''';
                   const SizedBox(height: 12),
                   if (!stay.isStayingWithHost) ...[
                     Text(
-                      'Smart Door PIN: ${(booking.confirmationCode.replaceAll(RegExp(r'[^0-9]'), '')).padRight(4, '8').substring(0, 4)}#',
+                      (booking.accessPin?.isNotEmpty == true ? 'Access PIN: ${booking.accessPin}' : 'Awaiting host access instructions'),
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: 1.5),
                     ),
                     const SizedBox(height: 4),
-                    const Text('Digital keypad lock code valid for your booked dates.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                    const Text('Use only the access instructions supplied for this booking.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                     const SizedBox(height: 6),
                   ] else ...[
                     Text(
@@ -346,7 +347,7 @@ Official Desk: hello@stayq.space''';
                     Text('Direct key handover upon arrival. Host ${stay.hostName} will welcome you.', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                     const SizedBox(height: 6),
                   ],
-                  const Text('High-Speed WiFi: StayQ-Guest  •  Pass: explore2026', style: TextStyle(fontSize: 13, color: Color(0xFF334155))),
+                  const Text('Ask your host for the property Wi-Fi details.', style: TextStyle(fontSize: 13, color: Color(0xFF334155))),
                   if (stay.isStayingWithHost) ...[
                     const SizedBox(height: 10),
                     Container(
@@ -404,17 +405,21 @@ Official Desk: hello@stayq.space''';
                       );
 
                       final convId = await messaging.createOrGetConversation(
-                        hostId: stay.hostId.isNotEmpty ? stay.hostId : stay.id,
+                        hostId: stay.hostId,
                         propertyId: stay.id,
                         bookingId: booking.id,
                       );
 
+                      if (convId == null) {
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(messaging.error ?? 'Conversation could not be opened.')));
+                        return;
+                      }
                       if (context.mounted) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => ChatDetailScreen(
-                              chatId: convId ?? 'conv_${booking.id}',
+                              chatId: convId,
                               otherUserName: stay.hostName.isNotEmpty ? stay.hostName : 'Host',
                               otherUserAvatar: stay.hostAvatar,
                             ),
@@ -449,7 +454,7 @@ Official Desk: hello@stayq.space''';
               width: double.infinity,
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.confirmation_number_rounded, size: 18),
-                label: const Text('View & Download Stay Q Booking Pass'),
+                label: const Text('View & Download StayQ Booking Pass'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF073359),
                   foregroundColor: const Color(0xFFC5A880),
@@ -479,12 +484,12 @@ Official Desk: hello@stayq.space''';
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Total Paid', style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                      Text(booking.isPaid ? 'Total Paid' : 'Booking total', style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
                       Text('₹${booking.totalAmount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text('Payment verified via Cashfree Secure Gateway (GST & Taxes Included)', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                  Text(booking.isPaid ? 'Payment verified' : 'Payment status is available in Trips', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                 ],
               ),
             ),

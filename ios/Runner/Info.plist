@@ -26,12 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	
-	<!-- Bypass Export Compliance Questionnaire -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-
-	<!-- URL Types for Google Sign-In & Firebase Phone Auth (reCAPTCHA callback) -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -43,45 +39,33 @@
 			</array>
 		</dict>
 	</array>
-	
-	<!-- Privacy Permissions for iOS -->
 	<key>NSCameraUsageDescription</key>
 	<string>Stay Q requires camera access to scan Government ID documents (PAN/Aadhaar) for host KYC verification and capture property photos.</string>
-	
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Stay Q requires photo library access to upload property photos, passbooks, and profile pictures.</string>
-	
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Stay Q needs access to save booking receipts, invoices, and travel vouchers to your photos.</string>
-	
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Stay Q uses your location to discover nearby hotels, camping sites, RVs, and curated experiences near you.</string>
-	
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Stay Q uses your location for trip navigation and host check-in assistance.</string>
-	
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Stay Q requires microphone access for recording video walkthroughs of listed stays.</string>
-
-	<!-- Allow UPI deep links on iOS (GPay, PhonePe, Paytm, BHIM, WhatsApp) -->
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
-		<string>upi</string>
-		<string>phonepe</string>
-		<string>gpay</string>
-		<string>paytmmp</string>
 		<string>bhim</string>
-		<string>whatsapp</string>
-		<string>https</string>
+		<string>gpay</string>
 		<string>http</string>
-		<string>tel</string>
+		<string>https</string>
 		<string>mailto</string>
+		<string>paytmmp</string>
+		<string>phonepe</string>
+		<string>tel</string>
+		<string>upi</string>
+		<string>whatsapp</string>
 	</array>
-
-	<!-- Embedded Web & Maps View -->
 	<key>io.flutter.embedded_views_preview</key>
 	<true/>
-	
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -101,5 +85,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>GIDClientID</key>
+	<string>608570851336-jn6gg8mf9qqdu9hdp3cdrdub638cet7a.apps.googleusercontent.com</string>
 </dict>
 </plist>

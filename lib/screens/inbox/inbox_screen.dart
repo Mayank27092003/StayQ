@@ -20,6 +20,7 @@ class _InboxScreenState extends State<InboxScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       Provider.of<MessagingProvider>(context, listen: false).fetchConversations();
     });
   }

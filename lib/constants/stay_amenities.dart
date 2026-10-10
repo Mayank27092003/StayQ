@@ -17,7 +17,7 @@ class StayAmenityItem {
 }
 
 class StayAmenities {
-  /// The 25 Official Standard Stay Q Amenities
+  /// The 25 Official Standard StayQ Amenities
   static const List<StayAmenityItem> all = [
     // 1. Essentials
     StayAmenityItem(

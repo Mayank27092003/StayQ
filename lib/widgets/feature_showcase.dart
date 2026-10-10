@@ -70,9 +70,9 @@ class _FeatureShowcaseOverlayState extends State<_FeatureShowcaseOverlay>
     _FeatureSlide(
       icon: Icons.auto_awesome_rounded,
       accentColor: Color(0xFFD6B354),
-      title: 'Meet Stay Q — Your Travel Buddy',
+      title: 'Meet StayQ — Your Travel Buddy',
       subtitle:
-          'Stay Q is your personal travel companion. Ask for local food recommendations, hidden trekking trails, or the best viewpoints.',
+          'StayQ is your personal travel companion. Ask for local food recommendations, hidden trekking trails, or the best viewpoints.',
       backgroundEmoji: '🐝',
     ),
   ];

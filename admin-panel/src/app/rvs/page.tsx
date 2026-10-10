@@ -219,7 +219,7 @@ export default function RVFleetManagementPage() {
       subtitle,
       description: `${description} | Vehicle: ${vehicleType}, Berths: ${berths}, Transmission: ${transmission}, Fuel: ${fuelType}, Mileage: ${mileageLimitKm}km/day, Solar: ${solarWattage}W, Water: ${waterTankLitres}L, Handover: ${pickupLocation}`,
       type: "RV",
-      category: "RV",
+      category: "CAMPING",
       city,
       address: pickupLocation,
       basePrice: Number(basePrice),
@@ -253,8 +253,10 @@ export default function RVFleetManagementPage() {
       setTimeout(() => {
         setIsModalOpen(false);
       }, 700);
-    } catch (err) {
+    } catch (err: any) {
       console.warn("RV save note:", err);
+      const msg = err?.response?.data?.message || err?.message || "Failed to save RV listing.";
+      alert(`Save error: ${msg}`);
     } finally {
       setSaving(false);
     }

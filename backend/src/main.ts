@@ -1,67 +1,67 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
-
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
-
-  // Global prefix
+export function configureApp(app: INestApplication) {
   app.setGlobalPrefix(process.env.API_PREFIX || 'api/v1');
-
-  // CORS
+  const origins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  for (const o of origins) {
+    const u = new URL(o);
+    if (
+      u.origin !== o ||
+      !['http:', 'https:'].includes(u.protocol) ||
+      (process.env.NODE_ENV === 'production' && u.protocol !== 'https:')
+    )
+      throw new Error('CORS_ORIGINS must contain exact allowed origins');
+  }
   app.enableCors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, server-to-server)
-      if (!origin) return callback(null, true);
-      const allowedPatterns = [
-        /^https:\/\/.*\.stayq\.in$/,
-        /^https:\/\/stayq\.in$/,
-        /^https:\/\/.*\.stayq\.space$/,
-        /^https:\/\/stayq\.space$/,
-        /^https:\/\/stay-q\.web\.app$/,
-        /^https:\/\/stay-q\.firebaseapp\.com$/,
-        /^https:\/\/stayq-.*\.run\.app$/,
-        /^http:\/\/localhost:(3000|5173|8080)$/,
-      ];
-      const isAllowed = allowedPatterns.some((pattern) => pattern.test(origin));
-      if (isAllowed) {
-        callback(null, true);
-      } else {
-        callback(null, true); // Permissive fallback for seamless custom domain routing
-      }
-    },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: (origin, cb) => cb(null, !origin || origins.includes(origin)),
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
     credentials: true,
   });
-
-  // Global validation pipeline
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: false,
+      forbidNonWhitelisted: true,
       transform: true,
     }),
   );
-
-  // Global exception filter
   app.useGlobalFilters(new GlobalExceptionFilter());
-
-  // Swagger setup
-  const config = new DocumentBuilder()
-    .setTitle('Stay Q API')
-    .setDescription('Backend API for the Stay Q mobile app (Guest & Host) and Admin Panel.')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
-
-  const port = parseInt(process.env.PORT || '8080', 10);
-  await app.listen(port, '0.0.0.0');
-  console.log(`Application is running on: http://localhost:${port}/${process.env.API_PREFIX || 'api/v1'}`);
-  console.log(`Swagger UI is running on: http://localhost:${port}/api/docs`);
+  app.enableShutdownHooks();
+  if (process.env.SWAGGER_ENABLED === 'true')
+    SwaggerModule.setup(
+      'api/docs',
+      app,
+      SwaggerModule.createDocument(
+        app,
+        new DocumentBuilder()
+          .setTitle('StayQ API')
+          .setVersion('1.0')
+          .addBearerAuth()
+          .build(),
+      ),
+    );
 }
-bootstrap();
+export async function bootstrap() {
+  const app = await NestFactory.create(AppModule, { rawBody: true });
+  configureApp(app);
+  app.getHttpAdapter().getInstance().disable('x-powered-by');
+  // Register the raw-body aware parser before listen; larger media goes to object storage.
+  (app as any).useBodyParser('json', { limit: '512kb' });
+  const port = Number(process.env.PORT || 8080);
+  if (!Number.isInteger(port) || port < 1 || port > 65535)
+    throw new Error('Invalid PORT');
+  await app.listen(port, '0.0.0.0');
+  return app;
+}
+if (require.main === module)
+  bootstrap().catch(() => {
+    console.error(
+      'Backend startup failed. Check configuration and database connectivity.',
+    );
+    process.exitCode = 1;
+  });

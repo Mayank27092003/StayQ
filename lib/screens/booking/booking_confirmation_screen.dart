@@ -1,3 +1,4 @@
+import '../../models/booking_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -13,9 +14,10 @@ import '../../services/qube_trigger_service.dart';
 import '../../navigation/app_router.dart';
 import '../../widgets/digital_boarding_pass_sheet.dart';
 import 'package:intl/intl.dart';
-import 'dart:math';
+
 
 class BookingConfirmationScreen extends StatefulWidget {
+  final BookingModel booking;
   final StayModel stay;
   final double totalAmount;
   final DateTimeRange selectedDates;
@@ -24,6 +26,7 @@ class BookingConfirmationScreen extends StatefulWidget {
 
   const BookingConfirmationScreen({
     super.key,
+    required this.booking,
     required this.stay,
     required this.totalAmount,
     required this.selectedDates,
@@ -41,9 +44,10 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
   @override
   void initState() {
     super.initState();
-    _confCode = 'SQ-${Random().nextInt(900000) + 100000}${String.fromCharCode(65 + Random().nextInt(26))}';
+    _confCode = widget.booking.confirmationCode;
     // Fire the first-booking celebration check
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final provider = Provider.of<AppProvider>(context, listen: false);
       QubeTriggerService.instance.checkFirstBookingCelebration(
         context,
@@ -94,7 +98,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
               const SizedBox(height: 10),
 
               const Text(
-                'A confirmation email is on its way to your inbox. Get ready for an unforgettable journey.',
+                'Your booking is confirmed. Keep this booking reference for your stay.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
@@ -119,9 +123,9 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                       tag: 'stay_hero_${stay.id}',
                       child: ClipRRect(
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                        child: (stay.imageUrls.isNotEmpty && stay.imageUrls.first.startsWith('http'))
+                        child: (stay.imageUrls.isNotEmpty && stay.firstImage.startsWith('http'))
                             ? Image.network(
-                                stay.imageUrls.first,
+                                stay.firstImage,
                                 height: 180,
                                 width: double.infinity,
                                 fit: BoxFit.cover,
@@ -129,7 +133,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                               )
                             : stay.imageUrls.isNotEmpty 
                                 ? Image.asset(
-                                    stay.imageUrls.first,
+                                    stay.firstImage,
                                     height: 180,
                                     width: double.infinity,
                                     fit: BoxFit.cover,
@@ -266,7 +270,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                       style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    Text('Paid via ${widget.paymentMethod}', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                    Text(widget.booking.isPaid ? 'Paid via ${widget.paymentMethod}' : 'Payment awaiting confirmation', style: const TextStyle(color: Colors.white60, fontSize: 11)),
                   ],
                 ),
               ),
@@ -304,7 +308,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                     Text(
                       stay.isStayingWithHost
                           ? 'Host In-Person Check-in • Hosted by ${stay.hostName.isNotEmpty ? stay.hostName : "Host"}'
-                          : 'Door PIN: ${_confCode.replaceAll(RegExp(r'[^0-9]'), '').padRight(4, '8').substring(0, 4)}# • Smart Keypad Check-in',
+                          : (widget.booking.accessPin?.isNotEmpty == true ? 'Access PIN: ${widget.booking.accessPin}' : 'Access instructions will be provided by your host.'),
                       style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                     ),
                   ],
@@ -316,7 +320,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
               // Action Buttons
               ElevatedButton.icon(
                 icon: const Icon(Icons.confirmation_number_outlined, size: 18),
-                label: const Text('View & Download Stay Q Booking Pass'),
+                label: const Text('View & Download StayQ Booking Pass'),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 54),
                   backgroundColor: const Color(0xFF073359),
@@ -330,6 +334,8 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
 
                   DigitalBoardingPassSheet.show(
                     context,
+                    accessPin: widget.booking.accessPin,
+                    isPaid: widget.booking.isPaid,
                     confirmationCode: _confCode,
                     guestName: guestName,
                     stayTitle: stay.title,

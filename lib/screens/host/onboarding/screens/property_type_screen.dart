@@ -15,58 +15,322 @@ class PropertyTypeScreen extends StatelessWidget {
       'image': 'assets/images/real_villa.jpg',
       'value': 'VILLA',
       'subtitle': 'Private pool & garden',
-      'needsHostPresence': true,
+      'categoryMode': 'RESIDENTIAL',
     },
     {
       'title': 'Penthouse & Apt',
       'image': 'assets/images/real_apartment.jpg',
       'value': 'APARTMENT',
       'subtitle': 'Skyline & city views',
-      'needsHostPresence': true,
+      'categoryMode': 'RESIDENTIAL',
     },
     {
       'title': 'Glamping Camp',
       'image': 'assets/images/real_camping.jpg',
       'value': 'CAMPING_SITE',
-      'subtitle': 'Stargazing tents',
-      'needsHostPresence': false,
+      'subtitle': 'Stargazing tents & pitches',
+      'categoryMode': 'CAMPING',
     },
     {
       'title': 'Luxury RV Cruiser',
       'image': 'assets/images/real_rv.jpg',
       'value': 'RV',
-      'subtitle': 'Off-grid campervan',
-      'needsHostPresence': false,
+      'subtitle': 'Campervan, motorhome or stay',
+      'categoryMode': 'RV',
     },
     {
       'title': 'Alpine Cabin',
       'image': 'assets/images/real_cabin.jpg',
       'value': 'CABIN',
       'subtitle': 'Himalayan fireplace',
-      'needsHostPresence': true,
+      'categoryMode': 'RESIDENTIAL',
     },
     {
       'title': 'Zero-Broker Home',
       'image': 'assets/images/real_zero_broker.jpg',
       'value': 'LONG_TERM_HOME',
       'subtitle': '11-month lease',
-      'needsHostPresence': true,
+      'categoryMode': 'RESIDENTIAL',
     },
     {
       'title': 'Treehouse Pod',
       'image': 'assets/images/real_treehouse.jpg',
       'value': 'TREEHOUSE',
       'subtitle': 'Rainforest canopy',
-      'needsHostPresence': true,
+      'categoryMode': 'RESIDENTIAL',
     },
     {
       'title': 'Heritage Haveli',
       'image': 'assets/images/real_haveli.jpg',
       'value': 'HOMESTAY',
       'subtitle': 'Royal hospitality',
-      'needsHostPresence': true,
+      'categoryMode': 'RESIDENTIAL',
     },
   ];
+
+  void _showRvModeModal(
+    BuildContext context,
+    HostOnboardingProvider provider,
+    Map<String, dynamic> category,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 32),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF181625) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 30,
+                offset: const Offset(0, -10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 18),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      width: 46,
+                      height: 46,
+                      child: Image.asset(
+                        category['image'] as String,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.directions_car_rounded, color: AppColors.primary, size: 28),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'How will guests experience your RV?',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Select your vehicle rental or stay format:',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 20),
+
+              _buildPresenceOption(
+                context: context,
+                title: 'Self-Drive RV Rental',
+                subtitle: 'Guests drive the campervan across permitted corridors and camp off-grid.',
+                icon: Icons.directions_car_rounded,
+                isSelected: provider.rvRentalMode == 'SELF_DRIVE',
+                onTap: () {
+                  AppMotion.tapSelection();
+                  provider.updatePropertyType('RV');
+                  provider.updateRvRentalMode('SELF_DRIVE');
+                  provider.updateHostPresence(false);
+                  Navigator.pop(context);
+                },
+              ),
+
+              const SizedBox(height: 12),
+
+              _buildPresenceOption(
+                context: context,
+                title: 'Chauffeur-Driven RV',
+                subtitle: 'A dedicated professional driver navigates the entire journey.',
+                icon: Icons.person_pin_circle_rounded,
+                isSelected: provider.rvRentalMode == 'CHAUFFEUR',
+                onTap: () {
+                  AppMotion.tapSelection();
+                  provider.updatePropertyType('RV');
+                  provider.updateRvRentalMode('CHAUFFEUR');
+                  provider.updateHostPresence(true);
+                  Navigator.pop(context);
+                },
+              ),
+
+              const SizedBox(height: 12),
+
+              _buildPresenceOption(
+                context: context,
+                title: 'Parked RV Stay (Stationary)',
+                subtitle: 'Luxury campervan stay parked at a scenic private site or farm.',
+                icon: Icons.home_work_rounded,
+                isSelected: provider.rvRentalMode == 'STATIONARY',
+                onTap: () {
+                  AppMotion.tapSelection();
+                  provider.updatePropertyType('RV');
+                  provider.updateRvRentalMode('STATIONARY');
+                  provider.updateHostPresence(false);
+                  Navigator.pop(context);
+                },
+              ),
+
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCampingTypeModal(
+    BuildContext context,
+    HostOnboardingProvider provider,
+    Map<String, dynamic> category,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 32),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF181625) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 30,
+                offset: const Offset(0, -10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 18),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      width: 46,
+                      height: 46,
+                      child: Image.asset(
+                        category['image'] as String,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.holiday_village_rounded, color: AppColors.primary, size: 28),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'What type of campsite are you hosting?',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Select your campsite format:',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 20),
+
+              _buildPresenceOption(
+                context: context,
+                title: 'Furnished Glamping',
+                subtitle: 'Pre-pitched luxury tents/domes with plush beds & premium amenities.',
+                icon: Icons.wb_twilight_rounded,
+                isSelected: provider.campingType == 'GLAMPING',
+                onTap: () {
+                  AppMotion.tapSelection();
+                  provider.updatePropertyType('CAMPING_SITE');
+                  provider.updateCampingType('GLAMPING');
+                  provider.updateHostPresence(false);
+                  Navigator.pop(context);
+                },
+              ),
+
+              const SizedBox(height: 12),
+
+              _buildPresenceOption(
+                context: context,
+                title: 'Tent Pitch (BYOT)',
+                subtitle: 'Ground pitches for Bring-Your-Own-Tent with shared campsite facilities.',
+                icon: Icons.nature_people_rounded,
+                isSelected: provider.campingType == 'TENT_PITCH',
+                onTap: () {
+                  AppMotion.tapSelection();
+                  provider.updatePropertyType('CAMPING_SITE');
+                  provider.updateCampingType('TENT_PITCH');
+                  provider.updateHostPresence(false);
+                  Navigator.pop(context);
+                },
+              ),
+
+              const SizedBox(height: 12),
+
+              _buildPresenceOption(
+                context: context,
+                title: 'Multi-Format Campground & Resort',
+                subtitle: 'Multiple bookable units (e.g. furnished domes & tent pitches).',
+                icon: Icons.holiday_village_rounded,
+                isSelected: provider.campingType == 'MULTI_SITE',
+                onTap: () {
+                  AppMotion.tapSelection();
+                  provider.updatePropertyType('CAMPING_SITE');
+                  provider.updateCampingType('MULTI_SITE');
+                  provider.updateHostPresence(false);
+                  Navigator.pop(context);
+                },
+              ),
+
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   void _showHostPresenceModal(
     BuildContext context,
@@ -263,7 +527,7 @@ class PropertyTypeScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'What’s Your Property Type?',
+            'What are you listing?',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
@@ -273,7 +537,7 @@ class PropertyTypeScreen extends StatelessWidget {
           ).animate().fadeIn().slideX(),
           const SizedBox(height: 6),
           const Text(
-            'Select the primary category for your listing.',
+            'Select the category that best describes your accommodation.',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
@@ -295,16 +559,17 @@ class PropertyTypeScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final cat = categories[index];
               final isSelected = provider.propertyType == cat['value'];
-              final needsHostPresence = cat['needsHostPresence'] as bool;
+              final categoryMode = cat['categoryMode'] as String;
 
               return BouncingWidget(
                 onTap: () {
                   AppMotion.tapSelection();
-                  if (needsHostPresence) {
-                    _showHostPresenceModal(context, provider, cat);
+                  if (categoryMode == 'RV') {
+                    _showRvModeModal(context, provider, cat);
+                  } else if (categoryMode == 'CAMPING') {
+                    _showCampingTypeModal(context, provider, cat);
                   } else {
-                    provider.updatePropertyType(cat['value'] as String);
-                    provider.updateHostPresence(false);
+                    _showHostPresenceModal(context, provider, cat);
                   }
                 },
                 child: AnimatedContainer(
@@ -443,7 +708,7 @@ class PropertyTypeScreen extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if (isSelected && needsHostPresence) ...[
+                              if (isSelected) ...[
                                 const SizedBox(height: 6),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -458,7 +723,19 @@ class PropertyTypeScreen extends StatelessWidget {
                                     ],
                                   ),
                                   child: Text(
-                                    provider.isStayingWithHost ? 'Private Room' : 'Entire Place',
+                                    cat['value'] == 'RV'
+                                        ? (provider.rvRentalMode == 'SELF_DRIVE'
+                                            ? 'Self-Drive RV'
+                                            : provider.rvRentalMode == 'CHAUFFEUR'
+                                                ? 'Chauffeur RV'
+                                                : 'Parked RV Stay')
+                                        : cat['value'] == 'CAMPING_SITE'
+                                            ? (provider.campingType == 'GLAMPING'
+                                                ? 'Glamping Dome'
+                                                : provider.campingType == 'TENT_PITCH'
+                                                    ? 'Tent Pitch'
+                                                    : 'Multi-Unit Camp')
+                                            : (provider.isStayingWithHost ? 'Private Room' : 'Entire Place'),
                                     style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.white),
                                   ),
                                 ),

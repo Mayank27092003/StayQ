@@ -1,147 +1,118 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../config/app_config.dart';
 
 class ApiException implements Exception {
   final int statusCode;
   final String message;
-
   ApiException(this.statusCode, this.message);
-
   @override
-  String toString() => 'ApiException(statusCode: $statusCode, message: $message)';
+  String toString() => message;
 }
 
 class ApiClient {
   final String baseUrl;
   final http.Client _inner;
-  static const Duration _defaultTimeout = Duration(seconds: 15);
-  static const int _maxRetries = 2;
-
-  static final ApiClient instance = ApiClient(
-    baseUrl: 'https://stayq-api-608570851336.asia-south1.run.app/api/v1',
-  );
-
-  ApiClient({required this.baseUrl, http.Client? client})
+  final Future<String?> Function()? tokenProvider;
+  static const timeout = Duration(seconds: 15);
+  static final instance = ApiClient(baseUrl: AppConfig.apiBaseUrl);
+  ApiClient({required this.baseUrl, http.Client? client, this.tokenProvider})
       : _inner = client ?? http.Client();
 
-  Future<Map<String, String>> _getHeaders() async {
+  Future<Map<String, String>> _headers({bool authenticated = true,
+      String? idempotencyKey}) async {
     final headers = <String, String>{
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
+      'Content-Type': 'application/json', 'Accept': 'application/json',
+      if (idempotencyKey != null) 'Idempotency-Key': idempotencyKey,
     };
-
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      try {
-        final token = await user.getIdToken();
-        if (token != null) {
-          headers['Authorization'] = 'Bearer $token';
-        }
-      } catch (e) {
-        debugPrint('Error fetching auth token: $e');
-      }
+    if (authenticated) {
+      final token = await (tokenProvider?.call() ??
+          FirebaseAuth.instance.currentUser?.getIdToken() ?? Future<String?>.value(null));
+      if (token == null || token.isEmpty) throw ApiException(401, 'Please sign in and try again.');
+      headers['Authorization'] = 'Bearer $token';
     }
     return headers;
   }
 
-  /// Executes request with automatic timeout and retry logic on network flakiness.
-  Future<http.Response> _executeWithRetry(
-    Future<http.Response> Function() requestFn, {
-    int retries = _maxRetries,
-  }) async {
-    int attempts = 0;
-    while (true) {
-      attempts++;
-      try {
-        return await requestFn().timeout(_defaultTimeout);
-      } on TimeoutException {
-        if (attempts > retries) {
-          throw ApiException(408, 'Request timed out. Please check your internet connection.');
-        }
-        await Future.delayed(Duration(milliseconds: 500 * attempts));
-      } on SocketException {
-        if (attempts > retries) {
-          throw ApiException(503, 'Network unreachable. Please check your connection.');
-        }
-        await Future.delayed(Duration(milliseconds: 500 * attempts));
-      } on http.ClientException catch (e) {
-        if (attempts > retries) {
-          throw ApiException(500, 'Connection error: ${e.message}');
-        }
-        await Future.delayed(Duration(milliseconds: 500 * attempts));
-      } catch (e) {
-        if (e is ApiException) rethrow;
-        throw ApiException(500, 'Unexpected network error: $e');
+  Future<http.Response> _send(Future<http.Response> Function() send,
+      {bool retrySafe = false}) async {
+    for (var attempt = 0; ; attempt++) {
+      try { return await send().timeout(timeout); }
+      on TimeoutException {
+        if (!retrySafe || attempt == 2) throw ApiException(408,
+            'The request timed out. Refresh its status before trying again.');
+      } on http.ClientException {
+        if (!retrySafe || attempt == 2) throw ApiException(503,
+            'Unable to connect. Please try again.');
       }
+      await Future<void>.delayed(Duration(milliseconds: 300 * (attempt + 1)));
     }
   }
 
-  Future<dynamic> get(String path, {Map<String, String>? queryParameters}) async {
+  Future<dynamic> get(String path, {Map<String, String>? queryParameters,
+      bool authenticated = true}) async {
+    final uid = authenticated && tokenProvider == null ? FirebaseAuth.instance.currentUser?.uid : null;
+    final headers = await _headers(authenticated: authenticated);
+    _assertSession(uid, authenticated);
     final uri = Uri.parse('$baseUrl$path').replace(queryParameters: queryParameters);
-    final headers = await _getHeaders();
-    
-    final response = await _executeWithRetry(() => _inner.get(uri, headers: headers));
-    return _handleResponse(response);
+    final response = await _send(() => _inner.get(uri, headers: headers), retrySafe: true);
+    _assertSession(uid, authenticated);
+    return _response(response);
   }
+  Future<dynamic> post(String path, {dynamic body, String? idempotencyKey,
+      bool authenticated = true}) async => _mutate('POST', path, body,
+          idempotencyKey: idempotencyKey, authenticated: authenticated);
+  Future<dynamic> put(String path, {dynamic body}) async => _mutate('PUT', path, body);
+  Future<dynamic> patch(String path, {dynamic body}) async => _mutate('PATCH', path, body);
+  Future<dynamic> delete(String path, {dynamic body}) async => _mutate('DELETE', path, body);
 
-  Future<dynamic> post(String path, {dynamic body}) async {
+  Future<dynamic> _mutate(String method, String path, dynamic body,
+      {String? idempotencyKey, bool authenticated = true}) async {
+    final uid = authenticated && tokenProvider == null ? FirebaseAuth.instance.currentUser?.uid : null;
+    final headers = await _headers(authenticated: authenticated, idempotencyKey: idempotencyKey);
+    _assertSession(uid, authenticated);
     final uri = Uri.parse('$baseUrl$path');
-    final headers = await _getHeaders();
-    
-    final response = await _executeWithRetry(() => _inner.post(
-      uri,
-      headers: headers,
-      body: body != null ? jsonEncode(body) : null,
-    ));
-    return _handleResponse(response);
-  }
-
-  Future<dynamic> put(String path, {dynamic body}) async {
-    final uri = Uri.parse('$baseUrl$path');
-    final headers = await _getHeaders();
-    
-    final response = await _executeWithRetry(() => _inner.put(
-      uri,
-      headers: headers,
-      body: body != null ? jsonEncode(body) : null,
-    ));
-    return _handleResponse(response);
-  }
-
-  Future<dynamic> delete(String path) async {
-    final uri = Uri.parse('$baseUrl$path');
-    final headers = await _getHeaders();
-    
-    final response = await _executeWithRetry(() => _inner.delete(uri, headers: headers));
-    return _handleResponse(response);
-  }
-
-  dynamic _handleResponse(http.Response response) {
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (response.body.isEmpty) return null;
-      try {
-        return jsonDecode(response.body);
-      } catch (e) {
-        return response.body;
+    // Never replay a mutation after an ambiguous timeout.
+    final response = await _send(() {
+      final encoded = body == null ? null : jsonEncode(body);
+      switch (method) {
+        case 'POST': return _inner.post(uri, headers: headers, body: encoded);
+        case 'PUT': return _inner.put(uri, headers: headers, body: encoded);
+        case 'PATCH': return _inner.patch(uri, headers: headers, body: encoded);
+        default: return _inner.delete(uri, headers: headers, body: encoded);
       }
-    } else {
-      String message = 'Unknown error';
-      try {
-        final errorData = jsonDecode(response.body);
-        final rawMsg = errorData['message'] ?? errorData['error'];
-        if (rawMsg is List) {
-          message = rawMsg.join(', ');
-        } else if (rawMsg is String) {
-          message = rawMsg;
-        }
-      } catch (_) {
-        message = response.body.isNotEmpty ? response.body : 'Server returned ${response.statusCode}';
-      }
-      throw ApiException(response.statusCode, message);
+    });
+    _assertSession(uid, authenticated);
+    return _response(response);
+  }
+
+  void _assertSession(String? uid, bool authenticated) {
+    if (authenticated && tokenProvider == null && FirebaseAuth.instance.currentUser?.uid != uid) {
+      throw ApiException(409, 'Your account changed. Please try again.');
     }
   }
+
+  dynamic _response(http.Response response) {
+    dynamic data;
+    if (response.body.isNotEmpty) {
+      try { data = jsonDecode(response.body); } on FormatException {
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          throw ApiException(502, 'The server returned an invalid response.');
+        }
+      }
+    }
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (data is Map && data['success'] == false) {
+        throw ApiException(response.statusCode, data['message']?.toString() ?? 'The request was rejected.');
+      }
+      return data;
+    }
+    final raw = data is Map ? data['message'] ?? data['error'] : null;
+    final message = raw is List ? raw.join(', ') : raw?.toString();
+    throw ApiException(response.statusCode,
+        message?.isNotEmpty == true ? message! : 'Request failed (${response.statusCode}).');
+  }
+  void close() => _inner.close();
 }

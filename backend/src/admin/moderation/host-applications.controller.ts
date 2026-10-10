@@ -1,10 +1,25 @@
-import { Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  UseGuards,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminModerationService } from './admin-moderation.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { FirebaseAuthGuard } from '../../common/guards/firebase-auth.guard';
+import { AdminGuard } from '../guards/admin.guard';
 
 @ApiTags('Host Applications')
-@Controller(['admin/moderation/host-applications', 'admin/moderation/test-host-applications'])
+@ApiBearerAuth()
+@UseGuards(FirebaseAuthGuard, AdminGuard)
+@Controller([
+  'admin/moderation/host-applications',
+  'admin/moderation/test-host-applications',
+])
 export class HostApplicationsController {
   constructor(private readonly moderation: AdminModerationService) {}
 
@@ -20,7 +35,10 @@ export class HostApplicationsController {
     @Param('id', ParseUUIDPipe) userId: string,
     @CurrentUser() adminUser: any,
   ) {
-    return this.moderation.approveHostApplication(userId, adminUser?.id || userId);
+    if (!adminUser?.id) {
+      throw new UnauthorizedException('Admin identification required');
+    }
+    return this.moderation.approveHostApplication(userId, adminUser.id);
   }
 
   @Post(':id/reject')
@@ -29,6 +47,9 @@ export class HostApplicationsController {
     @Param('id', ParseUUIDPipe) userId: string,
     @CurrentUser() adminUser: any,
   ) {
-    return this.moderation.rejectHostApplication(userId, adminUser?.id || userId);
+    if (!adminUser?.id) {
+      throw new UnauthorizedException('Admin identification required');
+    }
+    return this.moderation.rejectHostApplication(userId, adminUser.id);
   }
 }

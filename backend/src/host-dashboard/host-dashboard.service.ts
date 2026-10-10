@@ -1,6 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AvailabilityBlockType } from '@prisma/client';
 
 @Injectable()
 export class HostDashboardService {
@@ -10,10 +9,7 @@ export class HostDashboardService {
     // 0. Resolve Host User profile
     const hostUser = await this.prisma.user.findFirst({
       where: {
-        OR: [
-          { id: hostId },
-          { firebaseUid: hostId },
-        ],
+        OR: [{ id: hostId }, { firebaseUid: hostId }],
       },
       select: {
         id: true,
@@ -34,10 +30,7 @@ export class HostDashboardService {
     // 1. Fetch properties
     const properties = await this.prisma.property.findMany({
       where: {
-        OR: [
-          { hostId: effectiveHostId },
-          { host: { firebaseUid: hostId } },
-        ],
+        OR: [{ hostId: effectiveHostId }, { host: { firebaseUid: hostId } }],
       },
       select: {
         id: true,
@@ -48,25 +41,41 @@ export class HostDashboardService {
       },
     });
 
-    const activeListings = properties.filter(p => p.status === 'ACTIVE').length;
-    const propertyIds = properties.map(p => p.id);
+    const activeListings = properties.filter(
+      (p) => p.status === 'ACTIVE',
+    ).length;
+    const propertyIds = properties.map((p) => p.id);
+    // BL-092: Single listing is 1 rentable inventory unit unless broken into multi-room roomTypes
     const totalRooms = properties.reduce(
-      (sum, p) => sum + (p.roomTypes.length > 0 ? p.roomTypes.reduce((rSum, rt) => rSum + rt.totalRooms, 0) : (p.bedrooms || 1)),
+      (sum, p) =>
+        sum +
+        (p.roomTypes.length > 0
+          ? p.roomTypes.reduce((rSum, rt) => rSum + rt.totalRooms, 0)
+          : 1),
       0,
     );
 
     // 2. Fetch real reviews for host's properties
-    const reviews = propertyIds.length > 0
-      ? await this.prisma.review.findMany({
-          where: { propertyId: { in: propertyIds } },
-          select: { rating: true },
-        })
-      : [];
+    const reviews =
+      propertyIds.length > 0
+        ? await this.prisma.review.findMany({
+            where: {
+              propertyId: { in: propertyIds },
+              moderationStatus: 'APPROVED',
+            },
+            select: { rating: true },
+          })
+        : [];
 
     const reviewCount = reviews.length;
-    const rating = reviewCount > 0
-      ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount).toFixed(2))
-      : 0.0;
+    const rating =
+      reviewCount > 0
+        ? Number(
+            (
+              reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
+            ).toFixed(2),
+          )
+        : 0.0;
 
     // 3. Fetch recent bookings and all historical bookings for chart analytics
     const allBookings = await this.prisma.booking.findMany({
@@ -79,8 +88,12 @@ export class HostDashboardService {
         checkIn: true,
         checkOut: true,
         totalAmount: true,
+        roomTypeId: true,
+        payment: { select: { status: true } },
         createdAt: true,
-        guest: { select: { id: true, displayName: true, photoUrl: true, phone: true } },
+        guest: {
+          select: { id: true, displayName: true, photoUrl: true, phone: true },
+        },
         property: { select: { id: true, title: true, images: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -89,81 +102,138 @@ export class HostDashboardService {
     const bookings = allBookings.slice(0, 15);
     const now = new Date();
 
-    const upcomingGuests = allBookings.filter(b => b.status === 'CONFIRMED' && new Date(b.checkIn) >= now);
-    const recentRequests = allBookings.filter(b => b.status === 'PENDING_HOST_APPROVAL' || b.status === 'PENDING_PAYMENT');
+    const upcomingGuests = allBookings.filter(
+      (b) => b.status === 'CONFIRMED' && new Date(b.checkIn) >= now,
+    );
+    const recentRequests = allBookings.filter(
+      (b) =>
+        b.status === 'PENDING_HOST_APPROVAL' || b.status === 'PENDING_PAYMENT',
+    );
 
     // 4. Fetch earnings
     const earnings = await this.prisma.hostEarning.findMany({
       where: {
-        OR: [
-          { hostId: effectiveHostId },
-          { hostId: hostId },
-        ],
+        OR: [{ hostId: effectiveHostId }, { hostId: hostId }],
       },
     });
 
     const currentMonthIdx = new Date().getMonth();
     const currentYear = new Date().getFullYear();
-    const earningsThisMonth = earnings
-      .filter(e => e.createdAt.getMonth() === currentMonthIdx && e.createdAt.getFullYear() === currentYear)
+    const eligibleEarnings = earnings.filter(
+      (e) => e.payoutStatus !== 'ON_HOLD',
+    );
+    const earningsThisMonth = eligibleEarnings
+      .filter(
+        (e) =>
+          e.createdAt.getMonth() === currentMonthIdx &&
+          e.createdAt.getFullYear() === currentYear,
+      )
       .reduce((sum, e) => sum + Number(e.netPayout), 0);
 
-    const totalEarningsAllTime = earnings.reduce((sum, e) => sum + Number(e.netPayout), 0);
+    const totalEarningsAllTime = eligibleEarnings.reduce(
+      (sum, e) => sum + Number(e.netPayout),
+      0,
+    );
 
-    // Calculate real occupancy rate for current month
+    // BL-091: Calculate mathematically sound occupancy rate for current month
     let occupancyRate = 0;
     if (totalRooms > 0 && allBookings.length > 0) {
-      const daysInCurrentMonth = new Date(currentYear, currentMonthIdx + 1, 0).getDate();
-      const currentMonthBookings = allBookings.filter(b => {
-        const checkIn = new Date(b.checkIn);
-        return checkIn.getMonth() === currentMonthIdx && checkIn.getFullYear() === currentYear && b.status === 'CONFIRMED';
-      });
-      const bookedNights = currentMonthBookings.reduce((sum, b) => {
-        const diff = Math.max(1, Math.round((new Date(b.checkOut).getTime() - new Date(b.checkIn).getTime()) / (1000 * 60 * 60 * 24)));
-        return sum + diff;
-      }, 0);
+      const startOfMonth = new Date(Date.UTC(currentYear, currentMonthIdx, 1));
+      const endOfMonth = new Date(
+        Date.UTC(currentYear, currentMonthIdx + 1, 1),
+      );
+      const daysInCurrentMonth =
+        (endOfMonth.getTime() - startOfMonth.getTime()) / 86400000;
+
+      let bookedNights = 0;
+      for (const b of allBookings) {
+        if (b.status !== 'CONFIRMED' && b.status !== 'COMPLETED') continue;
+        const bIn = new Date(b.checkIn);
+        const bOut = new Date(b.checkOut);
+        // Overlap with current month window
+        const overlapStart = bIn > startOfMonth ? bIn : startOfMonth;
+        const overlapEnd = bOut < endOfMonth ? bOut : endOfMonth;
+        if (overlapEnd > overlapStart) {
+          const inventory = b.roomTypeId
+            ? 1
+            : properties
+                .find((p) => p.id === b.property.id)
+                ?.roomTypes.reduce((n, r) => n + r.totalRooms, 0) || 1;
+          const nights =
+            Math.round(
+              (overlapEnd.getTime() - overlapStart.getTime()) / 86400000,
+            ) * inventory;
+          bookedNights += Math.max(0, nights);
+        }
+      }
       const totalCapacityNights = totalRooms * daysInCurrentMonth;
-      occupancyRate = totalCapacityNights > 0 ? Math.min(100, Math.round((bookedNights / totalCapacityNights) * 100)) : 0;
+      occupancyRate =
+        totalCapacityNights > 0
+          ? Math.min(
+              100,
+              Math.round((bookedNights / totalCapacityNights) * 100),
+            )
+          : 0;
     }
 
     // 5. Generate Dynamic Chart Data (Last 6 Months)
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
     const earningsChartData: { month: string; amount: number }[] = [];
     const bookingsChartData: { month: string; amount: number }[] = [];
     const viewsChartData: { month: string; amount: number }[] = [];
 
     for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
+      const d = new Date(Date.UTC(currentYear, currentMonthIdx - i, 1));
       const m = d.getMonth();
       const y = d.getFullYear();
       const monthLabel = monthNames[m];
 
       // Calculate monthly earnings
-      const monthEarnings = earnings
-        .filter(e => e.createdAt.getMonth() === m && e.createdAt.getFullYear() === y)
+      const monthEarnings = eligibleEarnings
+        .filter(
+          (e) =>
+            e.createdAt.getMonth() === m && e.createdAt.getFullYear() === y,
+        )
         .reduce((sum, e) => sum + Number(e.netPayout), 0);
 
       // Calculate monthly bookings
-      const monthBookings = allBookings
-        .filter(b => b.createdAt.getMonth() === m && b.createdAt.getFullYear() === y).length;
-
-      // Views metric
-      const baseViews = 280 + Math.floor(Math.random() * 80);
-      const monthViews = baseViews + (monthBookings * 65);
+      const monthBookings = allBookings.filter(
+        (b) => b.createdAt.getMonth() === m && b.createdAt.getFullYear() === y,
+      ).length;
 
       earningsChartData.push({ month: monthLabel, amount: monthEarnings });
       bookingsChartData.push({ month: monthLabel, amount: monthBookings });
-      viewsChartData.push({ month: monthLabel, amount: monthViews });
     }
 
-    const isApproved = !!(hostUser?.isHostVerified || hostUser?.hostStatus === 'APPROVED' || activeListings > 0);
-    const hostStatus = hostUser?.hostStatus || (isApproved ? 'APPROVED' : 'PENDING');
-    const isStarHost = !!((hostUser?.isStarhost || hostUser?.isSuperhost) && isApproved);
+    const isApproved = !!(
+      hostUser?.isHostVerified && hostUser?.hostStatus === 'APPROVED'
+    );
+    const hostStatus =
+      hostUser?.hostStatus || (isApproved ? 'APPROVED' : 'PENDING');
+    const isStarHost = !!(
+      (hostUser?.isStarhost || hostUser?.isSuperhost) &&
+      isApproved
+    );
 
     return {
-      hostName: hostUser?.displayName || hostUser?.payoutAccount?.accountHolderName || 'Host Partner',
+      hostName:
+        hostUser?.displayName ||
+        hostUser?.payoutAccount?.accountHolderName ||
+        'Host Partner',
       hostAvatar: hostUser?.photoUrl || '',
       isStarHost,
       isSuperhost: isStarHost,
@@ -179,45 +249,31 @@ export class HostDashboardService {
       reviewCount,
       earningsThisMonth,
       totalEarningsAllTime,
-      upcomingGuests,
-      recentRequests,
+      upcomingGuests: upcomingGuests.map((b) => ({
+        ...b,
+        guest: {
+          ...b.guest,
+          phone: ['CAPTURED', 'RELEASED'].includes(b.payment?.status || '')
+            ? b.guest.phone
+            : null,
+        },
+      })),
+      recentRequests: recentRequests.map((b) => ({
+        ...b,
+        guest: { ...b.guest, phone: null },
+      })),
       chartData: {
         earnings: earningsChartData,
         bookings: bookingsChartData,
         views: viewsChartData,
+        viewsAvailable: false,
       },
     };
   }
 
   async updateAvailability(hostId: string, blockedDates: string[]) {
-    const properties = await this.prisma.property.findMany({
-      where: {
-        OR: [
-          { hostId },
-          { host: { firebaseUid: hostId } },
-        ],
-      },
-      select: { id: true },
-    });
-
-    const results: any[] = [];
-    for (const prop of properties) {
-      for (const dateStr of blockedDates) {
-        const d = new Date(dateStr);
-        const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-        const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
-
-        const block = await this.prisma.availabilityBlock.create({
-          data: {
-            propertyId: prop.id,
-            startDate: start,
-            endDate: end,
-            type: AvailabilityBlockType.HOST_BLOCKED,
-          },
-        });
-        results.push(block);
-      }
-    }
-    return { success: true, count: results.length };
+    throw new BadRequestException(
+      'Select a property and use its availability endpoint',
+    );
   }
 }

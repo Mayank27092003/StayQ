@@ -1,8 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/api/api_client.dart';
 import '../../theme/app_colors.dart';
 
@@ -15,6 +12,8 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isLoading = true;
+  bool _markingAll = false;
+  String? _error;
   List<Map<String, dynamic>> _notifications = [];
 
   @override
@@ -44,86 +43,46 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  Future<Map<String, String>> _getAuthHeaders() async {
-    final token = await FirebaseAuth.instance.currentUser?.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
+  void _showError(Object error) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
   }
 
   Future<void> _fetchNotifications() async {
+    if (mounted) setState(() { _isLoading = true; _error = null; });
     try {
-      final headers = await _getAuthHeaders();
-      final res = await http.get(
-        Uri.parse('${ApiClient.instance.baseUrl}/notifications'),
-        headers: headers,
-      );
-
-      if (res.statusCode == 200) {
-        final List<dynamic> decoded = jsonDecode(res.body);
-        if (mounted) {
-          setState(() {
-            _notifications = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('[NotificationsScreen] Error fetching notifications: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+      final data = await ApiClient.instance.get('/notifications');
+      if (data is! List) throw ApiException(502, 'Invalid notifications response.');
+      if (mounted) setState(() {
+        _notifications = data.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      });
+    } catch (e) { if (mounted) setState(() => _error = e.toString()); }
+    finally { if (mounted) setState(() => _isLoading = false); }
   }
 
   Future<void> _markAllAsRead() async {
-    // Optimistic UI update
-    setState(() {
-      for (var notif in _notifications) {
-        notif['readAt'] = DateTime.now().toIso8601String();
-        notif['isRead'] = true;
-      }
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('All notifications marked as read'),
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
-      ),
-    );
-
+    if (_markingAll) return;
+    _markingAll = true;
     try {
-      final headers = await _getAuthHeaders();
-      await http.patch(
-        Uri.parse('${ApiClient.instance.baseUrl}/notifications/read-all'),
-        headers: headers,
-      );
-    } catch (e) {
-      debugPrint('[NotificationsScreen] Error marking all as read: $e');
-    }
+      await ApiClient.instance.patch('/notifications/read-all');
+      if (!mounted) return;
+      setState(() {
+        for (final notification in _notifications) {
+          notification['readAt'] = DateTime.now().toIso8601String(); notification['isRead'] = true;
+        }
+      });
+    } catch (e) { _showError(e); } finally { _markingAll = false; }
   }
 
   Future<void> _markSingleAsRead(int index) async {
-    final notif = _notifications[index];
-    final id = notif['id'];
+    if (index >= _notifications.length) return;
+    final notification = _notifications[index]; final id = notification['id'];
     if (id == null) return;
-
-    // Optimistic UI update
-    setState(() {
-      notif['readAt'] = DateTime.now().toIso8601String();
-      notif['isRead'] = true;
-    });
-
     try {
-      final headers = await _getAuthHeaders();
-      await http.patch(
-        Uri.parse('${ApiClient.instance.baseUrl}/notifications/$id/read'),
-        headers: headers,
-      );
-    } catch (e) {
-      debugPrint('[NotificationsScreen] Error marking notification as read: $e');
-    }
+      await ApiClient.instance.patch('/notifications/$id/read');
+      if (mounted && _notifications.contains(notification)) setState(() {
+        notification['readAt'] = DateTime.now().toIso8601String(); notification['isRead'] = true;
+      });
+    } catch (e) { _showError(e); }
   }
 
   (IconData, Color) _getNotificationIcon(String? type) {
@@ -173,6 +132,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : _error != null ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(_error!), TextButton(onPressed: _fetchNotifications, child: const Text('Retry'))]))
           : RefreshIndicator(
               onRefresh: _fetchNotifications,
               color: AppColors.primary,

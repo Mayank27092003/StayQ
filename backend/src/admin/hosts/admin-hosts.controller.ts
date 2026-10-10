@@ -16,7 +16,11 @@ import { AdminGuard } from '../guards/admin.guard';
 import { AdminRolesGuard } from '../guards/admin-roles.guard';
 import { AdminRoles } from '../decorators/admin-roles.decorator';
 import { AdminHostsService } from './admin-hosts.service';
-import { HostQueryDto, UpdateHostStatusDto, UpdateSuperhostDto } from './dto/host.dto';
+import {
+  HostQueryDto,
+  UpdateHostStatusDto,
+  UpdateSuperhostDto,
+} from './dto/host.dto';
 
 @ApiTags('Admin / Hosts')
 @ApiBearerAuth()
@@ -26,7 +30,9 @@ export class AdminHostsController {
   constructor(private readonly hosts: AdminHostsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List hosts with listing counts and payout verification state' })
+  @ApiOperation({
+    summary: 'List hosts with listing counts and payout verification state',
+  })
   list(@Query() query: HostQueryDto) {
     return this.hosts.list(query);
   }
@@ -45,7 +51,10 @@ export class AdminHostsController {
 
   @Patch(':hostId/status')
   @AdminRoles(AdminRole.OPERATIONS, AdminRole.TRUST_SAFETY)
-  @ApiOperation({ summary: 'Approve, suspend, or reset a host; suspension pauses live listings' })
+  @ApiOperation({
+    summary:
+      'Approve, suspend, or reset a host; suspension pauses live listings',
+  })
   updateStatus(
     @Param('hostId', ParseUUIDPipe) hostId: string,
     @Body() dto: UpdateHostStatusDto,

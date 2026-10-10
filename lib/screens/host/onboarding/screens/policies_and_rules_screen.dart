@@ -49,16 +49,54 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
     },
   ];
 
-  final List<String> _quickRulePills = [
-    'No outdoor shoes inside 👟',
-    'Turn off AC & geyser when leaving 🔌',
-    'No loud music after 10 PM 🎵',
-    'Keep main gate locked at night 🔒',
-    'No smoking inside rooms 🚭',
-    'Dispose garbage in bins 🗑️',
-    'No food or drinks on bed 🥤',
-    'Respect neighborhood serenity 🤫',
-  ];
+  List<String> _getCategoryQuickRules(String propertyType) {
+    switch (propertyType) {
+      case 'RV':
+        return [
+          'Maintain 80 km/h speed limiter ⚠️',
+          'Full-to-full diesel return ⛽',
+          'Empty gray water only at authorized dumps 🚰',
+          'No off-roading on unpaved riverbeds 🚫',
+          'Check tire pressure & coolant daily 🛞',
+          'Lock pop-up roof before driving 🚐',
+          'No smoking or open flame in galley 🚭',
+          'Report dashboard alerts immediately ⚠️',
+        ];
+      case 'CAMPING_SITE':
+        return [
+          'Leave No Trace: 100% trash pack out 🌲',
+          'Campfire in designated fire rings only 🔥',
+          'Extinguish fire completely before sleeping 💧',
+          'Wildlife quiet hours: 10 PM - 6 AM 🌙',
+          'Store all food in animal-proof containers 🐻',
+          'Use designated eco-washroom facilities 🚿',
+          'Keep forest peaceful / No loud speakers 🎶',
+          'Keep pets leashed to protect wildlife 🐕',
+        ];
+      case 'LONG_TERM_HOME':
+        return [
+          'Police verification mandatory before move-in 👮',
+          'Rent due by 5th of English calendar month 📅',
+          'Society & RWA rules strictly observed 🏢',
+          '30-day written notice required prior to vacating 📝',
+          'No commercial use or unauthorized subletting ❌',
+          'Routine flat maintenance by tenant 🔧',
+          'Quiet hours in corridors after 10 PM 🤫',
+          'Deposit refunded post move-out inspection 💰',
+        ];
+      default:
+        return [
+          'No outdoor shoes inside 👟',
+          'Turn off AC & geyser when leaving 🔌',
+          'No loud music after 10 PM 🎵',
+          'Keep main gate locked at night 🔒',
+          'No smoking inside rooms 🚭',
+          'Dispose garbage in bins 🗑️',
+          'No food or drinks on bed 🥤',
+          'Respect neighborhood serenity 🤫',
+        ];
+    }
+  }
 
   @override
   void initState() {
@@ -68,8 +106,15 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
     _quietHoursController = TextEditingController(
       text: provider.quietHoursText.isNotEmpty ? provider.quietHoursText : '10:00 PM – 07:00 AM',
     );
+    final defaultDeposit = provider.propertyType == 'RV'
+        ? '15000'
+        : provider.propertyType == 'CAMPING_SITE'
+            ? '1500'
+            : provider.propertyType == 'LONG_TERM_HOME'
+                ? '20000'
+                : '2000';
     _depositController = TextEditingController(
-      text: provider.securityDepositAmount > 0 ? provider.securityDepositAmount.toInt().toString() : '2000',
+      text: provider.securityDepositAmount > 0 ? provider.securityDepositAmount.toInt().toString() : defaultDeposit,
     );
 
     _rulesController.addListener(_updateRules);
@@ -628,7 +673,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _quickRulePills.map((pill) {
+            children: _getCategoryQuickRules(provider.propertyType).map((pill) {
               return InkWell(
                 borderRadius: BorderRadius.circular(20),
                 onTap: () => _addQuickRule(pill),

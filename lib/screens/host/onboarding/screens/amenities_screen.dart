@@ -72,7 +72,7 @@ class AmenitiesScreen extends StatelessWidget {
               
               const SizedBox(height: 24),
 
-              // Render categorized 25 Stay Q amenities
+              // Render categorized 25 StayQ amenities
               for (final cat in categories) ...[
                 Text(
                   cat == 'Comfort' ? 'Comfort & Linen' : cat,

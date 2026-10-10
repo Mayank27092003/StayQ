@@ -1,182 +1,96 @@
-import 'dart:io';
-import 'dart:convert';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
 import 'api/api_client.dart';
 
-// Top-level function for background message handling
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint("Handling a background message: ${message.messageId}");
+  if (Firebase.apps.isEmpty) await Firebase.initializeApp();
 }
-
 class PushNotificationService {
-  static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   static GlobalKey<ScaffoldMessengerState>? scaffoldMessengerKey;
-  static void Function(RemoteMessage message)? onForegroundMessageReceived;
-
+  static void Function(RemoteMessage)? onForegroundMessageReceived;
+  static Future<void> Function(RemoteMessage)? onNotificationOpened;
+  static StreamSubscription<String>? _refresh;
+  static StreamSubscription<RemoteMessage>? _foreground;
+  static StreamSubscription<RemoteMessage>? _opened;
+  static bool _initialized = false;
+  static FirebaseMessaging get _messaging => FirebaseMessaging.instance;
+  static bool _forCurrentUser(RemoteMessage message) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final target = message.data['userId']?.toString();
+    if (target != null && target.isNotEmpty && uid != null && target != uid) {
+      return false;
+    }
+    return true;
+  }
   static Future<void> initialize({GlobalKey<ScaffoldMessengerState>? messengerKey}) async {
     scaffoldMessengerKey = messengerKey;
-
-    // 1. Request permission
-    NotificationSettings settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
-
-    if (settings.authorizationStatus == AuthorizationStatus.authorized ||
-        settings.authorizationStatus == AuthorizationStatus.provisional) {
-      debugPrint('[PushNotificationService] Notification permission granted: ${settings.authorizationStatus}');
-      
-      // 2. Get the token & sync if user is already authenticated
-      try {
-        String? token = await _messaging.getToken();
-        if (token != null) {
-          debugPrint("[PushNotificationService] FCM Token obtained: $token");
-          await syncTokenWithBackend(token);
-        }
-
-        // 3. Listen to token refreshes
-        _messaging.onTokenRefresh.listen((newToken) {
-          debugPrint("[PushNotificationService] FCM Token refreshed.");
-          syncTokenWithBackend(newToken);
-        });
-      } catch (e) {
-        debugPrint('[PushNotificationService] Failed to get FCM token: $e');
-      }
-
-      // 4. Handle foreground messages
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('[PushNotificationService] Received foreground message: ${message.notification?.title}');
-        
-        onForegroundMessageReceived?.call(message);
-
-        // Show in-app banner if scaffold messenger key is available
-        if (scaffoldMessengerKey?.currentState != null && message.notification != null) {
-          scaffoldMessengerKey!.currentState!.showSnackBar(
-            SnackBar(
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: const Color(0xFF1E1C2A),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              content: Row(
-                children: [
-                  const Icon(Icons.notifications_active_rounded, color: Color(0xFFE05638), size: 22),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          message.notification?.title ?? 'Notification',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
-                        ),
-                        if (message.notification?.body != null)
-                          Text(
-                            message.notification!.body!,
-                            style: const TextStyle(color: Colors.white70, fontSize: 12),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
+    if (_initialized) return;
+    _initialized = true;
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    _refresh = _messaging.onTokenRefresh.listen((_) => unawaited(syncTokenWithBackend()));
+    _foreground = FirebaseMessaging.onMessage.listen((message) {
+      if (!_forCurrentUser(message)) return;
+      onForegroundMessageReceived?.call(message);
+      final title = message.notification?.title ?? message.data['title']?.toString();
+      final body = message.notification?.body ?? message.data['body']?.toString();
+      if (title != null) {
+        scaffoldMessengerKey?.currentState?.showSnackBar(SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1E1B4B),
+          content: Row(
+            children: [
+              const Icon(Icons.notifications_active, color: Color(0xFFFBBF24), size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  [title, if (body != null) body].join('\n'),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
               ),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
-      });
-
-      // 5. Handle background/terminated messages
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-      
-      // 6. Handle notification opens when app was in background
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        debugPrint('[PushNotificationService] Notification opened from background: ${message.data}');
-      });
-      
-      // 7. Handle notification opens when app was terminated
-      RemoteMessage? initialMessage = await _messaging.getInitialMessage();
-      if (initialMessage != null) {
-        debugPrint('[PushNotificationService] App launched from terminated state via notification: ${initialMessage.data}');
+            ],
+          ),
+        ));
       }
-    } else {
-      debugPrint('[PushNotificationService] User declined or has not accepted notification permission');
-    }
+    });
+    _opened = FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      if (_forCurrentUser(message) && onNotificationOpened != null) unawaited(onNotificationOpened!(message));
+    });
+    try {
+      final permission = await _messaging.requestPermission(alert: true, badge: true, sound: true)
+        .timeout(const Duration(seconds: 10));
+      if (permission.authorizationStatus == AuthorizationStatus.authorized || permission.authorizationStatus == AuthorizationStatus.provisional) {
+        unawaited(syncTokenWithBackend());
+      }
+      final initial = await _messaging.getInitialMessage().timeout(const Duration(seconds: 10));
+      if (initial != null && _forCurrentUser(initial) && onNotificationOpened != null) await onNotificationOpened!(initial);
+    } catch (e) { debugPrint('Notification setup failed: $e'); }
   }
-
-  /// Syncs the FCM token with the backend for the current logged-in user.
   static Future<void> syncTokenWithBackend([String? token]) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
     try {
-      token ??= await _messaging.getToken();
-      if (token == null || token.isEmpty) return;
-
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        debugPrint("[PushNotificationService] User not logged in yet. Token will sync upon authentication.");
-        return;
-      }
-
-      final idToken = await currentUser.getIdToken();
-      if (idToken == null) return;
-
-      final platform = Platform.isIOS ? 'ios' : (Platform.isAndroid ? 'android' : 'web');
-      final uri = Uri.parse('${ApiClient.instance.baseUrl}/notifications/device-token');
-
-      final response = await http.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $idToken',
-        },
-        body: jsonEncode({
-          'token': token,
-          'platform': platform,
-        }),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        debugPrint("[PushNotificationService] Device token successfully registered with backend.");
-      } else {
-        debugPrint("[PushNotificationService] Failed to sync token (${response.statusCode}): ${response.body}");
-      }
-    } catch (e) {
-      debugPrint("[PushNotificationService] Error syncing token to backend: $e");
-    }
+      token ??= await _messaging.getToken().timeout(const Duration(seconds: 10));
+      if (token == null || token.isEmpty || FirebaseAuth.instance.currentUser?.uid != uid) return;
+      final platform = kIsWeb ? 'web' : defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+      await ApiClient.instance.post('/notifications/device-token', body: {'token': token, 'platform': platform});
+    } catch (e) { debugPrint('Notification token registration failed: $e'); }
   }
-
-  /// Removes the device token on logout so subsequent notifications aren't sent to this device.
   static Future<void> removeTokenFromBackend() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
     try {
-      final token = await _messaging.getToken();
-      if (token == null || token.isEmpty) return;
-
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) return;
-
-      final idToken = await currentUser.getIdToken();
-      if (idToken == null) return;
-
-      final uri = Uri.parse('${ApiClient.instance.baseUrl}/notifications/device-token');
-      await http.delete(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $idToken',
-        },
-        body: jsonEncode({
-          'token': token,
-        }),
-      );
-      debugPrint("[PushNotificationService] Device token removed from backend on logout.");
-    } catch (e) {
-      debugPrint("[PushNotificationService] Error removing token on logout: $e");
-    }
+      final token = await _messaging.getToken().timeout(const Duration(seconds: 3));
+      if (token == null || FirebaseAuth.instance.currentUser?.uid != uid) return;
+      await ApiClient.instance.delete('/notifications/device-token', body: {'token': token});
+    } catch (e) { debugPrint('Notification token removal failed: $e'); }
+  }
+  static Future<void> dispose() async {
+    await _refresh?.cancel(); await _foreground?.cancel(); await _opened?.cancel();
+    _refresh = null; _foreground = null; _opened = null; _initialized = false;
   }
 }

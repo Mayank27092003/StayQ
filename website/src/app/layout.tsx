@@ -112,7 +112,7 @@ const jsonLd = {
         "https://www.instagram.com/stayqofficial",
         "https://twitter.com/StayQOfficial",
         "https://www.linkedin.com/company/stayq",
-        "https://play.google.com/store/apps/details?id=com.stayq.app"
+        "https://play.google.com/store/apps/details?id=com.stayq.stay_q"
       ],
       "contactPoint": {
         "@type": "ContactPoint",

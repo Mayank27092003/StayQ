@@ -1,11 +1,25 @@
-import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsBoolean, IsEnum, IsJSON, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { queryBoolean } from '../../../common/utils/input.util';
+import { Transform } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsJSON,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { ReportFormat, ReportFrequency, ReportKind } from '@prisma/client';
 import { PaginationQueryDto } from '../../dto/pagination.dto';
 
 export class ReportDefinitionQueryDto extends PaginationQueryDto {
   @IsOptional() @IsEnum(ReportKind) kind?: ReportKind;
-  @IsOptional() @IsBoolean() @Type(() => Boolean) active?: boolean;
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => queryBoolean(value))
+  active?: boolean;
 }
 
 export class CreateReportDefinitionDto {
@@ -15,7 +29,11 @@ export class CreateReportDefinitionDto {
   @IsEnum(ReportFormat) format!: ReportFormat;
   @IsEnum(ReportFrequency) frequency!: ReportFrequency;
   @IsOptional() @IsJSON() parameters?: string;
-  @IsOptional() @IsArray() @IsString({ each: true }) @ArrayMaxSize(20) recipients?: string[];
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(20)
+  recipients?: string[];
 }
 
 export class RunReportNowDto {

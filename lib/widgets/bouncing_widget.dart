@@ -50,10 +50,10 @@ class _BouncingWidgetState extends State<BouncingWidget> with SingleTickerProvid
   }
 
   void _onTapUp(TapUpDetails details) {
-    if (widget.onTap != null) {
-      _controller.reverse().then((_) {
-        widget.onTap!();
-      });
+    final callback = widget.onTap;
+    if (callback != null && mounted) {
+      _controller.reverse();
+      callback();
     }
   }
 

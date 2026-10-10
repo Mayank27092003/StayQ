@@ -447,7 +447,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
 
           // User-friendly explanation
           Text(
-            'Aapka host application review ke liye submit ho chuka hai! Stay Q team verification complete hote hi aapka dashboard aur saare active tools unlock kar degi.',
+            'Aapka host application review ke liye submit ho chuka hai! StayQ team verification complete hote hi aapka dashboard aur saare active tools unlock kar degi.',
             style: TextStyle(
               fontSize: 12.5,
               height: 1.45,
@@ -487,7 +487,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                 _buildTimelineConnector(isCompleted: false),
                 _buildTimelineStep(
                   step: '3',
-                  title: 'Dashboard & Listings Live on Stay Q',
+                  title: 'Dashboard & Listings Live on StayQ',
                   subtitle: 'Open hoga jab approve hoga',
                   isCompleted: false,
                   isActive: false,
@@ -517,9 +517,13 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                 children: [
                   Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF059669), size: 16),
                   SizedBox(width: 8),
-                  Text(
-                    'Need Fast-Track Approval? Chat on WhatsApp',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF059669)),
+                  Flexible(
+                    child: Text(
+                      'Need Fast-Track Approval? Chat on WhatsApp',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF059669)),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
                 ],
               ),
@@ -1445,11 +1449,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () {
-                          AppMotion.tapSelection();
-                          dashboard.updateBookingStatus(booking.id, 'cancelled');
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking declined')));
-                        },
+                        onPressed: () async { try { await dashboard.updateBookingStatus(booking.id, 'cancelled'); if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking declined.'))); } catch (e) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); } },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.redAccent,
                           side: const BorderSide(color: Colors.redAccent),
@@ -1462,16 +1462,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
-                          AppMotion.tapSelection();
-                          dashboard.updateBookingStatus(booking.id, 'confirmed');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('✓ Booking approved successfully!'),
-                              backgroundColor: Color(0xFF10B981),
-                            ),
-                          );
-                        },
+                        onPressed: () async { try { await dashboard.updateBookingStatus(booking.id, 'confirmed'); if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking confirmed.'))); } catch (e) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); } },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
@@ -1524,7 +1515,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
             ListTile(
               leading: const Icon(Icons.support_agent_rounded, color: AppColors.primary),
               title: const Text('Host 24/7 Priority Support', style: TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Direct line to Stay Q Host Concierge'),
+              subtitle: const Text('Direct line to StayQ Host Concierge'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportScreen()));

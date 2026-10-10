@@ -20,9 +20,9 @@ class _WalkthroughScreenState extends State<WalkthroughScreen> {
 
   final List<_WalkthroughItem> _items = [
     _WalkthroughItem(
-      title: 'Welcome to Stay Q',
+      title: 'Welcome to StayQ',
       description: 'Discover premium stays and zero-broker rentals across India with your favorite travel buddy.',
-      imageUrl: 'assets/images/mascot1.jpg', 
+      imageUrl: 'assets/images/qube_stayq_bellhop.png', 
     ),
     _WalkthroughItem(
       title: 'Find Your Perfect Stay',
@@ -74,16 +74,19 @@ class _WalkthroughScreenState extends State<WalkthroughScreen> {
                     itemCount: _items.length,
                     itemBuilder: (context, index) {
                       final item = _items[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Spacer(),
-                            // Floating Transparent Mascot Image
-                            SizedBox(
-                              height: 320,
-                              width: 280,
+                      return LayoutBuilder(
+                        builder: (context, constraints) {
+                          final double maxImageHeight = (constraints.maxHeight * 0.38).clamp(160.0, 300.0);
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Spacer(),
+                                // Floating Transparent Mascot Image
+                                SizedBox(
+                                  height: maxImageHeight,
+                                  width: 280,
                               child: item.imageUrl2 != null
                                 ? Row(
                                     children: [
@@ -141,6 +144,8 @@ class _WalkthroughScreenState extends State<WalkthroughScreen> {
                         ),
                       );
                     },
+                  );
+                },
                   ),
                 ),
                 // Bottom Bar

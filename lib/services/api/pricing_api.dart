@@ -5,7 +5,7 @@ class PricingApi {
 
   PricingApi(this._client);
 
-  /// Get Neighborhood Market Intelligence & Groq AI Dynamic Pricing
+  /// Get Neighborhood Market Intelligence & StayQ AI Dynamic Pricing
   Future<Map<String, dynamic>> getMarketIntelligence({
     required String city,
     String? locality,

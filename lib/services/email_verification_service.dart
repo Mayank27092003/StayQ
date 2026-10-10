@@ -1,90 +1,36 @@
-import 'dart:convert';
+import 'dart:async';
+import 'api/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../config/app_config.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_motion.dart';
 import '../widgets/bouncing_widget.dart';
 
 class EmailVerificationService {
-  static const String _sendUrl = '${AppConfig.apiBaseUrl}/auth/send-email-otp';
-  static const String _verifyUrl = '${AppConfig.apiBaseUrl}/auth/verify-email-otp';
-
-  /// Sends a 6-digit OTP code to the requested email from hello@stayq.space
-  static Future<Map<String, dynamic>> sendOtp(String email, {String? userName}) async {
-    final cleanEmail = email.trim().toLowerCase();
+  static Future<Map<String, dynamic>> sendOtp(String email, {String? userName, ApiClient? client}) async {
     try {
-      final response = await http
-          .post(
-            Uri.parse(_sendUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'email': cleanEmail,
-              'userName': userName,
-            }),
-          )
-          .timeout(const Duration(seconds: 12));
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = jsonDecode(response.body);
-        return {'success': true, 'message': data['message'] ?? 'OTP sent to $cleanEmail'};
-      } else {
-        String msg = 'Failed to send verification email';
-        try {
-          final data = jsonDecode(response.body);
-          if (data['message'] != null) msg = data['message'].toString();
-        } catch (_) {}
-        return {'success': false, 'message': msg};
+      final data = await (client ?? ApiClient.instance).post('/auth/send-email-otp', body: {
+        'email': email.trim().toLowerCase(), if (userName != null) 'userName': userName,
+      });
+      if (data is! Map || data['success'] != true) {
+        return {'success': false, 'message': 'The server did not confirm that an OTP was sent.'};
       }
-    } catch (e) {
-      // Local development or offline fallback so testing never gets blocked
-      debugPrint('Email OTP API call error: $e');
-      return {
-        'success': true,
-        'message': 'Verification code dispatched to $cleanEmail from hello@stayq.space (Dev Fallback: 123456)',
-        'devOtp': '123456',
-      };
-    }
+      return {'success': true, 'message': data['message'] ?? 'Verification code sent.'};
+    } catch (e) { return {'success': false, 'message': e.toString()}; }
   }
 
-  /// Verifies the entered 6-digit OTP
-  static Future<Map<String, dynamic>> verifyOtp(String email, String otp, {String? userId}) async {
-    final cleanEmail = email.trim().toLowerCase();
-    final cleanOtp = otp.trim();
-
-    // Dev / offline fallback support
-    if (cleanOtp == '123456' || cleanOtp == '000000') {
-      return {'success': true, 'message': 'Email successfully verified!'};
+  static Future<Map<String, dynamic>> verifyOtp(String email, String otp, {String? userId, ApiClient? client}) async {
+    if (!RegExp(r'^\d{6}$').hasMatch(otp.trim())) {
+      return {'success': false, 'message': 'Enter the six-digit code sent to your email.'};
     }
-
     try {
-      final response = await http
-          .post(
-            Uri.parse(_verifyUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'email': cleanEmail,
-              'otp': cleanOtp,
-              'userId': userId,
-            }),
-          )
-          .timeout(const Duration(seconds: 12));
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = jsonDecode(response.body);
-        return {'success': true, 'message': data['message'] ?? 'Email verified!'};
-      } else {
-        String msg = 'Invalid or expired OTP';
-        try {
-          final data = jsonDecode(response.body);
-          if (data['message'] != null) msg = data['message'].toString();
-        } catch (_) {}
-        return {'success': false, 'message': msg};
+      final data = await (client ?? ApiClient.instance).post('/auth/verify-email-otp', body: {
+        'email': email.trim().toLowerCase(), 'otp': otp.trim(),
+      });
+      if (data is! Map || data['success'] != true || data['verified'] == false) {
+        return {'success': false, 'message': 'The server did not verify this email.'};
       }
-    } catch (e) {
-      debugPrint('Email OTP verify error: $e');
-      return {'success': false, 'message': 'Connection error. Please try again.'};
-    }
+      return {'success': true, 'message': data['message'] ?? 'Email verified.'};
+    } catch (e) { return {'success': false, 'message': e.toString()}; }
   }
 
   /// Opens an interactive bottom sheet for entering and verifying email OTP
@@ -129,6 +75,7 @@ class _EmailOtpSheetState extends State<_EmailOtpSheet> {
   String? _errorMessage;
   int _resendCountdown = 60;
   bool _canResend = false;
+  Timer? _resendTimer;
 
   @override
   void initState() {
@@ -139,26 +86,18 @@ class _EmailOtpSheetState extends State<_EmailOtpSheet> {
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _otpController.dispose();
     super.dispose();
   }
 
   void _startCountdown() {
-    setState(() {
-      _resendCountdown = 60;
-      _canResend = false;
-    });
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1));
-      if (!mounted) return false;
-      setState(() {
-        if (_resendCountdown > 1) {
-          _resendCountdown--;
-        } else {
-          _canResend = true;
-        }
-      });
-      return _resendCountdown > 1 && mounted;
+    _resendTimer?.cancel();
+    setState(() { _resendCountdown = 60; _canResend = false; });
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) { timer.cancel(); return; }
+      setState(() { _resendCountdown--; _canResend = _resendCountdown <= 0; });
+      if (_canResend) timer.cancel();
     });
   }
 

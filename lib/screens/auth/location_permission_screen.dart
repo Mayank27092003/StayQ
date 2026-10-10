@@ -77,7 +77,7 @@ class LocationPermissionScreen extends StatelessWidget {
               const SizedBox(height: 12),
 
               const Text(
-                'Stay Q uses your location to discover nearby luxury stays, verified chalets, and personalized recommendations around you.',
+                'StayQ uses your location to discover nearby luxury stays, verified chalets, and personalized recommendations around you.',
                 style: TextStyle(
                   fontSize: 14,
                   height: 1.5,
@@ -113,7 +113,7 @@ class LocationPermissionScreen extends StatelessWidget {
                   final position = await Geolocator.getCurrentPosition();
                   if (context.mounted) {
                     final provider = Provider.of<AppProvider>(context, listen: false);
-                    provider.updateSearch(destination: '${position.latitude.toStringAsFixed(2)}, ${position.longitude.toStringAsFixed(2)}');
+                    provider.searchNearby(position.latitude, position.longitude);
                     Navigator.pop(context);
                   }
                 },

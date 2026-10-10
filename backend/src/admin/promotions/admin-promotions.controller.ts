@@ -34,13 +34,17 @@ export class AdminPromotionsController {
   constructor(private readonly promotions: AdminPromotionsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List promotions with derived status and real redemption figures' })
+  @ApiOperation({
+    summary: 'List promotions with derived status and real redemption figures',
+  })
   list(@Query() query: PromotionQueryDto) {
     return this.promotions.list(query);
   }
 
   @Get('summary')
-  @ApiOperation({ summary: 'Aggregate promotion performance derived from redeemed bookings' })
+  @ApiOperation({
+    summary: 'Aggregate promotion performance derived from redeemed bookings',
+  })
   summary(@Query() query: PromotionSummaryQueryDto) {
     return this.promotions.summary(query);
   }
@@ -83,7 +87,10 @@ export class AdminPromotionsController {
   @Delete(':id')
   @AdminRoles(AdminRole.MARKETING, AdminRole.OPERATIONS)
   @ApiOperation({ summary: 'Delete a promotion that has never been redeemed' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') adminId: string) {
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') adminId: string,
+  ) {
     return this.promotions.remove(id, adminId);
   }
 }

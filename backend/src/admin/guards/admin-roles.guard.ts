@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AdminRole } from '@prisma/client';
 import { ADMIN_ROLES_KEY } from '../decorators/admin-roles.decorator';
@@ -8,10 +13,9 @@ export class AdminRolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.getAllAndOverride<AdminRole[] | undefined>(
-      ADMIN_ROLES_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const requiredRoles = this.reflector.getAllAndOverride<
+      AdminRole[] | undefined
+    >(ADMIN_ROLES_KEY, [context.getHandler(), context.getClass()]);
 
     // No decorator on the route: AdminGuard's `isAdmin` check is sufficient.
     if (!requiredRoles || requiredRoles.length === 0) return true;
@@ -29,7 +33,11 @@ export class AdminRolesGuard implements CanActivate {
     // existing operators out of the panel, so they retain access. Assign an
     // explicit `adminRole` to every admin, then remove this allowance to make
     // the policy matrix fully enforcing.
-    if (!user.adminRole) return true;
+    if (!user.adminRole) {
+      throw new ForbiddenException(
+        `This action requires one of the following admin roles: ${requiredRoles.join(', ')}. No admin role is assigned to your account.`,
+      );
+    }
 
     if (!requiredRoles.includes(user.adminRole)) {
       throw new ForbiddenException(

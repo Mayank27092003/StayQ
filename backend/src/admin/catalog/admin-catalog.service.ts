@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, PropertyCategory } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminAuditService } from '../audit/admin-audit.service';
@@ -29,12 +34,21 @@ export class AdminCatalogService {
    */
   async listCategories(activeOnly = false) {
     const [records, usage] = await Promise.all([
-      this.prisma.catalogCategory.findMany({ orderBy: { displayOrder: 'asc' } }),
-      this.prisma.property.groupBy({ by: ['category'], _count: { _all: true } }),
+      this.prisma.catalogCategory.findMany({
+        orderBy: { displayOrder: 'asc' },
+      }),
+      this.prisma.property.groupBy({
+        by: ['category'],
+        _count: { _all: true },
+      }),
     ]);
 
-    const byCategory = new Map(records.map((record) => [record.category, record]));
-    const usageByCategory = new Map(usage.map((row) => [row.category, row._count._all]));
+    const byCategory = new Map(
+      records.map((record) => [record.category, record]),
+    );
+    const usageByCategory = new Map(
+      usage.map((row) => [row.category, row._count._all]),
+    );
 
     const rows = Object.values(PropertyCategory).map((category) => {
       const record = byCategory.get(category);
@@ -58,7 +72,8 @@ export class AdminCatalogService {
     const filtered = activeOnly ? rows.filter((row) => row.active) : rows;
 
     return filtered.sort(
-      (a, b) => a.displayOrder - b.displayOrder || a.label.localeCompare(b.label),
+      (a, b) =>
+        a.displayOrder - b.displayOrder || a.label.localeCompare(b.label),
     );
   }
 
@@ -83,7 +98,9 @@ export class AdminCatalogService {
             description: dto.description ?? null,
             iconName: dto.iconName ?? null,
             imageUrl: dto.imageUrl ?? null,
-            ...(dto.displayOrder !== undefined ? { displayOrder: dto.displayOrder } : {}),
+            ...(dto.displayOrder !== undefined
+              ? { displayOrder: dto.displayOrder }
+              : {}),
             ...(dto.active !== undefined ? { active: dto.active } : {}),
             updatedById: adminId,
           },
@@ -93,13 +110,19 @@ export class AdminCatalogService {
         action: 'UPSERT_CATALOG_CATEGORY',
         targetType: 'PROPERTY',
         targetId: record.id,
-        details: { category: record.category, label: record.label, active: record.active },
+        details: {
+          category: record.category,
+          label: record.label,
+          active: record.active,
+        },
       }),
     );
   }
 
   async updateCategory(id: string, dto: UpdateCategoryDto, adminId: string) {
-    const existing = await this.prisma.catalogCategory.findUnique({ where: { id } });
+    const existing = await this.prisma.catalogCategory.findUnique({
+      where: { id },
+    });
     if (!existing) throw new NotFoundException('Category metadata not found.');
 
     const data: Prisma.CatalogCategoryUpdateInput = { updatedById: adminId };
@@ -142,11 +165,16 @@ export class AdminCatalogService {
 
     const counts = await Promise.all(
       amenities.map((amenity) =>
-        this.prisma.property.count({ where: { amenities: { has: amenity.key } } }),
+        this.prisma.property.count({
+          where: { amenities: { has: amenity.key } },
+        }),
       ),
     );
 
-    return amenities.map((amenity, index) => ({ ...amenity, propertyCount: counts[index] }));
+    return amenities.map((amenity, index) => ({
+      ...amenity,
+      propertyCount: counts[index],
+    }));
   }
 
   /**
@@ -175,8 +203,13 @@ export class AdminCatalogService {
   }
 
   async createAmenity(dto: CreateAmenityDto, adminId: string) {
-    const existing = await this.prisma.amenity.findUnique({ where: { key: dto.key } });
-    if (existing) throw new ConflictException(`An amenity with key "${dto.key}" already exists.`);
+    const existing = await this.prisma.amenity.findUnique({
+      where: { key: dto.key },
+    });
+    if (existing)
+      throw new ConflictException(
+        `An amenity with key "${dto.key}" already exists.`,
+      );
 
     return this.audit.runWithAudit(
       (tx) =>

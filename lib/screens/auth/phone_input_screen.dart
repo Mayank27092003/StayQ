@@ -27,14 +27,24 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
       provider.verifyPhoneNumber(
         _fullNumber,
         onCodeSent: () {
+          if (!mounted) return;
           Navigator.pushNamed(context, AppRoutes.otpVerify);
         },
+        onVerified: () async {
+          final complete = await provider.checkProfileComplete();
+          if (!mounted) return;
+          Navigator.pushNamedAndRemoveUntil(context, complete ? AppRoutes.mainShell : AppRoutes.completeProfile, (_) => false);
+        },
         onError: (error) {
+          if (!mounted) return;
           CustomToast.show(context: context, message: error, isError: true);
         },
       );
     }
   }
+
+  @override
+  void dispose() { _phoneController.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +72,8 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
             ),
           ),
           SafeArea(
-            child: Padding(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.all(24.0),
               child: Form(
                 key: _formKey,
@@ -107,7 +118,7 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                       },
                     ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
                     
-                    const Spacer(),
+                    const SizedBox(height: 32),
                     
                     SizedBox(
                       width: double.infinity,

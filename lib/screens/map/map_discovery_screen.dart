@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../../theme/app_colors.dart';
 import '../../models/stay_model.dart';
 import '../listing/listing_detail_screen.dart';
 import '../search/search_filter_modal.dart';
+import '../../config/app_config.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -21,83 +23,163 @@ class MapDiscoveryScreen extends StatefulWidget {
 
 class _MapDiscoveryScreenState extends State<MapDiscoveryScreen> {
   int _selectedStayIndex = 0;
+  String? _selectedStayId;
   final PageController _cardPageController = PageController(viewportFraction: 0.85);
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
+  AppProvider? _provider;
+  Timer? _cameraDebounce;
+  int _markerRequest = 0;
+  int _cameraRequest = 0;
+  String _lastSignature = '';
+
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _buildMarkers();
-      
-      // Listen to provider changes to move camera on search
-      final provider = Provider.of<AppProvider>(context, listen: false);
-      provider.addListener(_onProviderChanged);
+      if (!mounted) return;
+      _provider = context.read<AppProvider>();
+      _provider!.addListener(_onProviderChanged); _onProviderChanged();
     });
   }
 
   void _onProviderChanged() {
-    if (!mounted) return;
-    final provider = Provider.of<AppProvider>(context, listen: false);
-    
-    // Prioritize search destination if available
-    if (provider.searchDestination.isNotEmpty && provider.searchDestination != 'Where') {
-      _geocodeAndMove(provider.searchDestination);
-    } else if (provider.filteredStays.isNotEmpty) {
-      final firstStay = provider.filteredStays.first;
-      // Check for valid lat/lng (not 0.0 mock data)
-      if (firstStay.lat != 0.0 && firstStay.lng != 0.0) {
+    if (!mounted || _provider == null) return;
+    final p = _provider!; final stays = p.filteredStays;
+    final signature = '${p.searchDestination}|${p.searchLatitude}|${p.searchLongitude}|${stays.map((s) => '${s.id}:${s.lat}:${s.lng}:${s.pricePerNight}').join('|')}';
+    if (signature == _lastSignature) return;
+    _lastSignature = signature;
+    final previousIndex = stays.indexWhere((s) => s.id == _selectedStayId);
+    _selectedStayIndex = previousIndex >= 0 ? previousIndex :
+        _selectedStayIndex.clamp(0, stays.isEmpty ? 0 : stays.length - 1).toInt();
+    _selectedStayId = stays.isEmpty ? null : stays[_selectedStayIndex].id;
+    _buildMarkers();
+    if (_cardPageController.hasClients) _cardPageController.jumpToPage(_selectedStayIndex);
+    _cameraDebounce?.cancel(); _cameraRequest++;
+    _cameraDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      if (p.searchLatitude != null && p.searchLongitude != null) {
         _mapController?.animateCamera(
           CameraUpdate.newCameraPosition(
             CameraPosition(
-              target: LatLng(firstStay.lat, firstStay.lng),
-              zoom: 13,
+              target: LatLng(p.searchLatitude!, p.searchLongitude!),
+              zoom: 13.5,
+              tilt: 25.0,
+            ),
+          ),
+        );
+      } else if (p.searchDestination.isNotEmpty && !['Where', 'Anywhere'].contains(p.searchDestination)) {
+        _geocodeAndMove(p.searchDestination);
+      } else if (stays.isNotEmpty && (stays.first.lat != 0 || stays.first.lng != 0)) {
+        _mapController?.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(stays.first.lat, stays.first.lng),
+              zoom: 13.5,
+              tilt: 25.0,
             ),
           ),
         );
       }
-    }
+    });
   }
 
   Future<void> _geocodeAndMove(String destination) async {
+    final request = ++_cameraRequest;
     try {
-      final url = Uri.parse('https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(destination)}&format=json&limit=1');
-      final response = await http.get(url, headers: {'User-Agent': 'StayQ_App'});
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data.isNotEmpty) {
-          final lat = double.parse(data[0]['lat']);
-          final lon = double.parse(data[0]['lon']);
-          _mapController?.animateCamera(
-            CameraUpdate.newCameraPosition(
-              CameraPosition(target: LatLng(lat, lon), zoom: 12),
+      final destLower = destination.trim().toLowerCase();
+      // 1. First check if any available stay directly matches the searched destination
+      final matches = _provider?.filteredStays.where(
+        (s) => s.lat != 0 && s.lng != 0 &&
+               (s.city.toLowerCase().contains(destLower) ||
+                destLower.contains(s.city.toLowerCase()) ||
+                s.title.toLowerCase().contains(destLower)),
+      );
+      final matchingStay = (matches != null && matches.isNotEmpty) ? matches.first : null;
+      if (matchingStay != null && matchingStay.lat != 0) {
+        if (!mounted || request != _cameraRequest) return;
+        _mapController?.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(matchingStay.lat, matchingStay.lng),
+              zoom: 13.5,
+              tilt: 28.0,
             ),
-          );
+          ),
+        );
+        return;
+      }
+
+      // 2. Geocode using Google Geocoding API if key is available
+      final apiKey = AppConfig.googlePlacesApiKey;
+      if (apiKey.isNotEmpty) {
+        final gUrl = Uri.parse('https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeComponent(destination)}&key=$apiKey');
+        final gRes = await http.get(gUrl).timeout(const Duration(seconds: 8));
+        if (gRes.statusCode == 200) {
+          final gData = jsonDecode(gRes.body);
+          if (gData['status'] == 'OK' && (gData['results'] as List).isNotEmpty) {
+            final loc = gData['results'][0]['geometry']['location'];
+            final lat = double.tryParse(loc['lat'].toString());
+            final lng = double.tryParse(loc['lng'].toString());
+            if (lat != null && lng != null && mounted && request == _cameraRequest) {
+              _mapController?.animateCamera(
+                CameraUpdate.newCameraPosition(
+                  CameraPosition(
+                    target: LatLng(lat, lng),
+                    zoom: 13.5,
+                    tilt: 28.0,
+                  ),
+                ),
+              );
+              return;
+            }
+          }
         }
       }
-    } catch (e) {
-      debugPrint('Geocoding error: $e');
-    }
+
+      // 3. Fallback to OpenStreetMap Nominatim
+      final url = Uri.parse('https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(destination)}&format=json&limit=1');
+      final response = await http.get(url, headers: {'User-Agent': 'StayQ_App'}).timeout(const Duration(seconds: 10));
+      if (!mounted || request != _cameraRequest || response.statusCode != 200) return;
+      final data = jsonDecode(response.body);
+      if (data is! List || data.isEmpty) return;
+      final lat = double.tryParse(data.first['lat'].toString()); final lng = double.tryParse(data.first['lon'].toString());
+      if (lat != null && lng != null) {
+        _mapController?.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(lat, lng),
+              zoom: 13.5,
+              tilt: 28.0,
+            ),
+          ),
+        );
+      }
+    } catch (e) { debugPrint('Geocoding failed: $e'); }
   }
 
   @override
   void dispose() {
-    final provider = Provider.of<AppProvider>(context, listen: false);
-    provider.removeListener(_onProviderChanged);
-    _cardPageController.dispose();
-    super.dispose();
+    _provider?.removeListener(_onProviderChanged); _cameraDebounce?.cancel();
+    _markerRequest++; _cameraRequest++; _mapController?.dispose();
+    _cardPageController.dispose(); super.dispose();
   }
 
   Future<void> _buildMarkers() async {
-    final provider = Provider.of<AppProvider>(context, listen: false);
-    final stays = provider.filteredStays;
+    if (!mounted || _provider == null) return;
+    final request = ++_markerRequest;
+    final stays = _provider!.filteredStays;
     Set<Marker> newMarkers = {};
 
     for (int i = 0; i < stays.length; i++) {
       final stay = stays[i];
       final isSelected = i == _selectedStayIndex;
-      final icon = await _getCustomMarker('₹${stay.pricePerNight.toInt()}', isSelected: isSelected);
+      if (stay.lat == 0 && stay.lng == 0) continue;
+      BitmapDescriptor icon;
+      try { icon = await _getCustomMarker('₹${stay.pricePerNight.toInt()}', isSelected: isSelected); }
+      catch (_) { icon = BitmapDescriptor.defaultMarker; }
+      if (!mounted || request != _markerRequest) return;
       
       newMarkers.add(
         Marker(
@@ -106,8 +188,9 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen> {
           icon: icon,
           zIndex: isSelected ? 2.0 : 1.0,
           onTap: () {
+            if (!mounted) return;
             setState(() {
-              _selectedStayIndex = i;
+              _selectedStayIndex = i; _selectedStayId = stay.id;
             });
             _buildMarkers(); // Rebuild to update colors
             _cardPageController.animateToPage(
@@ -120,7 +203,7 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen> {
       );
     }
 
-    if (mounted) {
+    if (mounted && request == _markerRequest) {
       setState(() {
         _markers = newMarkers;
       });
@@ -177,61 +260,64 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen> {
       Offset((width - painter.width) / 2, (height - 20 - painter.height) / 2),
     );
 
-    final ui.Image img = await pictureRecorder.endRecording().toImage(width.toInt(), height.toInt());
-    final ByteData? byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-    final Uint8List uint8List = byteData!.buffer.asUint8List();
-
-    return BitmapDescriptor.fromBytes(uint8List);
+    final picture = pictureRecorder.endRecording();
+    ui.Image? image;
+    try {
+      image = await picture.toImage(width.toInt(), height.toInt());
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      return bytes == null ? BitmapDescriptor.defaultMarker :
+          BitmapDescriptor.fromBytes(bytes.buffer.asUint8List());
+    } finally { image?.dispose(); picture.dispose(); painter.dispose(); }
   }
 
   final String _mapStyle = '''
   [
     {
       "elementType": "geometry",
-      "stylers": [{"color": "#f8f9fa"}]
+      "stylers": [{"color": "#f5f6f8"}]
     },
     {
       "elementType": "labels.text.fill",
-      "stylers": [{"color": "#4a4a4a"}]
+      "stylers": [{"color": "#334155"}]
     },
     {
       "elementType": "labels.text.stroke",
-      "stylers": [{"color": "#ffffff"}]
+      "stylers": [{"color": "#ffffff"}, {"weight": 3}]
     },
     {
       "featureType": "administrative",
       "elementType": "geometry.stroke",
-      "stylers": [{"color": "#c9c9c9"}]
+      "stylers": [{"color": "#cbd5e1"}]
     },
     {
       "featureType": "administrative.land_parcel",
       "elementType": "labels.text.fill",
-      "stylers": [{"color": "#8a8a8a"}]
+      "stylers": [{"color": "#94a3b8"}]
     },
     {
       "featureType": "landscape.natural",
       "elementType": "geometry",
-      "stylers": [{"color": "#e8f5e9"}]
+      "stylers": [{"color": "#edf2f0"}]
     },
     {
       "featureType": "poi",
       "elementType": "geometry",
-      "stylers": [{"color": "#e0e0e0"}]
+      "stylers": [{"color": "#f1f5f9"}]
     },
     {
       "featureType": "poi",
       "elementType": "labels.text.fill",
-      "stylers": [{"color": "#6b6b6b"}]
+      "stylers": [{"color": "#64748b"}]
     },
     {
       "featureType": "poi.park",
       "elementType": "geometry",
-      "stylers": [{"color": "#c8e6c9"}]
+      "stylers": [{"color": "#e2ece4"}]
     },
     {
       "featureType": "poi.park",
       "elementType": "labels.text.fill",
-      "stylers": [{"color": "#5a8a5e"}]
+      "stylers": [{"color": "#52796f"}]
     },
     {
       "featureType": "road",
@@ -241,52 +327,57 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen> {
     {
       "featureType": "road",
       "elementType": "geometry.stroke",
-      "stylers": [{"color": "#e0e0e0"}]
+      "stylers": [{"color": "#e2e8f0"}]
+    },
+    {
+      "featureType": "road.arterial",
+      "elementType": "geometry",
+      "stylers": [{"color": "#ffffff"}]
     },
     {
       "featureType": "road.arterial",
       "elementType": "labels.text.fill",
-      "stylers": [{"color": "#6b6b6b"}]
+      "stylers": [{"color": "#475569"}]
     },
     {
       "featureType": "road.highway",
       "elementType": "geometry",
-      "stylers": [{"color": "#f0d9a0"}]
+      "stylers": [{"color": "#f1f5f9"}]
     },
     {
       "featureType": "road.highway",
       "elementType": "geometry.stroke",
-      "stylers": [{"color": "#d4b878"}]
+      "stylers": [{"color": "#cbd5e1"}]
     },
     {
       "featureType": "road.highway",
       "elementType": "labels.text.fill",
-      "stylers": [{"color": "#5a5a5a"}]
+      "stylers": [{"color": "#334155"}]
     },
     {
       "featureType": "road.local",
       "elementType": "labels.text.fill",
-      "stylers": [{"color": "#8a8a8a"}]
+      "stylers": [{"color": "#64748b"}]
     },
     {
       "featureType": "transit.line",
       "elementType": "geometry",
-      "stylers": [{"color": "#dde4ec"}]
+      "stylers": [{"color": "#e2e8f0"}]
     },
     {
       "featureType": "transit.station",
       "elementType": "geometry",
-      "stylers": [{"color": "#e8e8e8"}]
+      "stylers": [{"color": "#f1f5f9"}]
     },
     {
       "featureType": "water",
       "elementType": "geometry",
-      "stylers": [{"color": "#aad4f0"}]
+      "stylers": [{"color": "#d6e4f0"}]
     },
     {
       "featureType": "water",
       "elementType": "labels.text.fill",
-      "stylers": [{"color": "#5a8ab5"}]
+      "stylers": [{"color": "#476a8a"}]
     }
   ]
   ''';
@@ -367,7 +458,7 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen> {
                                     context: context,
                                     isScrollControlled: true,
                                     backgroundColor: Colors.transparent,
-                                    builder: (_) => SearchFilterModal(),
+                                    builder: (_) => const SearchFilterModal(isFromMap: true),
                                   );
                                 },
                                 child: Column(
@@ -396,7 +487,7 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen> {
                                   context: context,
                                   isScrollControlled: true,
                                   backgroundColor: Colors.transparent,
-                                  builder: (_) => SearchFilterModal(),
+                                  builder: (_) => const SearchFilterModal(isFromMap: true),
                                 );
                               },
                               child: Container(
@@ -444,8 +535,9 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen> {
                   controller: _cardPageController,
                   physics: const BouncingScrollPhysics(),
                   onPageChanged: (idx) {
+                    if (!mounted || idx >= stays.length) return;
                     setState(() {
-                      _selectedStayIndex = idx;
+                      _selectedStayIndex = idx; _selectedStayId = stays[idx].id;
                     });
                     _buildMarkers(); // Update marker colors
                     final stay = stays[idx];
@@ -578,15 +670,15 @@ class _MapCardGlassmorphic extends StatelessWidget {
                       child: SizedBox(
                         width: 120,
                         height: double.infinity,
-                        child: (stay.imageUrls.isNotEmpty && stay.imageUrls.first.startsWith('http'))
+                        child: (stay.imageUrls.isNotEmpty && stay.firstImage.startsWith('http'))
                             ? Image.network(
-                                stay.imageUrls.first,
+                                stay.firstImage,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceLight),
                               )
                             : stay.imageUrls.isNotEmpty
                                 ? Image.asset(
-                                    stay.imageUrls.first,
+                                    stay.firstImage,
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceLight),
                                   )

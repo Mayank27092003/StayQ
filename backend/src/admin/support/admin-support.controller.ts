@@ -37,7 +37,9 @@ export class AdminSupportController {
   }
 
   @Get('summary')
-  @ApiOperation({ summary: 'Queue counters, first-response and resolution times' })
+  @ApiOperation({
+    summary: 'Queue counters, first-response and resolution times',
+  })
   summary() {
     return this.support.summary();
   }
@@ -50,7 +52,9 @@ export class AdminSupportController {
 
   @Patch('tickets/:id')
   @AdminRoles(AdminRole.OPERATIONS, AdminRole.TRUST_SAFETY)
-  @ApiOperation({ summary: 'Update status, priority, category, assignee, or resolution' })
+  @ApiOperation({
+    summary: 'Update status, priority, category, assignee, or resolution',
+  })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateSupportTicketDto,

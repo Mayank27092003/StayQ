@@ -1,4 +1,17 @@
-import { Controller, Get, Put, Patch, Delete, Post, Body, Param, UseGuards, ForbiddenException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Patch,
+  Delete,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  ForbiddenException,
+  Req,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
 import { AdminGuard } from '../admin/guards/admin.guard';
@@ -17,23 +30,30 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
-  @Get('profile')
+  @Get(['profile', 'me'])
   async getProfile(@CurrentUser() user: User) {
     return this.usersService.getProfile(user.id);
   }
 
-  @Put('profile')
+  @Put(['profile', 'me'])
   async updateProfile(@CurrentUser() user: User, @Body() dto: UpdateUserDto) {
     return this.usersService.updateProfile(user.id, dto);
   }
 
-  @Patch('profile')
+  @Patch(['profile', 'me'])
   async patchProfile(@CurrentUser() user: User, @Body() dto: UpdateUserDto) {
     return this.usersService.updateProfile(user.id, dto);
   }
 
   @Delete('me')
-  async deleteMyAccount(@CurrentUser() user: User) {
+  async deleteMyAccount(@CurrentUser() user: User, @Req() req: any) {
+    if (
+      !req.firebaseUser?.auth_time ||
+      Date.now() / 1000 - req.firebaseUser.auth_time > 300
+    )
+      throw new UnauthorizedException(
+        'Recent sign-in is required to delete an account',
+      );
     return this.usersService.deleteUser(user.id);
   }
 
@@ -49,15 +69,28 @@ export class UsersController {
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string, @CurrentUser() user: any) {
-    if (user.id !== id && !user.isAdmin) {
-      throw new ForbiddenException('Cannot delete another user account');
-    }
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Req() req: any,
+  ) {
+    if (user.id !== id && !(user.isAdmin && user.adminRole === 'SUPER_ADMIN'))
+      throw new ForbiddenException('Cannot delete another account');
+    if (
+      !req.firebaseUser?.auth_time ||
+      Date.now() / 1000 - req.firebaseUser.auth_time > 300
+    )
+      throw new UnauthorizedException('Recent sign-in is required');
     return this.usersService.deleteUser(id);
   }
 
   @Post('me/kyc/submit')
   async submitKyc(@CurrentUser() user: User) {
+    return this.usersService.submitKyc(user.id);
+  }
+
+  @Post('become-host')
+  async becomeHost(@CurrentUser() user: User) {
     return this.usersService.submitKyc(user.id);
   }
 }

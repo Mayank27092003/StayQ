@@ -1,3 +1,4 @@
+import '../../services/booking_checkout.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
@@ -11,15 +12,18 @@ import '../../widgets/bouncing_widget.dart';
 import '../../widgets/animated_calendar_picker.dart';
 import '../../widgets/cashfree_payment_sheet.dart';
 import 'booking_confirmation_screen.dart';
+import 'checkout_screen.dart';
 
 class RVCheckoutScreen extends StatefulWidget {
   final StayModel stay;
   final DateTimeRange selectedDates;
+  final List<DateTime>? blockedDates;
 
   const RVCheckoutScreen({
     Key? key,
     required this.stay,
     required this.selectedDates,
+    this.blockedDates,
   }) : super(key: key);
 
   @override
@@ -27,6 +31,8 @@ class RVCheckoutScreen extends StatefulWidget {
 }
 
 class _RVCheckoutScreenState extends State<RVCheckoutScreen> {
+  final _checkout = BookingCheckout();
+
   late DateTimeRange _currentDates;
   bool _isEditingDates = false;
   
@@ -82,61 +88,10 @@ class _RVCheckoutScreenState extends State<RVCheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'RV Booking',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: AppColors.surfaceLight,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildRVSummaryCard().animate().fadeIn(duration: 400.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Trip Duration').animate().fadeIn(delay: 100.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 12),
-            _buildTripDurationSection().animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Location').animate().fadeIn(delay: 200.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 12),
-            _buildLocationFields().animate().fadeIn(delay: 250.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Mileage Package').animate().fadeIn(delay: 300.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 12),
-            _buildMileageSelector().animate().fadeIn(delay: 350.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Extras').animate().fadeIn(delay: 400.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 12),
-            _buildDriverToggle().animate().fadeIn(delay: 450.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Insurance').animate().fadeIn(delay: 500.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 12),
-            _buildInsuranceSelector().animate().fadeIn(delay: 550.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Payment Method').animate().fadeIn(delay: 600.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 12),
-            _buildPaymentMethods().animate().fadeIn(delay: 650.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 32),
-            _buildPriceBreakdownAccordion().animate().fadeIn(delay: 700.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
-      bottomNavigationBar: _buildBottomBar().animate().fadeIn(delay: 800.ms).slideY(begin: 0.5, end: 0),
+    return CheckoutScreen(
+      stay: widget.stay,
+      selectedDates: widget.selectedDates,
+      blockedDates: widget.blockedDates,
     );
   }
   
@@ -175,7 +130,7 @@ class _RVCheckoutScreenState extends State<RVCheckoutScreen> {
               height: 100,
               child: widget.stay.imageUrls.isNotEmpty
                   ? Image.network(
-                      widget.stay.imageUrls.first,
+                      widget.stay.firstImage,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
                         color: AppColors.surfaceLight,
@@ -315,7 +270,7 @@ class _RVCheckoutScreenState extends State<RVCheckoutScreen> {
           if (_isEditingDates)
             Padding(
               padding: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
-              child: AnimatedCalendarPicker(
+              child: AnimatedCalendarPicker(blockedDates: widget.blockedDates ?? widget.stay.blockedDates, 
                 initialRange: _currentDates,
                 onRangeSelected: (dates) {
                   setState(() {
@@ -628,7 +583,7 @@ class _RVCheckoutScreenState extends State<RVCheckoutScreen> {
                       child: _buildPriceRow('Premium insurance', _insuranceCost),
                     ),
                   const SizedBox(height: 8),
-                  _buildPriceRow('Service fee', _serviceFee),
+                  _buildPriceRow('Fee', _serviceFee),
                   const SizedBox(height: 12),
                   const Divider(color: AppColors.borderLight, height: 1),
                   const SizedBox(height: 12),
@@ -691,92 +646,53 @@ class _RVCheckoutScreenState extends State<RVCheckoutScreen> {
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 16,
+        top: 14,
+        bottom: MediaQuery.of(context).padding.bottom + 14,
       ),
       decoration: BoxDecoration(
         color: AppColors.surfaceLight,
         border: const Border(top: BorderSide(color: AppColors.borderLight)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(0.06),
             offset: const Offset(0, -4),
-            blurRadius: 10,
+            blurRadius: 12,
           ),
         ],
       ),
-      child: BouncingWidget(
-        onTap: () async {
-          AppMotion.tapHeavy();
-          final provider = Provider.of<AppProvider>(context, listen: false);
-          final calculatedTotal = (_subtotal + _serviceFee).toDouble();
-
-          final resolvedPhone = provider.userPhone.isNotEmpty
-              ? provider.userPhone
-              : (FirebaseAuth.instance.currentUser?.phoneNumber ?? '9876543210');
-          final resolvedName = provider.userName.isNotEmpty
-              ? provider.userName
-              : (FirebaseAuth.instance.currentUser?.displayName ?? 'Stay Q Guest');
-          final resolvedEmail = provider.userEmail.isNotEmpty
-              ? provider.userEmail
-              : (FirebaseAuth.instance.currentUser?.email ?? 'guest@stayq.space');
-
-          final paymentResult = await CashfreePaymentSheet.show(
-            context,
-            bookingId: 'sq_rv_${DateTime.now().millisecondsSinceEpoch}',
-            totalAmount: calculatedTotal,
-            propertyTitle: widget.stay.title,
-            customerName: resolvedName,
-            customerEmail: resolvedEmail,
-            customerPhone: resolvedPhone,
-          );
-
-          if (paymentResult != null && paymentResult.isSuccess && context.mounted) {
-            provider.addBooking(
-              widget.stay,
-              _currentDates.start,
-              _currentDates.end,
-              2, // Default guests
-              totalAmount: calculatedTotal,
-            );
-
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => BookingConfirmationScreen(
-                  stay: widget.stay,
-                  totalAmount: calculatedTotal,
-                  selectedDates: _currentDates,
-                  guests: 2,
-                  paymentMethod: paymentResult.paymentMethod,
-                ),
-              ),
-            );
-          }
-        },
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.primary, Color(0xFF9C27B0)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withOpacity(0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
+      child: SafeArea(
+        top: false,
+        child: BouncingWidget(
+          onTap: () async {
+            if (_checkout.busy) return;
+            final provider = context.read<AppProvider>();
+            final guests = provider.adultsCount + provider.childrenCount;
+            final booking = await _checkout.run(context, provider, widget.stay, _currentDates, guests,
+              estimate: _total.toDouble(), blockedDates: widget.blockedDates ?? widget.stay.blockedDates, options: {'category': 'RV', 'children': provider.childrenCount,
+                'infants': provider.infantsCount, 'pets': provider.petsCount,
+                'pickupLocation': _pickupController.text.trim(), 'dropLocation': _dropController.text.trim(),
+                'mileageOption': _mileageOption, 'addDriver': _addDriver, 'insuranceOption': _insuranceOption});
+            if (booking == null || !mounted) return;
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => BookingConfirmationScreen(
+              booking: booking, stay: booking.stay, totalAmount: booking.totalAmount,
+              selectedDates: DateTimeRange(start: booking.checkIn, end: booking.checkOut),
+              guests: booking.adults + booking.children, paymentMethod: _checkout.payment?.paymentMethod ?? 'Server confirmed')));
+          },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            alignment: Alignment.center,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF111111),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Center(
               child: Text(
                 'Confirm RV Booking — ${_currencyFormat.format(_total)}',
                 style: const TextStyle(

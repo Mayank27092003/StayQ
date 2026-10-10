@@ -1,9 +1,9 @@
+import { PaymentsService } from '../../payments/payments.service';
 import {
   BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
-  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
   AvailabilityBlockType,
@@ -13,8 +13,16 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminAuditService } from '../audit/admin-audit.service';
-import { buildPaginatedResult, PaginatedResult, toSkipTake } from '../dto/pagination.dto';
-import { decimalToNumber, roundCurrency, sumDecimals } from '../common/serialization';
+import {
+  buildPaginatedResult,
+  PaginatedResult,
+  toSkipTake,
+} from '../dto/pagination.dto';
+import {
+  decimalToNumber,
+  roundCurrency,
+  sumDecimals,
+} from '../common/serialization';
 import { RefundGatewayService } from './refund-gateway.service';
 import {
   AdminBookingQueryDto,
@@ -26,8 +34,14 @@ import {
 
 /** Transitions an admin may apply. Terminal states are not re-openable. */
 const ALLOWED_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
-  [BookingStatus.PENDING_PAYMENT]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
-  [BookingStatus.PENDING_HOST_APPROVAL]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
+  [BookingStatus.PENDING_PAYMENT]: [
+    BookingStatus.CONFIRMED,
+    BookingStatus.CANCELLED,
+  ],
+  [BookingStatus.PENDING_HOST_APPROVAL]: [
+    BookingStatus.CONFIRMED,
+    BookingStatus.CANCELLED,
+  ],
   [BookingStatus.CONFIRMED]: [BookingStatus.COMPLETED, BookingStatus.CANCELLED],
   [BookingStatus.CANCELLED]: [],
   [BookingStatus.COMPLETED]: [],
@@ -53,6 +67,7 @@ export class AdminBookingsService {
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
     private readonly refundGateway: RefundGatewayService,
+    private readonly payments: PaymentsService,
   ) {}
 
   async list(query: AdminBookingQueryDto): Promise<PaginatedResult<unknown>> {
@@ -71,9 +86,15 @@ export class AdminBookingsService {
     if (query.search) {
       where.OR = [
         { confirmationCode: { contains: query.search, mode: 'insensitive' } },
-        { guest: { displayName: { contains: query.search, mode: 'insensitive' } } },
+        {
+          guest: {
+            displayName: { contains: query.search, mode: 'insensitive' },
+          },
+        },
         { guest: { email: { contains: query.search, mode: 'insensitive' } } },
-        { property: { title: { contains: query.search, mode: 'insensitive' } } },
+        {
+          property: { title: { contains: query.search, mode: 'insensitive' } },
+        },
       ];
     }
 
@@ -123,7 +144,13 @@ export class AdminBookingsService {
       where: { id },
       include: {
         guest: {
-          select: { id: true, displayName: true, email: true, phone: true, photoUrl: true },
+          select: {
+            id: true,
+            displayName: true,
+            email: true,
+            phone: true,
+            photoUrl: true,
+          },
         },
         property: {
           select: {
@@ -138,14 +165,26 @@ export class AdminBookingsService {
             checkOutTime: true,
             cancellationPolicy: true,
             host: {
-              select: { id: true, displayName: true, email: true, phone: true, isSuperhost: true },
+              select: {
+                id: true,
+                displayName: true,
+                email: true,
+                phone: true,
+                isSuperhost: true,
+              },
             },
-            images: { select: { url: true }, orderBy: { order: 'asc' }, take: 1 },
+            images: {
+              select: { url: true },
+              orderBy: { order: 'asc' },
+              take: 1,
+            },
           },
         },
         roomType: { select: { id: true, name: true } },
         payment: { include: { refunds: { orderBy: { createdAt: 'desc' } } } },
-        review: { select: { id: true, rating: true, text: true, createdAt: true } },
+        review: {
+          select: { id: true, rating: true, text: true, createdAt: true },
+        },
         statusHistory: { orderBy: { createdAt: 'asc' } },
         availabilityBlocks: {
           select: { id: true, startDate: true, endDate: true, type: true },
@@ -156,7 +195,11 @@ export class AdminBookingsService {
     if (!booking) throw new NotFoundException('Booking not found.');
 
     const refunds = booking.payment?.refunds ?? [];
-    const refundedTotal = roundCurrency(sumDecimals(refunds.map((r) => r.amount)));
+    const refundedTotal = roundCurrency(
+      sumDecimals(
+        refunds.filter((r) => r.status === 'SUCCESS').map((r) => r.amount),
+      ),
+    );
     const paidAmount = decimalToNumber(booking.payment?.amount) ?? 0;
 
     return {
@@ -193,7 +236,9 @@ export class AdminBookingsService {
             status: booking.payment.status,
             amount: paidAmount,
             currency: booking.payment.currency,
-            platformCommission: decimalToNumber(booking.payment.platformCommission),
+            platformCommission: decimalToNumber(
+              booking.payment.platformCommission,
+            ),
             hostPayout: decimalToNumber(booking.payment.hostPayout),
             capturedAt: booking.payment.capturedAt,
             releasedAt: booking.payment.releasedAt,
@@ -205,10 +250,13 @@ export class AdminBookingsService {
               amount: decimalToNumber(refund.amount),
               reason: refund.reason,
               gatewayRefundId: refund.razorpayRefundId,
+              status: refund.status,
               createdAt: refund.createdAt,
             })),
             refundedTotal,
-            refundableAmount: roundCurrency(Math.max(0, paidAmount - refundedTotal)),
+            refundableAmount: roundCurrency(
+              Math.max(0, paidAmount - refundedTotal),
+            ),
           }
         : null,
       review: booking.review,
@@ -224,7 +272,9 @@ export class AdminBookingsService {
       throw new BadRequestException(`This booking is already ${from}.`);
     }
     if (!ALLOWED_TRANSITIONS[from].includes(to)) {
-      throw new BadRequestException(`A booking cannot move from ${from} to ${to}.`);
+      throw new BadRequestException(
+        `A booking cannot move from ${from} to ${to}.`,
+      );
     }
   }
 
@@ -238,11 +288,14 @@ export class AdminBookingsService {
     adminId: string,
     reason: string | undefined,
     extraData: Prisma.BookingUpdateInput = {},
-    afterUpdate?: (tx: Prisma.TransactionClient, from: BookingStatus) => Promise<void>,
+    afterUpdate?: (
+      tx: Prisma.TransactionClient,
+      from: BookingStatus,
+    ) => Promise<void>,
   ) {
     const existing = await this.prisma.booking.findUnique({
       where: { id },
-      select: { id: true, status: true },
+      include: { payment: true },
     });
     if (!existing) throw new NotFoundException('Booking not found.');
 
@@ -250,6 +303,27 @@ export class AdminBookingsService {
 
     return this.audit.runWithAudit(
       async (tx) => {
+        // PESSIMISTIC LOCK: Lock booking row to serialize concurrent transitions
+        await tx.$queryRaw`SELECT id FROM "Booking" WHERE id = ${id} FOR UPDATE`;
+        const current = await tx.booking.findUnique({
+          where: { id },
+          include: { payment: true },
+        });
+        if (!current) throw new NotFoundException('Booking not found.');
+        this.assertTransition(current.status, to);
+        if (
+          (to === BookingStatus.CONFIRMED || to === BookingStatus.COMPLETED) &&
+          !(
+            current.payment?.status === PaymentStatus.CAPTURED ||
+            current.payment?.status === PaymentStatus.RELEASED
+          )
+        )
+          throw new ConflictException(
+            'Booking transition requires a captured payment',
+          );
+        if (to === BookingStatus.COMPLETED && current.checkOut > new Date())
+          throw new ConflictException('Stay has not reached check-out');
+
         const updated = await tx.booking.update({
           where: { id },
           data: { status: to, ...extraData },
@@ -258,7 +332,7 @@ export class AdminBookingsService {
         await tx.bookingStatusHistory.create({
           data: {
             bookingId: id,
-            fromStatus: existing.status,
+            fromStatus: current.status,
             toStatus: to,
             actorType: 'admin',
             actorId: adminId,
@@ -266,7 +340,19 @@ export class AdminBookingsService {
           },
         });
 
-        if (afterUpdate) await afterUpdate(tx, existing.status);
+        if (afterUpdate) await afterUpdate(tx, current.status);
+        const type =
+          to === BookingStatus.CANCELLED
+            ? 'BOOKING_CANCELLED'
+            : to === BookingStatus.COMPLETED
+              ? 'BOOKING_COMPLETED'
+              : 'BOOKING_CONFIRMED';
+        const key = to.toLowerCase() + ':' + id;
+        await tx.domainJob.upsert({
+          where: { key },
+          create: { key, type, referenceId: id },
+          update: {},
+        });
 
         return updated;
       },
@@ -275,7 +361,11 @@ export class AdminBookingsService {
         action: `BOOKING_${to}`,
         targetType: 'BOOKING',
         targetId: updated.id,
-        details: { previousStatus: existing.status, newStatus: to, reason: reason ?? null },
+        details: {
+          previousStatus: existing.status,
+          newStatus: to,
+          reason: reason ?? null,
+        },
       }),
     );
   }
@@ -331,98 +421,56 @@ export class AdminBookingsService {
    * the request nothing is persisted, so a refund row always corresponds to
    * money that actually left the account.
    */
-  async refund(bookingId: string, dto: CreateRefundDto, adminId: string) {
-    const booking = await this.prisma.booking.findUnique({
+  async refund(
+    bookingId: string,
+    dto: CreateRefundDto,
+    adminId: string,
+    key?: string,
+  ) {
+    const b = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: { payment: { include: { refunds: true } } },
     });
-    if (!booking) throw new NotFoundException('Booking not found.');
-
-    const payment = booking.payment;
-    if (!payment) {
-      throw new UnprocessableEntityException(
-        'This booking has no payment record, so there is nothing to refund.',
-      );
-    }
-    if (payment.status === PaymentStatus.PENDING) {
-      throw new UnprocessableEntityException(
-        'This payment was never captured, so it cannot be refunded.',
-      );
-    }
-    if (!payment.razorpayPaymentId) {
-      // Guards against reporting a refund for a payment that never reached the
-      // provider. The current checkout path can create orders without a real
-      // gateway payment id, and those cannot be refunded.
-      throw new UnprocessableEntityException(
-        'This payment has no gateway payment id, so no real refund can be issued. It was not captured through the payment provider.',
-      );
-    }
-
-    const paidAmount = decimalToNumber(payment.amount) ?? 0;
-    const alreadyRefunded = sumDecimals(payment.refunds.map((r) => r.amount));
-    const refundable = roundCurrency(paidAmount - alreadyRefunded);
-
-    if (refundable <= 0) {
-      throw new ConflictException('This payment has already been fully refunded.');
-    }
-
-    const amount = roundCurrency(dto.amount ?? refundable);
-    if (amount > refundable) {
+    if (!b?.payment?.razorpayOrderId)
+      throw new NotFoundException('Captured booking payment not found');
+    const remaining =
+      Number(b.payment.amount) -
+      b.payment.refunds
+        .filter((r) => !['FAILED', 'CANCELLED'].includes(r.status))
+        .reduce((sum, r) => sum + Number(r.amount), 0);
+    if (!key)
       throw new BadRequestException(
-        `The requested refund of ${amount} exceeds the refundable balance of ${refundable}.`,
+        'Idempotency-Key is required for an admin refund',
       );
-    }
-
-    const gatewayResult = await this.refundGateway.refund(payment.razorpayPaymentId, amount, {
-      bookingId,
-      confirmationCode: booking.confirmationCode,
-      adminId,
+    const result = await this.payments.initiateRefund({
+      orderId: b.payment.razorpayOrderId,
+      refundAmount: dto.amount ?? remaining,
+      refundId:
+        'adm_' +
+        require('crypto')
+          .createHash('sha256')
+          .update(adminId + ':' + key)
+          .digest('hex')
+          .slice(0, 32),
+      refundNote: dto.reason || 'Admin refund',
     });
-
-    const fullyRefunded = roundCurrency(alreadyRefunded + amount) >= paidAmount;
-
-    return this.audit.runWithAudit(
-      async (tx) => {
-        const refund = await tx.refund.create({
-          data: {
-            paymentId: payment.id,
-            amount: new Prisma.Decimal(amount),
-            reason: dto.reason,
-            razorpayRefundId: gatewayResult.gatewayRefundId,
-          },
-        });
-
-        if (fullyRefunded) {
-          await tx.payment.update({
-            where: { id: payment.id },
-            data: { status: PaymentStatus.REFUNDED },
-          });
-        }
-
-        return {
-          id: refund.id,
-          amount: decimalToNumber(refund.amount),
-          reason: refund.reason,
-          gatewayRefundId: refund.razorpayRefundId,
-          gatewayStatus: gatewayResult.status,
-          createdAt: refund.createdAt,
-          paymentFullyRefunded: fullyRefunded,
-        };
+    await this.audit.record({
+      adminId,
+      action: 'REFUND_BOOKING',
+      targetType: 'PAYMENT',
+      targetId: b.payment.id,
+      details: {
+        bookingId,
+        refundId: result.refundId,
+        amount: result.amount,
+        status: result.status,
       },
-      (refund) => ({
-        adminId,
-        action: 'REFUND_BOOKING',
-        targetType: 'PAYMENT',
-        targetId: payment.id,
-        details: {
-          bookingId,
-          refundId: refund.id,
-          amount,
-          reason: dto.reason,
-          gatewayRefundId: gatewayResult.gatewayRefundId,
-        },
-      }),
-    );
+    });
+    return {
+      ...result,
+      gatewayRefundId: result.refundId,
+      gatewayStatus: result.status,
+    };
   }
 
   /** Reports whether refunds can be issued, so the UI can explain why not. */

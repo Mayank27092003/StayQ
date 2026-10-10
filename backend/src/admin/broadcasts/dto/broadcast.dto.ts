@@ -1,4 +1,11 @@
-import { IsEnum, IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { BroadcastStatus } from '@prisma/client';
 import { PaginationQueryDto } from '../../dto/pagination.dto';
 

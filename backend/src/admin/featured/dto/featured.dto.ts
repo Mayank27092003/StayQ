@@ -1,4 +1,5 @@
-import { Type } from 'class-transformer';
+import { queryBoolean } from '../../../common/utils/input.util';
+import { Type, Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
@@ -22,7 +23,7 @@ export class FeaturedQueryDto {
 
   /** Restricts to placements live right now. */
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => queryBoolean(value))
   @IsBoolean()
   currentOnly?: boolean;
 }
@@ -95,7 +96,7 @@ export class BannerQueryDto {
   placement?: BannerPlacement;
 
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => queryBoolean(value))
   @IsBoolean()
   currentOnly?: boolean;
 }

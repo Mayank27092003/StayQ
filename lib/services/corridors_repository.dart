@@ -4,9 +4,10 @@ import 'package:http/http.dart' as http;
 import '../models/corridor_model.dart';
 import '../models/corridor_region.dart';
 import '../data/curated_corridors_dataset.dart';
+import '../config/app_config.dart';
 
 class CorridorsRepository {
-  static const String _baseUrl = 'https://stayq-api-608570851336.asia-south1.run.app/api/v1/corridors';
+  static String get _baseUrl => '${AppConfig.apiBaseUrl}/corridors';
 
   /// Fetches corridors from backend with type-safe JSON mapping and offline fallback
   Future<List<CorridorModel>> getCorridors({CorridorRegion? region}) async {

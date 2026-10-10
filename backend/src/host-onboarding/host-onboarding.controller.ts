@@ -1,4 +1,11 @@
-import { Controller, Post, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Patch,
+  Body,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { HostOnboardingService } from './host-onboarding.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -15,19 +22,31 @@ export class HostOnboardingController {
   }
 
   @Patch(':id/onboarding-step')
-  updateStep(@CurrentUser() user: any, @Param('id') id: string, @Body() data: any) {
+  updateStep(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() data: any,
+  ) {
     const hostId = user.id;
     return this.onboardingService.updateStep(id, hostId, data);
   }
 
   @Post(':id/rooms')
-  setRooms(@CurrentUser() user: any, @Param('id') id: string, @Body() body: any) {
+  setRooms(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() body: any,
+  ) {
     const hostId = user.id;
     return this.onboardingService.setRooms(id, hostId, body.rooms || []);
   }
 
   @Post(':id/submit')
-  submitProperty(@CurrentUser() user: any, @Param('id') id: string, @Body() data: any) {
+  submitProperty(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() data: any,
+  ) {
     const hostId = user.id;
     return this.onboardingService.submitProperty(id, hostId);
   }

@@ -36,7 +36,9 @@ export class AdminModerationController {
   // ---- Reviews -------------------------------------------------------------
 
   @Get('reviews')
-  @ApiOperation({ summary: 'List reviews for moderation, reported items first' })
+  @ApiOperation({
+    summary: 'List reviews for moderation, reported items first',
+  })
   listReviews(@Query() query: ReviewModerationQueryDto) {
     return this.moderation.listReviews(query);
   }
@@ -67,7 +69,10 @@ export class AdminModerationController {
   @Delete('reviews/:id')
   @AdminRoles(AdminRole.TRUST_SAFETY)
   @ApiOperation({ summary: 'Delete a review that has already been rejected' })
-  deleteReview(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') adminId: string) {
+  deleteReview(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') adminId: string,
+  ) {
     return this.moderation.deleteReview(id, adminId);
   }
 
@@ -80,7 +85,9 @@ export class AdminModerationController {
   }
 
   @Get('reports/summary')
-  @ApiOperation({ summary: 'Content report counters by status, target, and reason' })
+  @ApiOperation({
+    summary: 'Content report counters by status, target, and reason',
+  })
   reportSummary() {
     return this.moderation.reportSummary();
   }
@@ -88,7 +95,10 @@ export class AdminModerationController {
   @Post('reports')
   @AdminRoles(AdminRole.TRUST_SAFETY, AdminRole.OPERATIONS)
   @ApiOperation({ summary: 'Raise a content report during a proactive sweep' })
-  createReport(@Body() dto: CreateContentReportDto, @CurrentUser('id') adminId: string) {
+  createReport(
+    @Body() dto: CreateContentReportDto,
+    @CurrentUser('id') adminId: string,
+  ) {
     return this.moderation.createReport(dto, adminId);
   }
 

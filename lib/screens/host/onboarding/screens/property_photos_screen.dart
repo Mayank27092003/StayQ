@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/host_onboarding_provider.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_motion.dart';
+import '../../../../widgets/media_upload_sheet.dart';
 
 class PropertyPhotosScreen extends StatefulWidget {
   const PropertyPhotosScreen({super.key});
@@ -15,24 +15,56 @@ class PropertyPhotosScreen extends StatefulWidget {
 }
 
 class _PropertyPhotosScreenState extends State<PropertyPhotosScreen> {
-  final ImagePicker _picker = ImagePicker();
-
   Future<void> _pickPhotosForCategory(String categoryKey) async {
     AppMotion.tapSelection();
     final provider = Provider.of<HostOnboardingProvider>(context, listen: false);
-    final List<XFile>? images = await _picker.pickMultiImage(imageQuality: 85);
+    final List<String>? images = await showStayQUploadSheet(
+      context,
+      title: 'Upload Photos',
+      subtitle: 'Take photos with camera, choose multiple from gallery, or browse files',
+      type: MediaUploadType.multipleImages,
+    );
     if (images != null && images.isNotEmpty) {
-      provider.addPhotosToCategory(categoryKey, images.map((e) => e.path).toList());
+      provider.addPhotosToCategory(categoryKey, images);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${images.length} photo${images.length > 1 ? "s" : ""} added ✓'),
+            backgroundColor: const Color(0xFF10B981),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _pickVideo() async {
     AppMotion.tapSelection();
     final provider = Provider.of<HostOnboardingProvider>(context, listen: false);
-    final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
-    if (video != null) {
-      provider.localVideoPaths.add(video.path);
+    final List<String>? videos = await showStayQUploadSheet(
+      context,
+      title: 'Upload Property Video',
+      subtitle: 'Record a walkthrough video, pick from gallery, or browse files',
+      type: MediaUploadType.video,
+    );
+    if (videos != null && videos.isNotEmpty) {
+      for (final v in videos) {
+        if (!provider.localVideoPaths.contains(v)) {
+          provider.localVideoPaths.add(v);
+        }
+      }
       provider.setPage(provider.currentPage);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Walkthrough video added ✓'),
+            backgroundColor: Color(0xFF10B981),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -46,18 +78,30 @@ class _PropertyPhotosScreenState extends State<PropertyPhotosScreen> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.file(
-                File(path),
-                fit: BoxFit.contain,
-                cacheWidth: 1200,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  height: 200,
-                  color: Colors.black26,
-                  child: const Center(
-                    child: Icon(Icons.broken_image_rounded, color: Colors.white60, size: 40),
-                  ),
-                ),
-              ),
+              child: path.startsWith('http')
+                  ? Image.network(
+                      path,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 200,
+                        color: Colors.black26,
+                        child: const Center(
+                          child: Icon(Icons.broken_image_rounded, color: Colors.white60, size: 40),
+                        ),
+                      ),
+                    )
+                  : Image.file(
+                      File(path),
+                      fit: BoxFit.contain,
+                      cacheWidth: 1200,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 200,
+                        color: Colors.black26,
+                        child: const Center(
+                          child: Icon(Icons.broken_image_rounded, color: Colors.white60, size: 40),
+                        ),
+                      ),
+                    ),
             ),
             Positioned(
               top: 8,
@@ -201,7 +245,9 @@ class _PropertyPhotosScreenState extends State<PropertyPhotosScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -218,7 +264,6 @@ class _PropertyPhotosScreenState extends State<PropertyPhotosScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     if (requiredCategories.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -471,20 +516,33 @@ class _PropertyPhotosScreenState extends State<PropertyPhotosScreen> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(14),
-              child: Image.file(
-                File(path),
-                width: 110,
-                height: 110,
-                fit: BoxFit.cover,
-                cacheWidth: 300,
-                cacheHeight: 300,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 110,
-                  height: 110,
-                  color: Colors.black26,
-                  child: const Icon(Icons.broken_image_rounded, color: Colors.white54, size: 24),
-                ),
-              ),
+              child: path.startsWith('http')
+                  ? Image.network(
+                      path,
+                      width: 110,
+                      height: 110,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 110,
+                        height: 110,
+                        color: Colors.black26,
+                        child: const Icon(Icons.broken_image_rounded, color: Colors.white54, size: 24),
+                      ),
+                    )
+                  : Image.file(
+                      File(path),
+                      width: 110,
+                      height: 110,
+                      fit: BoxFit.cover,
+                      cacheWidth: 300,
+                      cacheHeight: 300,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 110,
+                        height: 110,
+                        color: Colors.black26,
+                        child: const Icon(Icons.broken_image_rounded, color: Colors.white54, size: 24),
+                      ),
+                    ),
             ),
             Positioned(
               bottom: 6,

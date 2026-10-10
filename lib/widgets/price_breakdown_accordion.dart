@@ -31,9 +31,9 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
   @override
   Widget build(BuildContext context) {
     final double subtotal = widget.nightRate * widget.nights;
-    final double calculatedTaxes = widget.taxes > 0 ? widget.taxes : ((subtotal + widget.cleaningFee) * 0.18);
+    final double calculatedTaxes = widget.taxes;
     final double rawTotal = subtotal + widget.cleaningFee + widget.serviceFee + calculatedTaxes;
-    final double total = (rawTotal - widget.referralDiscount).clamp(0.0, double.infinity);
+    final double total = (rawTotal - widget.referralDiscount).clamp(0.0, double.infinity).toDouble();
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -80,13 +80,21 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
                   ],
                   if (widget.serviceFee > 0) ...[
                     const SizedBox(height: 10),
-                    _priceRow('Stay Q service fee', widget.serviceFee),
+                    _priceRow('Fee', widget.serviceFee),
                   ],
                   const SizedBox(height: 10),
                   _priceRow('Taxes & GST (18%)', calculatedTaxes),
+                  const SizedBox(height: 4),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'GST (18%) applied on fee as per Indian tax laws',
+                      style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+                    ),
+                  ),
                   if (widget.referralDiscount > 0) ...[
                     const SizedBox(height: 10),
-                    _priceRow('🎁 Referral Reward (10% Cap)', -widget.referralDiscount, isDiscount: true),
+                    _priceRow('Referral credit', -widget.referralDiscount, isDiscount: true),
                   ],
                 ],
               ),
@@ -102,7 +110,7 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Total (INR)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text('Estimated total (INR)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
 
               // Animated Roll-Up Price Counter
               TweenAnimationBuilder<double>(

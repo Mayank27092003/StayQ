@@ -77,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(width: 12),
                   const Text(
-                    'Stay Q',
+                    'StayQ',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -90,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 32),
               Text(
-                widget.isHostLogin ? 'Welcome Back, Host' : 'Log in to Stay Q',
+                widget.isHostLogin ? 'Welcome Back, Host' : 'Log in to StayQ',
                 style: const TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
@@ -277,16 +277,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // Login Button
               ElevatedButton(
-                onPressed: () {
-                  provider.login(_emailController.text, _passwordController.text);
-                  if (widget.isHostLogin) {
-                    if (!provider.isHostMode) provider.toggleHostMode();
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const HostOnboardingScreen()),
-                    );
-                  } else {
-                    Navigator.pop(context);
+                onPressed: () async {
+                  if (provider.isLoadingAuth) return;
+                  try {
+                    await provider.login(_emailController.text, _passwordController.text);
+                    if (!mounted) return;
+                    if (widget.isHostLogin) {
+                      provider.setHostMode(true);
+                      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HostOnboardingScreen()));
+                    } else { Navigator.pop(context); }
+                  } catch (e) {
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
                   }
                 },
                 child: Text(widget.isHostLogin ? 'Access Host Portal' : 'Log In'),

@@ -193,6 +193,13 @@ export default function Sidebar() {
                   <span className="flex-1">Revenue &amp; Payouts</span>
                 </Link>
               )}
+              {canSeeRevenue && (
+                <Link className={getLinkClasses("/subscriptions")} href="/subscriptions">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/subscriptions") ? "'FILL' 1" : "normal" }}>workspace_premium</span>
+                  <span className="flex-1">Host Subscriptions</span>
+                  <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-purple-50 text-[#5A31F4] border border-purple-200">Plans</span>
+                </Link>
+              )}
               {canSeeTaxes && (
                 <Link className={getLinkClasses("/taxes")} href="/taxes">
                   <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/taxes") ? "'FILL' 1" : "normal" }}>account_balance</span>

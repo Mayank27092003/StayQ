@@ -1,5 +1,12 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export const DEFAULT_PAGE_SIZE = 25;
 export const MAX_PAGE_SIZE = 100;
@@ -43,9 +50,15 @@ export interface PaginatedResult<T> {
 }
 
 /** Converts page/pageSize into Prisma `skip`/`take`, clamped to safe bounds. */
-export function toSkipTake(query: PaginationQueryDto): { skip: number; take: number } {
+export function toSkipTake(query: PaginationQueryDto): {
+  skip: number;
+  take: number;
+} {
   const page = Math.max(1, query.page ?? 1);
-  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, query.pageSize ?? DEFAULT_PAGE_SIZE));
+  const pageSize = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, query.pageSize ?? DEFAULT_PAGE_SIZE),
+  );
 
   return { skip: (page - 1) * pageSize, take: pageSize };
 }
@@ -56,7 +69,10 @@ export function buildPaginatedResult<T>(
   query: PaginationQueryDto,
 ): PaginatedResult<T> {
   const page = Math.max(1, query.page ?? 1);
-  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, query.pageSize ?? DEFAULT_PAGE_SIZE));
+  const pageSize = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, query.pageSize ?? DEFAULT_PAGE_SIZE),
+  );
   const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
 
   return {

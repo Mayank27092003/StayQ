@@ -11,7 +11,12 @@ import { PaymentsModule } from '../payments/payments.module';
 @Module({
   imports: [PrismaModule, PaymentsModule],
   controllers: [PropertiesController, PropertiesBoostController],
-  providers: [PropertiesService, CalendarSyncService, DynamicPricingService, PropertiesBoostService],
+  providers: [
+    PropertiesService,
+    CalendarSyncService,
+    DynamicPricingService,
+    PropertiesBoostService,
+  ],
   exports: [PropertiesService, PropertiesBoostService],
 })
 export class PropertiesModule {}

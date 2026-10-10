@@ -1,12 +1,14 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import '../../../../providers/app_provider.dart';
-import '../../../../services/api/api_client.dart';
-import '../../../../services/api/subscriptions_api.dart';
-import '../../../../theme/app_colors.dart';
-import '../../../../widgets/bouncing_widget.dart';
-import '../../../../widgets/cashfree_payment_sheet.dart';
+import '../../../providers/app_provider.dart';
+import '../../../services/api/api_client.dart';
+import '../../../services/api/subscriptions_api.dart';
+import '../../../theme/app_colors.dart';
+import '../../../widgets/bouncing_widget.dart';
+import '../../../widgets/cashfree_payment_sheet.dart';
+import '../../../models/payment_order.dart';
+import '../../../models/json_values.dart';
 
 class HostProPaywallSheet extends StatefulWidget {
   final VoidCallback? onSubscribed;
@@ -29,6 +31,9 @@ class HostProPaywallSheet extends StatefulWidget {
 class _HostProPaywallSheetState extends State<HostProPaywallSheet> {
   int _selectedPlanIndex = 0; // 0 = Monthly, 1 = Annual
   bool _isLoading = false;
+  final String _purchaseKey = 'host-pro:${DateTime.now().microsecondsSinceEpoch}:${Random.secure().nextInt(1 << 32)}';
+  PaymentOrder? _pendingOrder;
+  String? _pendingPlan;
 
   final List<Map<String, dynamic>> _plans = [
     {
@@ -53,120 +58,57 @@ class _HostProPaywallSheetState extends State<HostProPaywallSheet> {
     {
       'icon': Icons.radar_rounded,
       'title': 'Live Neighborhood Price Radar',
-      'desc': 'See exact competitor rates and market averages in your locality.',
+      'desc': 'View available market benchmarks for your locality.',
     },
     {
       'icon': Icons.auto_awesome_rounded,
-      'title': 'Groq LLaMA-3.3 AI Smart Pricing',
-      'desc': 'Dynamic pricing suggestions to maximize occupancy and revenue.',
+      'title': 'Pricing recommendations',
+      'desc': 'View pricing suggestions when supplied by the server.',
     },
     {
       'icon': Icons.trending_up_rounded,
-      'title': 'Seasonality & Demand Surge Alerts',
-      'desc': 'Get notified to raise rates for long weekends and high-demand events.',
+      'title': 'Market insights',
+      'desc': 'Available insights depend on market data for your locality.',
     },
     {
       'icon': Icons.bolt_rounded,
-      'title': 'Search Spotlight Ranking (2x Views)',
-      'desc': 'Priority placement on search feeds and explore category carousels.',
+      'title': 'Search spotlight eligibility',
+      'desc': 'Placement depends on the active plan and server ranking rules.',
     },
   ];
 
   Future<void> _handleSubscribe() async {
-    final selectedPlan = _plans[_selectedPlanIndex];
-    final planId = selectedPlan['id'] as String;
-    final priceStr = (selectedPlan['price'] as String).replaceAll('₹', '').replaceAll(',', '').trim();
-    final double amount = double.tryParse(priceStr) ?? (planId == 'HOST_PRO_ANNUAL' ? 7999.0 : 999.0);
-
-    final provider = Provider.of<AppProvider>(context, listen: false);
-
-    // 1. Generate Order ID from Backend API
-    setState(() => _isLoading = true);
-    String orderId = 'SUB_${DateTime.now().millisecondsSinceEpoch}';
-    try {
-      final subApi = SubscriptionsApi(ApiClient.instance);
-      final orderRes = await subApi.createSubscriptionOrder(
-        planId: planId,
-        userEmail: provider.userEmail.isNotEmpty ? provider.userEmail : null,
-        userPhone: provider.userPhone.isNotEmpty ? provider.userPhone : null,
-        userName: provider.userName.isNotEmpty ? provider.userName : null,
-      );
-      if (orderRes['orderId'] != null) {
-        orderId = orderRes['orderId'].toString();
-      }
-    } catch (e) {
-      debugPrint('Subscription order creation note: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-
-    if (!mounted) return;
-
-    final resolvedPhone = provider.userPhone.isNotEmpty
-        ? provider.userPhone
-        : (FirebaseAuth.instance.currentUser?.phoneNumber ?? '9876543210');
-    final resolvedName = provider.userName.isNotEmpty
-        ? provider.userName
-        : (FirebaseAuth.instance.currentUser?.displayName ?? 'Host Partner');
-    final resolvedEmail = provider.userEmail.isNotEmpty
-        ? provider.userEmail
-        : (FirebaseAuth.instance.currentUser?.email ?? 'hello@stayq.space');
-
-    // 2. Attach and Launch Real Cashfree Payment Sheet
-    final paymentResult = await CashfreePaymentSheet.show(
-      context,
-      bookingId: orderId,
-      totalAmount: amount,
-      propertyTitle: 'StayQ Host Pro (${selectedPlan['title']})',
-      customerName: resolvedName,
-      customerEmail: resolvedEmail,
-      customerPhone: resolvedPhone,
-    );
-
-    if (paymentResult == null) {
-      // Payment dismissed or cancelled by user
-      return;
-    }
-
-    // 3. Payment Verified -> Activate Host Pro
+    if (_isLoading) return;
+    final plan = _plans[_selectedPlanIndex]; final planId = plan['id'] as String;
+    final provider = context.read<AppProvider>();
     setState(() => _isLoading = true);
     try {
-      final subApi = SubscriptionsApi(ApiClient.instance);
-      await subApi.verifySubscription(
-        orderId: orderId,
-        planId: planId,
-      );
-    } catch (e) {
-      debugPrint('Subscription verification note: $e');
-    }
-
-    await provider.activateHostPro(planId);
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: const [
-            Icon(Icons.check_circle_rounded, color: Colors.white),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'StayQ Host Pro Activated! Live Neighborhood Radar Unlocked.',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF10B981),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-
-    Navigator.pop(context, true);
-    widget.onSubscribed?.call();
+      final api = SubscriptionsApi(ApiClient.instance);
+      if (_pendingPlan != planId) { _pendingOrder = null; _pendingPlan = planId; }
+      _pendingOrder ??= PaymentOrder.fromJson(await api.createSubscriptionOrder(planId: planId,
+        idempotencyKey: '$_purchaseKey:$planId',
+        userEmail: provider.userEmail, userPhone: provider.userPhone, userName: provider.userName));
+      if (!mounted) return;
+      Map<String, dynamic>? verified;
+      final payment = await CashfreePaymentSheet.show(context, bookingId: _pendingOrder!.id,
+        existingOrder: _pendingOrder, totalAmount: _pendingOrder!.amount,
+        propertyTitle: 'StayQ Host Pro (${plan['title']})', customerName: provider.userName,
+        customerEmail: provider.userEmail, customerPhone: provider.userPhone,
+        verifyOrder: (orderId) async {
+          final result = await api.verifySubscription(orderId: orderId, planId: planId);
+          final subscription = jsonMap(result['subscription']);
+          if (result['isPaid'] != true || (result['isActive'] != true && subscription['status'] != 'ACTIVE')) {
+            throw StateError('Payment or subscription activation is still pending.');
+          }
+          verified = result; return result;
+        });
+      if (payment == null || verified == null || !mounted) return;
+      await provider.activateHostPro(planId, verifiedSubscription: verified!);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Host Pro subscription confirmed.')));
+      widget.onSubscribed?.call(); Navigator.pop(context, true);
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+    finally { if (mounted) setState(() => _isLoading = false); }
   }
 
   @override
@@ -257,7 +199,7 @@ class _HostProPaywallSheetState extends State<HostProPaywallSheet> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Make informed pricing decisions with live competitor benchmarks, demand forecasts, and Groq AI dynamic rate recommendations.',
+                'Make informed pricing decisions with live competitor benchmarks, demand forecasts, and StayQ AI dynamic rate recommendations.',
                 style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
               ),
               const SizedBox(height: 20),
@@ -421,7 +363,7 @@ class _HostProPaywallSheetState extends State<HostProPaywallSheet> {
               const SizedBox(height: 12),
               const Center(
                 child: Text(
-                  'Instant activation • Cancel anytime from Host Dashboard',
+                  'Activation follows server payment confirmation',
                   style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                 ),
               ),

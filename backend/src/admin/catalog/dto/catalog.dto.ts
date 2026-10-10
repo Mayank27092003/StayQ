@@ -1,4 +1,5 @@
-import { Type } from 'class-transformer';
+import { queryBoolean } from '../../../common/utils/input.util';
+import { Type, Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
@@ -15,7 +16,7 @@ import { PropertyCategory } from '@prisma/client';
 
 export class CatalogQueryDto {
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => queryBoolean(value))
   @IsBoolean()
   activeOnly?: boolean;
 }
@@ -100,7 +101,8 @@ export class CreateAmenityDto {
   @MinLength(1)
   @MaxLength(60)
   @Matches(/^[a-z0-9][a-z0-9_-]*$/, {
-    message: 'key must be lowercase and may contain digits, hyphens, and underscores',
+    message:
+      'key must be lowercase and may contain digits, hyphens, and underscores',
   })
   key!: string;
 

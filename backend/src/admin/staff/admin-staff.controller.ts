@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { AdminStaffService } from './admin-staff.service';
 import { FirebaseAuthGuard } from '../../common/guards/firebase-auth.guard';
@@ -40,7 +51,12 @@ export class AdminStaffController {
     @Query('limit') limit?: number,
     @Query('skip') skip?: number,
   ) {
-    return this.staffService.getStaffActivities({ staffId, module, limit, skip });
+    return this.staffService.getStaffActivities({
+      staffId,
+      module,
+      limit,
+      skip,
+    });
   }
 
   /**
@@ -59,14 +75,13 @@ export class AdminStaffController {
       phoneNumber?: string;
       customPassword?: string;
       customStaffId?: string;
-      adminStaffId?: string;
-      adminStaffName?: string;
     },
+    @Req() req: any,
   ) {
     return this.staffService.createStaff({
       ...body,
-      createdById: body.adminStaffId,
-      createdByName: body.adminStaffName,
+      createdById: req.user.id,
+      createdByName: req.user.displayName || req.user.email || 'Admin',
     });
   }
 
@@ -86,11 +101,14 @@ export class AdminStaffController {
       allowedModules?: string[];
       phoneNumber?: string;
       newPassword?: string;
-      adminStaffId?: string;
-      adminStaffName?: string;
     },
+    @Req() req: any,
   ) {
-    return this.staffService.updateStaff(id, body);
+    return this.staffService.updateStaff(id, {
+      ...body,
+      adminStaffId: req.user.id,
+      adminStaffName: req.user.displayName || req.user.email || 'Admin',
+    });
   }
 
   /**
@@ -107,11 +125,12 @@ export class AdminStaffController {
    * POST /api/v1/admin/staff/:id/force-logout
    */
   @Post(':id/force-logout')
-  async forceLogout(
-    @Param('id') id: string,
-    @Body() body?: { adminStaffId?: string; adminStaffName?: string },
-  ) {
-    return this.staffService.forceLogoutStaff(id, body?.adminStaffId, body?.adminStaffName);
+  async forceLogout(@Param('id') id: string, @Req() req: any) {
+    return this.staffService.forceLogoutStaff(
+      id,
+      req.user.id,
+      req.user.displayName || req.user.email || 'Admin',
+    );
   }
 
   /**
@@ -142,12 +161,18 @@ export class AdminStaffController {
    * POST /api/v1/admin/staff/heartbeat
    */
   @Post('heartbeat')
-  async staffHeartbeat(
-    @Body() body: { staffId: string },
-    @Req() req: Request,
-  ) {
-    const ip = this.getClientIp(req);
-    return this.staffService.staffHeartbeat(body.staffId, ip);
+  async staffHeartbeat(@Body() body: { staffId: string }, @Req() req: any) {
+    const staff = await this.staffService['prisma'].adminStaff.findUnique({
+      where: { staffId: body.staffId },
+    });
+    if (!staff || staff.email !== req.user?.email || !req.user?.emailVerified)
+      throw new (require('@nestjs/common').ForbiddenException)(
+        'Staff presence must match the authenticated account',
+      );
+    return this.staffService.staffHeartbeat(
+      staff.staffId,
+      this.getClientIp(req),
+    );
   }
 
   /**
@@ -155,12 +180,14 @@ export class AdminStaffController {
    * POST /api/v1/admin/staff/logout
    */
   @Post('logout')
-  async staffLogout(
-    @Body() body: { staffId: string },
-    @Req() req: Request,
-  ) {
-    const ip = this.getClientIp(req);
-    return this.staffService.staffLogout(body.staffId, ip);
+  async staffLogout(@Body() body: { staffId: string }, @Req() req: any) {
+    const staff = await this.staffService['prisma'].adminStaff.findUnique({
+      where: { staffId: body.staffId },
+    });
+    if (!staff || staff.email !== req.user?.email)
+      throw new (require('@nestjs/common').ForbiddenException)(
+        'Staff presence must match the authenticated account',
+      );
+    return this.staffService.staffLogout(staff.staffId, this.getClientIp(req));
   }
 }
-

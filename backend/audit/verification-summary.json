@@ -1,0 +1,56 @@
+{
+  "checkedAt": "2026-10-08T09:58:56.940335+00:00",
+  "sourceArchiveSha256": "7272fe4794742b61288a9fd2af886188044e1a60936f2589fc2f05cf0cefd9f7",
+  "prismaSchema": "PASS",
+  "nestBuild": "PASS",
+  "unitTests": {
+    "suitesPassed": 6,
+    "testsPassed": 48
+  },
+  "offlineIntegration": {
+    "checksPassed": 23,
+    "migrationsTested": [
+      "original baseline",
+      "repair migration with existing bookings, payment, and refund records"
+    ]
+  },
+  "npmAudit": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "privateCredentialScan": {
+    "knownPrivateCredentialsFound": 0,
+    "pemPrivateKeyMaterialFound": 0,
+    "publicClientMapsKeysExcludedFromPrivateSecretScan": true
+  },
+  "lint": {
+    "clean": false,
+    "errors": 1899,
+    "warnings": 167,
+    "rules": {
+      "@typescript-eslint/no-unsafe-assignment": 421,
+      "@typescript-eslint/no-unsafe-member-access": 1226,
+      "@typescript-eslint/no-unsafe-argument": 167,
+      "@typescript-eslint/no-unsafe-call": 104,
+      "@typescript-eslint/no-require-imports": 4,
+      "@typescript-eslint/require-await": 18,
+      "@typescript-eslint/no-unused-vars": 47,
+      "no-useless-escape": 2,
+      "@typescript-eslint/no-unsafe-return": 76,
+      "@typescript-eslint/no-base-to-string": 1
+    },
+    "note": "Strict lint snapshot collected before the final focused booking-option type guard correction; no rules disabled. Build and regression results are from the final source."
+  },
+  "limitations": [
+    "External providers are mocked",
+    "PGlite single connection; native PostgreSQL multi-worker contention is not verified",
+    "Strict lint typing findings remain",
+    "Docker image execution not verified",
+    "Compiled admin interface source was not supplied",
+    "Live Firebase, merchant, bank, SMTP and KYC integrations not exercised"
+  ]
+}

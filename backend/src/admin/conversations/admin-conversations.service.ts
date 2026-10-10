@@ -6,7 +6,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class AdminConversationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listConversations(query: { search?: string; page?: number; limit?: number }) {
+  async listConversations(query: {
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 25));
     const skip = (page - 1) * limit;
@@ -32,16 +36,34 @@ export class AdminConversationsService {
         orderBy: { updatedAt: 'desc' },
         include: {
           guest: {
-            select: { id: true, displayName: true, email: true, phone: true, photoUrl: true },
+            select: {
+              id: true,
+              displayName: true,
+              email: true,
+              phone: true,
+              photoUrl: true,
+            },
           },
           host: {
-            select: { id: true, displayName: true, email: true, phone: true, photoUrl: true },
+            select: {
+              id: true,
+              displayName: true,
+              email: true,
+              phone: true,
+              photoUrl: true,
+            },
           },
           property: {
             select: { id: true, title: true, city: true, pricePerNight: true },
           },
           booking: {
-            select: { id: true, status: true, checkIn: true, checkOut: true, totalAmount: true },
+            select: {
+              id: true,
+              status: true,
+              checkIn: true,
+              checkOut: true,
+              totalAmount: true,
+            },
           },
           messages: {
             orderBy: { createdAt: 'desc' },
@@ -82,22 +104,45 @@ export class AdminConversationsService {
       where: { id },
       include: {
         guest: {
-          select: { id: true, displayName: true, email: true, phone: true, photoUrl: true },
+          select: {
+            id: true,
+            displayName: true,
+            email: true,
+            phone: true,
+            photoUrl: true,
+          },
         },
         host: {
-          select: { id: true, displayName: true, email: true, phone: true, photoUrl: true },
+          select: {
+            id: true,
+            displayName: true,
+            email: true,
+            phone: true,
+            photoUrl: true,
+          },
         },
         property: {
           select: { id: true, title: true, city: true, pricePerNight: true },
         },
         booking: {
-          select: { id: true, status: true, checkIn: true, checkOut: true, totalAmount: true },
+          select: {
+            id: true,
+            status: true,
+            checkIn: true,
+            checkOut: true,
+            totalAmount: true,
+          },
         },
         messages: {
           orderBy: { createdAt: 'asc' },
           include: {
             sender: {
-              select: { id: true, displayName: true, roles: true, photoUrl: true },
+              select: {
+                id: true,
+                displayName: true,
+                roles: true,
+                photoUrl: true,
+              },
             },
           },
         },

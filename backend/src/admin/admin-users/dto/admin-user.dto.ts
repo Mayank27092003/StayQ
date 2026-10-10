@@ -1,4 +1,5 @@
-import { Type } from 'class-transformer';
+import { queryBoolean } from '../../../common/utils/input.util';
+import { Transform } from 'class-transformer';
 import {
   ArrayUnique,
   IsArray,
@@ -19,7 +20,7 @@ export class AdminUserQueryDto extends PaginationQueryDto {
 
   /** When false, lists non-admin accounts (useful when promoting someone). */
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => queryBoolean(value))
   @IsBoolean()
   isAdmin?: boolean;
 }

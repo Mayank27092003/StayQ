@@ -12,7 +12,8 @@ export type AuditTargetType =
   | 'PROMOTION'
   | 'SUPPORT_TICKET'
   | 'BROADCAST'
-  | 'HOST';
+  | 'HOST'
+  | 'SYSTEM_SETTINGS';
 
 export interface AuditEntry {
   adminId: string;

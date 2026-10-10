@@ -1,4 +1,5 @@
-import { Type } from 'class-transformer';
+import { queryBoolean } from '../../../common/utils/input.util';
+import { Type, Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
@@ -26,7 +27,7 @@ export class ReviewModerationQueryDto extends PaginationQueryDto {
 
   /** Restricts to reviews that carry a report flag. */
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => queryBoolean(value))
   @IsBoolean()
   reported?: boolean;
 

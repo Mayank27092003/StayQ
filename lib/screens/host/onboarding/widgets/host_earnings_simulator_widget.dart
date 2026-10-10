@@ -289,7 +289,7 @@ class _HostEarningsSimulatorWidgetState extends State<HostEarningsSimulatorWidge
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    '$_selectedType listings in $_selectedCity average 82% weekend occupancy with Stay Q instant book.',
+                    '$_selectedType listings in $_selectedCity average 82% weekend occupancy with StayQ instant book.',
                     style: const TextStyle(fontSize: 11, height: 1.4, color: AppColors.textPrimary),
                   ),
                 ),

@@ -1,3 +1,4 @@
+import 'json_values.dart';
 class StayModel {
   final String id;
   final String hostId;
@@ -8,6 +9,7 @@ class StayModel {
   final double rating;
   final int reviewCount;
   final List<String> imageUrls;
+  String get firstImage => imageUrls.isEmpty ? '' : imageUrls.first;
   final List<String> videoUrls;
   final String category;
   final String hostName;
@@ -24,6 +26,7 @@ class StayModel {
   bool isWishlisted;
   final bool isExperience;
   final String? duration;
+  final String? timeSlot;
   final String status;
   final String city;
   final String state;
@@ -32,6 +35,22 @@ class StayModel {
   final String? hostPresenceType; // 'Host on premises', 'Private room in host home', 'Entire place'
   final int maxSpots;
   final int availableSpots;
+  final int maxGuests;
+  final List<DateTime> blockedDates;
+
+  // StayQ Curated Experience Logistics & Policies
+  final String transportOption; // 'PICKUP_DROP' or 'SELF_ARRIVE'
+  final bool foodIncluded;
+  final bool equipmentIncluded;
+  final int kidsFreeAgeLimit;
+  final String? scheduleTime;
+
+  bool get pickupProvided =>
+      transportOption == 'PICKUP_DROP' ||
+      amenities.any((a) => a.toLowerCase().contains('pickup'));
+  int get remainingSlots =>
+      availableSpots > 0 ? availableSpots : (maxSpots > 0 ? maxSpots : 10);
+  double get pricePerPerson => pricePerNight;
 
   // Sponsored Property Boosting & Search Visibility
   final bool isSponsored;
@@ -72,14 +91,22 @@ class StayModel {
     this.isWishlisted = false,
     this.isExperience = false,
     this.duration,
-    this.status = 'ACTIVE',
-    this.city = 'City',
-    this.state = 'State',
+    this.timeSlot,
+    this.status = 'UNKNOWN',
+    this.city = '',
+    this.state = '',
     this.propertyType = 'STAY',
     this.isStayingWithHost = false,
     this.hostPresenceType,
-    this.maxSpots = 10,
-    this.availableSpots = 10,
+    this.maxSpots = 0,
+    this.availableSpots = 0,
+    this.maxGuests = 0,
+    this.blockedDates = const [],
+    this.transportOption = 'SELF_ARRIVE',
+    this.foodIncluded = false,
+    this.equipmentIncluded = false,
+    this.kidsFreeAgeLimit = 0,
+    this.scheduleTime,
     this.isSponsored = false,
     this.sponsoredTier,
     this.sponsoredUntil,
@@ -87,36 +114,10 @@ class StayModel {
   });
 
   factory StayModel.fromFirestore(Map<String, dynamic> data, String documentId) {
-    return StayModel(
-      id: documentId,
-      hostId: data['hostId'] ?? data['userId'] ?? '',
-      title: data['title'] ?? '',
-      location: data['address'] ?? '',
-      pricePerNight: (data['pricePerNight'] ?? 0).toDouble(),
-      cleaningFee: (data['cleaningFee'] ?? 0).toDouble(),
-      rating: (data['rating'] ?? 0).toDouble(),
-      reviewCount: data['reviewCount'] ?? 0,
-      imageUrls: List<String>.from(data['images'] ?? []),
-      videoUrls: List<String>.from(data['videoUrls'] ?? []),
-      category: data['category'] ?? 'All Stays',
-      hostName: data['hostName'] ?? '',
-      hostAvatar: data['hostAvatarUrl'] ?? '',
-      isGuestFavorite: data['badges']?['isGuestFavorite'] ?? false,
-      isStarHost: data['badges']?['isStarHost'] ?? data['badges']?['isStar Host'] ?? false,
-      isNew: data['badges']?['isNew'] ?? false,
-      isFeatured: data['badges']?['isFeatured'] ?? false,
-      amenities: List<String>.from(data['amenities'] ?? []),
-      description: data['description'] ?? '',
-      lat: data['geopoint']?.latitude ?? 0.0,
-      lng: data['geopoint']?.longitude ?? 0.0,
-      isWishlisted: false, // Computed locally based on user wishlist subcollection
-      isExperience: data['isExperience'] ?? false,
-      duration: data['duration'],
-      status: data['status'] ?? 'ACTIVE',
-      city: data['city'] ?? 'City',
-      state: data['state'] ?? 'State',
-      propertyType: data['propertyType'] ?? _derivePropertyType(data['category'] ?? ''),
-    );
+    final point = data['geopoint'];
+    return StayModel.fromJson({...data, 'id': documentId,
+      if (point != null) 'lat': point.latitude,
+      if (point != null) 'lng': point.longitude});
   }
 
   static String _derivePropertyType(String category) {
@@ -127,119 +128,69 @@ class StayModel {
   }
 
   factory StayModel.fromJson(Map<String, dynamic> json) {
-    // Helper to parse pricePerNight which might be string or number from Prisma Decimal
-    double price = 0;
-    if (json['pricePerNight'] != null) {
-      if (json['pricePerNight'] is String) {
-        price = double.tryParse(json['pricePerNight']) ?? 0;
-      } else if (json['pricePerNight'] is num) {
-        price = (json['pricePerNight'] as num).toDouble();
-      }
-    }
-
-    double parsedCleaningFee = 0.0;
-    if (json['cleaningFee'] != null) {
-      if (json['cleaningFee'] is String) {
-        parsedCleaningFee = double.tryParse(json['cleaningFee']) ?? 0.0;
-      } else if (json['cleaningFee'] is num) {
-        parsedCleaningFee = (json['cleaningFee'] as num).toDouble();
-      }
-    }
-
-    // Parse images array
-    List<String> parsedImages = [];
-    if (json['images'] != null && json['images'] is List) {
-      for (var img in json['images']) {
-        if (img['url'] != null) {
-          parsedImages.add(img['url'].toString());
-        }
-      }
-    }
-    // Fallback if no images
-    if (parsedImages.isEmpty) {
-      parsedImages = ['https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&q=80&w=800'];
-    }
-
-    // Parse videoUrls array
-    List<String> parsedVideos = [];
-    if (json['videoUrls'] != null && json['videoUrls'] is List) {
-      for (var vid in json['videoUrls']) {
-        if (vid != null) {
-          parsedVideos.add(vid.toString());
-        }
-      }
-    }
-
-    // Parse host
-    String parsedHostId = json['hostId'] ?? (json['host'] != null ? json['host']['id'] ?? '' : '');
-    String parsedHostName = 'Stay Q Host';
-    String parsedHostAvatar = '';
-    bool parsedIsStarHost = false;
-    if (json['host'] != null) {
-      parsedHostName = json['host']['displayName'] ?? parsedHostName;
-      parsedHostAvatar = json['host']['photoUrl'] ?? parsedHostAvatar;
-      parsedIsStarHost = json['host']['isStarHost'] ?? json['host']['isStar Host'] ?? false;
-    }
-
-
-    // Parse tags/badges
-    bool parsedIsGuestFavorite = false;
-    bool parsedIsNew = false;
-    bool parsedIsFeatured = false;
-    List<String> parsedTags = [];
-    if (json['tags'] != null && json['tags'] is List) {
-      for (var t in json['tags']) {
-        String tag = t['tag'] ?? '';
-        if (tag.isNotEmpty) {
-          parsedTags.add(tag);
-        }
-        if (tag == 'GUEST_FAVOURITE') parsedIsGuestFavorite = true;
-        if (tag == 'NEW_LISTING') parsedIsNew = true;
-        if (tag == 'PREMIUM' || tag == 'POPULAR_IN_AREA') parsedIsFeatured = true;
-        if (tag == 'STARHOST' || tag == 'SUPERHOST') parsedIsStarHost = true;
-      }
-    }
-
+    final host = jsonMap(json['host']);
+    final badges = jsonMap(json['badges']);
+    final rawType = json['propertyType']?.toString() ?? json['type']?.toString();
+    final rawCat = json['category']?.toString() ?? '';
+    final type = rawType ?? _derivePropertyType(rawCat);
+    final isRvType = type == 'RV' ||
+        (rawType != null && rawType.toUpperCase().contains('RV')) ||
+        rawCat.toUpperCase() == 'RV' ||
+        rawCat.toUpperCase() == 'RVS' ||
+        json['vehicleType'] == 'Campervan';
+    final category = isRvType
+        ? 'RV'
+        : (type == 'CAMPING_SITE'
+            ? 'CAMPING'
+            : canonicalCategory(rawCat.isEmpty ? 'All Stays' : rawCat));
+    final city = json['city']?.toString() ?? '';
+    final country = json['country']?.toString() ?? '';
+    final tagsList = jsonStrings(json['tags']);
     return StayModel(
-      id: json['id'] ?? '',
-      hostId: parsedHostId,
-      title: json['title'] ?? '',
-      location: '${json['city'] ?? ''}, ${json['country'] ?? ''}'.trim().replaceAll(RegExp(r'^,\s*'), ''),
-      pricePerNight: price,
-      cleaningFee: parsedCleaningFee,
-
-      rating: 4.8, // Fallback since reviews aren't included yet
-      reviewCount: 15,
-      imageUrls: parsedImages,
-      videoUrls: parsedVideos,
-      category: json['category'] ?? 'All Stays',
-      hostName: parsedHostName,
-      hostAvatar: parsedHostAvatar,
-      isGuestFavorite: parsedIsGuestFavorite,
-      isStarHost: parsedIsStarHost,
-      isNew: parsedIsNew,
-      isFeatured: parsedIsFeatured,
-      amenities: json['amenities'] != null ? List<String>.from(json['amenities']) : ['Wifi', 'Kitchen', 'AC'],
-      tags: parsedTags,
-      description: json['description'] ?? '',
-      lat: json['lat'] != null ? double.parse(json['lat'].toString()) : 0.0,
-      lng: json['lng'] != null ? double.parse(json['lng'].toString()) : 0.0,
-      isWishlisted: false,
-      isExperience: false,
-      status: json['status'] ?? 'ACTIVE',
-      city: json['city'] ?? 'City',
-      state: json['state'] ?? 'State',
-      propertyType: (json['longTermAvailable'] == true || (json['category'] != null && json['category'].toString().toUpperCase().contains('LONG_TERM')) || (json['category'] != null && json['category'].toString().toUpperCase().contains('ZERO')))
-          ? 'ZERO_BROKER'
-          : (json['propertyType'] ?? _derivePropertyType(json['category'] ?? '')),
-      isStayingWithHost: json['isStayingWithHost'] ?? (json['roomType'] == 'PRIVATE_ROOM' || json['roomType'] == 'SHARED_ROOM'),
-      hostPresenceType: json['hostPresenceType'] ?? (json['isStayingWithHost'] == true ? 'Host on premises' : null),
-      maxSpots: json['maxSpots'] != null ? int.tryParse(json['maxSpots'].toString()) ?? 10 : 10,
-      availableSpots: json['availableSpots'] != null ? int.tryParse(json['availableSpots'].toString()) ?? 10 : 10,
+      id: (json['id'] ?? json['_id'])?.toString() ?? '',
+      hostId: json['hostId']?.toString() ?? host['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      location: json['address']?.toString() ?? [city, country].where((s) => s.isNotEmpty).join(', '),
+      pricePerNight: jsonDouble(json['pricePerNight'] ?? json['basePrice'] ?? json['nightlyRate']),
+      cleaningFee: jsonDouble(json['cleaningFee']),
+      rating: jsonDouble(json['rating'] ?? json['averageRating']),
+      reviewCount: jsonInt(json['reviewCount']),
+      imageUrls: jsonStrings(json['images'] ?? json['imageUrls'], field: 'url'),
+      videoUrls: jsonStrings(json['videoUrls']),
+      category: category,
+      hostName: host['displayName']?.toString() ?? json['hostName']?.toString() ?? '',
+      hostAvatar: host['photoUrl']?.toString() ?? json['hostAvatarUrl']?.toString() ?? '',
+      isGuestFavorite: badges['isGuestFavorite'] == true || tagsList.contains('GUEST_FAVOURITE'),
+      isStarHost: host['isStarHost'] == true || badges['isStarHost'] == true || tagsList.contains('STARHOST'),
+      isNew: badges['isNew'] == true || tagsList.contains('NEW_LISTING'),
+      isFeatured: badges['isFeatured'] == true || tagsList.contains('PREMIUM'),
+      amenities: jsonStrings(json['amenities'], field: 'name'),
+      tags: tagsList,
+      description: json['description']?.toString() ?? '',
+      lat: jsonDouble(json['lat']), lng: jsonDouble(json['lng']),
+      isExperience: json['isExperience'] == true || category == 'EXPERIENCES',
+      duration: json['duration']?.toString(),
+      timeSlot: json['scheduleTime']?.toString() ?? json['timeSlot']?.toString(),
+      scheduleTime: json['scheduleTime']?.toString() ?? json['timeSlot']?.toString(),
+      status: json['status']?.toString() ?? 'UNKNOWN', city: city,
+      state: json['state']?.toString() ?? '',
+      propertyType: json['longTermAvailable'] == true ? 'LONG_TERM_HOME' : type,
+      isStayingWithHost: json['isStayingWithHost'] == true ||
+          json['roomType'] == 'PRIVATE_ROOM' || json['roomType'] == 'SHARED_ROOM',
+      hostPresenceType: json['hostPresenceType']?.toString(),
+      maxSpots: jsonInt(json['maxSpots'] ?? json['maxGroupSize']),
+      availableSpots: jsonInt(json['availableSpots'] ?? json['remainingSlots'] ?? json['maxSpots'] ?? json['maxGroupSize']),
+      maxGuests: jsonInt(json['maxGuests'] ?? json['maxGroupSize'] ?? json['maxSpots']),
+      blockedDates: (json['blockedDates'] is List ? json['blockedDates'] as List : const [])
+          .map((d) => DateTime.tryParse(d.toString())).whereType<DateTime>().toList(),
+      transportOption: json['transportOption']?.toString() ?? 'SELF_ARRIVE',
+      foodIncluded: json['foodIncluded'] == true,
+      equipmentIncluded: json['equipmentIncluded'] == true,
+      kidsFreeAgeLimit: jsonInt(json['kidsFreeAgeLimit']),
       isSponsored: json['isSponsored'] == true,
-      sponsoredTier: json['sponsoredTier'],
-      sponsoredUntil: json['sponsoredUntil'] != null ? DateTime.tryParse(json['sponsoredUntil'].toString()) : null,
-      searchRankBoost: json['searchRankBoost'] != null ? int.tryParse(json['searchRankBoost'].toString()) ?? 0 : 0,
+      sponsoredTier: json['sponsoredTier']?.toString(),
+      sponsoredUntil: DateTime.tryParse(json['sponsoredUntil']?.toString() ?? ''),
+      searchRankBoost: jsonInt(json['searchRankBoost']),
     );
   }
 
@@ -250,15 +201,40 @@ class StayModel {
       category.toUpperCase().contains('LONG_TERM') ||
       tags.any((t) => t.toUpperCase().contains('ZERO'));
 
+  bool get isRv =>
+      propertyType == 'RV' ||
+      category.toUpperCase().contains('RV') ||
+      tags.any((t) => t.toUpperCase().contains('RV'));
+
   Map<String, dynamic> toMap() {
     return {
       'title': title,
       'address': location,
       'pricePerNight': pricePerNight,
+      'pricePerPerson': pricePerNight,
       'cleaningFee': cleaningFee,
       'rating': rating,
       'reviewCount': reviewCount,
       'images': imageUrls,
+      'imageUrls': imageUrls,
+      'videoUrls': videoUrls,
+      'hostId': hostId,
+      'city': city,
+      'state': state,
+      'lat': lat,
+      'lng': lng,
+      'propertyType': propertyType,
+      'isStayingWithHost': isStayingWithHost,
+      'hostPresenceType': hostPresenceType,
+      'maxGuests': maxGuests,
+      'maxSpots': maxSpots,
+      'availableSpots': availableSpots,
+      'transportOption': transportOption,
+      'foodIncluded': foodIncluded,
+      'equipmentIncluded': equipmentIncluded,
+      'kidsFreeAgeLimit': kidsFreeAgeLimit,
+      'scheduleTime': scheduleTime,
+      'tags': tags,
       'category': category,
       'hostName': hostName,
       'hostAvatarUrl': hostAvatar,
@@ -272,7 +248,11 @@ class StayModel {
       'amenities': amenities,
       'description': description,
       'isExperience': isExperience,
-      'duration': duration,
+      'duration': duration, 'timeSlot': timeSlot,
+      'status': status,
+      'blockedDates': blockedDates.map((d) => d.toIso8601String()).toList(),
+      'isSponsored': isSponsored, 'sponsoredTier': sponsoredTier,
+      'sponsoredUntil': sponsoredUntil?.toIso8601String(), 'searchRankBoost': searchRankBoost,
     };
   }
 }

@@ -48,30 +48,43 @@ export class AdminExportController {
     const rows = data.rows;
     if (!rows || rows.length === 0) {
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=stayq_${name}_export.csv`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=stayq_${name}_export.csv`,
+      );
       return res.send('id,createdAt\n');
     }
 
-    const headers = Object.keys(rows[0]).filter((k) => typeof rows[0][k] !== 'object');
+    const headers = Object.keys(rows[0]).filter(
+      (k) => typeof rows[0][k] !== 'object',
+    );
     let csvContent = headers.join(',') + '\n';
 
     for (const row of rows) {
       const line = headers
         .map((h) => {
-          let val = row[h];
+          const val = row[h];
           if (val === null || val === undefined) return '';
-          val = String(val).replace(/"/g, '""');
-          if (val.includes(',') || val.includes('\n') || val.includes('"')) {
-            val = `"${val}"`;
+          let str = String(val);
+          // CSV Formula Injection mitigation (=, +, -, @, tab, cr)
+          if (/^[=\+\-@\t\r]/.test(str)) {
+            str = `'${str}`;
           }
-          return val;
+          str = str.replace(/"/g, '""');
+          if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+            str = `"${str}"`;
+          }
+          return str;
         })
         .join(',');
       csvContent += line + '\n';
     }
 
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=stayq_${name}_${Date.now()}.csv`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=stayq_${name}_${Date.now()}.csv`,
+    );
     return res.send(csvContent);
   }
 }

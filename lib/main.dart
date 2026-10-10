@@ -3,123 +3,104 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'providers/app_provider.dart';
 import 'providers/host_onboarding_provider.dart';
 import 'providers/host_dashboard_provider.dart';
 import 'providers/host_listings_provider.dart';
 import 'providers/messaging_provider.dart';
-import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'navigation/app_router.dart';
-
-import 'package:firebase_core/firebase_core.dart';
 import 'services/push_notification_service.dart';
 
 final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 void main() {
-  // ─── 1. RESILIENCE: Catch all unhandled async errors in Zone ───
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
-
-    // ─── 2. MEMORY RESILIENCE: Limit image cache size to avoid OOM crashes ───
     PaintingBinding.instance.imageCache.maximumSize = 120;
-    PaintingBinding.instance.imageCache.maximumSizeBytes = 80 * 1024 * 1024; // 80 MB limit
-
-    // ─── 3. UI RESILIENCE: Custom ErrorWidget (No Red Screen of Death) ───
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 80 * 1024 * 1024;
     ErrorWidget.builder = (FlutterErrorDetails details) {
-      return Material(
-        color: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          margin: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E1C2A),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white12),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.refresh_rounded, color: AppColors.primary, size: 28),
-              const SizedBox(height: 8),
-              const Text(
-                'Something took a moment to load',
-                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Stay Q auto-recovered this view.',
-                style: TextStyle(color: Colors.white60, fontSize: 11),
-              ),
-            ],
-          ),
-        ),
-      );
+      if (details.exceptionAsString().contains('overflowed')) {
+        return const SizedBox.shrink();
+      }
+      return const Material(child: Padding(
+        padding: EdgeInsets.all(24), child: Text('This view could not load. Reopen it to try again.')));
     };
-
-    // ─── 4. FRAMEWORK RESILIENCE: Capture Flutter framework layout/render errors ───
     FlutterError.onError = (FlutterErrorDetails details) {
+      final isOverflow = details.exceptionAsString().contains('overflowed') ||
+          details.summary.toString().contains('overflowed') ||
+          details.toString().contains('overflowed');
+      if (isOverflow) {
+        debugPrint('Suppressed layout overflow: ${details.exceptionAsString()}');
+        return;
+      }
       FlutterError.presentError(details);
-      debugPrint('🛡️ [StayQ Resilience] FlutterError caught: ${details.exceptionAsString()}');
     };
-
-    // ─── 5. PLATFORM RESILIENCE: Root isolate error guard ───
     PlatformDispatcher.instance.onError = (error, stack) {
-      debugPrint('🛡️ [StayQ Resilience] PlatformDispatcher error caught: $error');
-      return true; // Handled, prevents app from terminating
+      debugPrint('Unhandled platform error: $error\n$stack');
+      return true;
     };
-
-    // ─── 6. SERVICES INITIALIZATION (Safely wrapped) ───
     try {
-      await Firebase.initializeApp();
-      await PushNotificationService.initialize(messengerKey: rootScaffoldMessengerKey);
-    } catch (e) {
-      debugPrint('⚠️ Firebase/Push notification init fallback: $e');
+      await Firebase.initializeApp().timeout(const Duration(seconds: 15));
+    } catch (error, stack) {
+      debugPrint('Firebase initialization failed: $error\n$stack');
+      runApp(const MaterialApp(home: Scaffold(body: Center(child: Padding(
+        padding: EdgeInsets.all(24), child: Text('Account services could not start. Check your connection and Firebase configuration, then restart the app.'))))));
+      return;
     }
-
-    // Lock orientation to portrait for maximum stability
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp, DeviceOrientation.portraitDown,
     ]);
+    runApp(ChangeNotifierProvider(create: (_) => AppProvider(), child: const _AccountScope()));
+    // Notification permission and network registration must never delay the first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(PushNotificationService.initialize(messengerKey: rootScaffoldMessengerKey)
+        .timeout(const Duration(seconds: 15)).catchError((Object error) {
+          debugPrint('Notification initialization failed: $error');
+        }));
+    });
+  }, (error, stack) { debugPrint('Unhandled application error: $error\n$stack'); });
+}
 
-    runApp(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => AppProvider()),
-          ChangeNotifierProvider(create: (_) => HostOnboardingProvider()),
-          ChangeNotifierProvider(create: (_) => HostDashboardProvider()),
-          ChangeNotifierProvider(create: (_) => HostListingsProvider()),
-          ChangeNotifierProvider(create: (_) => MessagingProvider()..initializeSocket()),
-        ],
-        child: const StayQApp(),
-      ),
+class _AccountScope extends StatelessWidget {
+  const _AccountScope();
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProxyProvider<AppProvider, HostOnboardingProvider>(
+          create: (_) => HostOnboardingProvider(userId: FirebaseAuth.instance.currentUser?.uid),
+          update: (_, app, prev) => (prev ?? HostOnboardingProvider())..updateUserId(app.userId),
+        ),
+        ChangeNotifierProxyProvider<AppProvider, HostDashboardProvider>(
+          create: (_) => HostDashboardProvider(userId: FirebaseAuth.instance.currentUser?.uid),
+          update: (_, app, prev) => (prev ?? HostDashboardProvider())..updateUserId(app.userId),
+        ),
+        ChangeNotifierProxyProvider<AppProvider, HostListingsProvider>(
+          create: (_) => HostListingsProvider(userId: FirebaseAuth.instance.currentUser?.uid),
+          update: (_, app, prev) => (prev ?? HostListingsProvider())..updateUserId(app.userId),
+        ),
+        ChangeNotifierProxyProvider<AppProvider, MessagingProvider>(
+          create: (_) => MessagingProvider(userId: FirebaseAuth.instance.currentUser?.uid)..initializeSocket(),
+          update: (_, app, prev) => (prev ?? MessagingProvider())..updateUserId(app.userId),
+        ),
+      ],
+      child: const StayQApp(),
     );
-  }, (error, stackTrace) {
-    debugPrint('🛡️ [StayQ ZoneGuard] Unhandled async exception caught: $error');
-  });
+  }
 }
 
 class StayQApp extends StatelessWidget {
   const StayQApp({super.key});
-
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppProvider>(
-      builder: (context, provider, child) {
-        return MaterialApp(
-          title: 'Stay Q',
-          scaffoldMessengerKey: rootScaffoldMessengerKey,
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: provider.themeMode,
-          initialRoute: AppRoutes.initial,
-          onGenerateRoute: AppRouter.generateRoute,
-        );
-      },
-    );
+    return Consumer<AppProvider>(builder: (context, provider, _) => MaterialApp(
+      title: 'StayQ', scaffoldMessengerKey: rootScaffoldMessengerKey,
+      debugShowCheckedModeBanner: false, theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme, themeMode: provider.themeMode,
+      initialRoute: AppRoutes.initial, onGenerateRoute: AppRouter.generateRoute,
+    ));
   }
 }

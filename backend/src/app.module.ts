@@ -1,15 +1,18 @@
+import { JobsModule } from './jobs/jobs.module';
+import { IdempotencyInterceptor } from './common/idempotency.interceptor';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { FirebaseAuthGuard } from './common/guards/firebase-auth.guard';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { FirebaseModule } from './firebase/firebase.module';
 
-// Auto-wired modules from 5 Subagents
+// Application modules
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { AdminModule } from './admin/admin.module';
@@ -41,46 +44,80 @@ import { CorridorsModule } from './corridors/corridors.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100, // 100 requests per minute globally (can be overridden per route)
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60000,
+        limit: 100, // 100 requests per minute general API
+      },
+      {
+        name: 'auth',
+        ttl: 60000,
+        skipIf: (context) =>
+          !Reflect.getMetadata('THROTTLER:LIMITauth', context.getHandler()) &&
+          !Reflect.getMetadata('THROTTLER:LIMITauth', context.getClass()),
+        limit: 10, // 10 requests per minute for sensitive auth & OTP
+      },
+      {
+        name: 'ai',
+        ttl: 60000,
+        skipIf: (context) =>
+          !Reflect.getMetadata('THROTTLER:LIMITai', context.getHandler()) &&
+          !Reflect.getMetadata('THROTTLER:LIMITai', context.getClass()),
+        limit: 15, // 15 requests per minute for expensive AI operations
+      },
+      {
+        name: 'financial',
+        ttl: 60000,
+        skipIf: (context) =>
+          !Reflect.getMetadata(
+            'THROTTLER:LIMITfinancial',
+            context.getHandler(),
+          ) &&
+          !Reflect.getMetadata('THROTTLER:LIMITfinancial', context.getClass()),
+        limit: 20, // 20 requests per minute for payment endpoints
+      },
+    ]),
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'public'),
       exclude: ['/api/*path'],
       serveStaticOptions: {
         setHeaders: (res, path) => {
           if (path.endsWith('.html')) {
-            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader(
+              'Cache-Control',
+              'no-cache, no-store, must-revalidate',
+            );
           }
         },
       },
     }),
     PrismaModule,
+    JobsModule,
     FirebaseModule,
-    
+
     // Core & Identity
     AuthModule,
     UsersModule,
     AdminModule,
     VerificationModule,
     LoyaltyModule,
-    
+
     // Inventory
     PropertiesModule,
     ExperiencesModule,
-    
+
     // Booking & Legal
     BookingsModule,
     LeasesModule,
     DisputesModule,
-    
+
     // Finance
     PaymentsModule,
     WalletModule,
     EarningsModule,
     CommissionModule,
-    
+
     // Social & Comms
     MessagingModule,
     ReviewsModule,
@@ -97,6 +134,8 @@ import { CorridorsModule } from './corridors/corridors.module';
   controllers: [AppController],
   providers: [
     AppService,
+    { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
+    { provide: APP_GUARD, useClass: FirebaseAuthGuard },
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

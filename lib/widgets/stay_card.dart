@@ -58,9 +58,9 @@ class StayCard extends StatelessWidget {
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                     child: AspectRatio(
                       aspectRatio: 1.2,
-                      child: stay.imageUrls.isNotEmpty && stay.imageUrls[0].startsWith('http')
+                      child: stay.imageUrls.isNotEmpty && stay.firstImage.startsWith('http')
                           ? Image.network(
-                              stay.imageUrls[0],
+                              stay.firstImage,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceLight),
                               loadingBuilder: (context, child, loadingProgress) {
@@ -70,7 +70,7 @@ class StayCard extends StatelessWidget {
                             )
                           : (stay.imageUrls.isNotEmpty)
                               ? Image.asset(
-                                  stay.imageUrls[0],
+                                  stay.firstImage,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceLight),
                                 )

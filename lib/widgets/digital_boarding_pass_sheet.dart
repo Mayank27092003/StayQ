@@ -16,6 +16,8 @@ class DigitalBoardingPassSheet extends StatelessWidget {
   final double totalAmount;
   final String hostName;
   final bool isStayingWithHost;
+  final String? accessPin;
+  final bool isPaid;
 
   const DigitalBoardingPassSheet({
     super.key,
@@ -29,6 +31,8 @@ class DigitalBoardingPassSheet extends StatelessWidget {
     required this.totalAmount,
     required this.hostName,
     required this.isStayingWithHost,
+    this.accessPin,
+    this.isPaid = false,
   });
 
   static void show(
@@ -43,12 +47,16 @@ class DigitalBoardingPassSheet extends StatelessWidget {
     required double totalAmount,
     required String hostName,
     required bool isStayingWithHost,
+    String? accessPin,
+    bool isPaid = false,
   }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => DigitalBoardingPassSheet(
+        accessPin: accessPin,
+        isPaid: isPaid,
         confirmationCode: confirmationCode,
         guestName: guestName,
         stayTitle: stayTitle,
@@ -63,16 +71,11 @@ class DigitalBoardingPassSheet extends StatelessWidget {
     );
   }
 
-  String get _doorPin {
-    if (isStayingWithHost) return 'HOST GREETING';
-    final digits = confirmationCode.replaceAll(RegExp(r'[^0-9]'), '');
-    final code = digits.length >= 4 ? digits.substring(digits.length - 4) : '8492';
-    return '$code#';
-  }
+  String get _doorPin => accessPin?.isNotEmpty == true ? accessPin! : 'Awaiting host instructions';
 
   String _formatPassText() {
     final df = DateFormat('EEE, MMM dd, yyyy');
-    return '''STAY Q | OFFICIAL DIGITAL STAY PASS
+    return '''STAYQ | OFFICIAL DIGITAL STAY PASS
 ----------------------------------------
 Booking Code: $confirmationCode
 Guest Name: $guestName
@@ -82,10 +85,10 @@ Category: ${category.toUpperCase()}
 
 Check-in: ${df.format(checkIn)} (from 2:00 PM)
 Check-out: ${df.format(checkOut)} (by 11:00 AM)
-Access: ${isStayingWithHost ? 'In-Person Check-in with Host $hostName' : 'Smart Lock Door PIN: $_doorPin'}
+Access: ${isStayingWithHost ? 'In-Person Check-in with Host $hostName' : 'Access: $_doorPin'}
 
-Total Paid: ₹${totalAmount.toStringAsFixed(0)} (Verified via Cashfree)
-Host: ${hostName.isNotEmpty ? hostName : 'Stay Q Verified Host'}
+Booking total: ₹${totalAmount.toStringAsFixed(0)} (${isPaid ? 'Payment verified' : 'Check payment status in Trips'})
+Host: ${hostName.isNotEmpty ? hostName : 'Host'}
 
 Official Desk: hello@stayq.space
 ----------------------------------------
@@ -224,7 +227,7 @@ Present this pass upon check-in or scan QR code.''';
                             Icon(Icons.stars_rounded, color: Color(0xFFC5A880), size: 18),
                             SizedBox(width: 8),
                             Text(
-                              'STAY Q LUXURY PASS',
+                              'STAYQ LUXURY PASS',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -421,14 +424,14 @@ Present this pass upon check-in or scan QR code.''';
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      isStayingWithHost ? 'HOST IN-PERSON CHECK-IN' : 'SMART DOOR LOCK PIN',
+                                      isStayingWithHost ? 'HOST IN-PERSON CHECK-IN' : 'CHECK-IN INSTRUCTIONS',
                                       style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF059669), letterSpacing: 1.0),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       isStayingWithHost
                                           ? 'Hosted Stay with ${hostName.isNotEmpty ? hostName : "Host"}'
-                                          : 'Access PIN: $_doorPin (Enter on Keypad)',
+                                          : 'Access: $_doorPin',
                                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                                     ),
                                   ],

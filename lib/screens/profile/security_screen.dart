@@ -1,317 +1,83 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_provider.dart';
-import '../../theme/app_colors.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class SecurityScreen extends StatefulWidget {
   const SecurityScreen({super.key});
-
   @override
   State<SecurityScreen> createState() => _SecurityScreenState();
 }
-
 class _SecurityScreenState extends State<SecurityScreen> {
-  bool _biometricEnabled = true;
-  bool _twoFactorEnabled = false;
-
+  String _mfaStatus = 'Loading account security…';
+  bool _deleting = false;
   @override
-  void initState() {
-    super.initState();
-    _loadPrefs();
+  void initState() { super.initState(); _loadSecurity(); }
+  Future<void> _loadSecurity() async {
+    final user = FirebaseAuth.instance.currentUser;
+    try {
+      final factors = await user?.multiFactor.getEnrolledFactors();
+      if (!mounted || FirebaseAuth.instance.currentUser?.uid != user?.uid) return;
+      setState(() => _mfaStatus = factors?.isNotEmpty == true ? 'Enrolled on your Firebase account' : 'No second factor is enrolled');
+    } catch (_) { if (mounted) setState(() => _mfaStatus = 'Security status could not be loaded'); }
   }
-
-  Future<void> _loadPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _biometricEnabled = prefs.getBool('biometric_enabled') ?? true;
-      _twoFactorEnabled = prefs.getBool('two_factor_enabled') ?? false;
-    });
+  Future<void> _changePassword() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null || !user.providerData.any((p) => p.providerId == 'password')) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Use your sign-in provider to manage this account’s password.'))); return;
+    }
+    final current = TextEditingController(); final password = TextEditingController(); final confirmation = TextEditingController();
+    bool busy = false; String? error;
+    try {
+      await showDialog<void>(context: context, barrierDismissible: false, builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, update) => AlertDialog(title: const Text('Change password'),
+          content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: current, obscureText: true, enabled: !busy, decoration: const InputDecoration(labelText: 'Current password')),
+            TextField(controller: password, obscureText: true, enabled: !busy, decoration: const InputDecoration(labelText: 'New password')),
+            TextField(controller: confirmation, obscureText: true, enabled: !busy, decoration: const InputDecoration(labelText: 'Confirm new password')),
+            if (error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(error!, style: const TextStyle(color: Colors.red))),
+          ])), actions: [
+            TextButton(onPressed: busy ? null : () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            ElevatedButton(onPressed: busy ? null : () async {
+              if (current.text.isEmpty || password.text.length < 6 || password.text != confirmation.text) {
+                update(() => error = 'Enter your current password and matching new passwords of at least six characters.'); return;
+              }
+              update(() { busy = true; error = null; });
+              try {
+                await user.reauthenticateWithCredential(EmailAuthProvider.credential(email: user.email!, password: current.text));
+                if (FirebaseAuth.instance.currentUser?.uid != user.uid) throw StateError('Your account changed.');
+                await user.updatePassword(password.text);
+                if (!dialogContext.mounted || !mounted) return;
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password changed.')));
+              } catch (e) { if (dialogContext.mounted) update(() { error = e.toString(); busy = false; }); }
+            }, child: Text(busy ? 'Saving…' : 'Save')),
+          ])));
+    } finally { current.dispose(); password.dispose(); confirmation.dispose(); }
   }
-
-  Future<void> _savePref(String key, bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(key, value);
+  Future<void> _deleteAccount() async {
+    if (_deleting) return;
+    final accepted = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Delete your account?'), content: const Text('This permanently requests deletion of your account and associated data. You must have signed in recently.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete'))]));
+    if (accepted != true || !mounted) return;
+    final provider = context.read<AppProvider>(); setState(() => _deleting = true);
+    final success = await provider.deleteAccount();
+    if (!mounted) return;
+    setState(() => _deleting = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(success ? 'Account deletion confirmed.' : provider.sessionError ?? 'Account deletion failed.')));
+    if (success) Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
   }
-
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Security & Privacy', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Login Security', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            _buildSettingsContainer(
-              children: [
-                ListTile(
-                  title: const Text('Change Password', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Last changed 3 months ago', style: TextStyle(fontSize: 12)),
-                  trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-                  onTap: () {
-                    _showChangePasswordBottomSheet(context);
-                  },
-                ),
-                const Divider(height: 1, color: AppColors.borderLight),
-                SwitchListTile(
-                  title: const Text('Biometric Login', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Use Face ID / Touch ID to login', style: TextStyle(fontSize: 12)),
-                  value: _biometricEnabled,
-                  activeThumbColor: AppColors.primary,
-                  onChanged: (val) {
-                    setState(() => _biometricEnabled = val);
-                    _savePref('biometric_enabled', val);
-                  },
-                ),
-                const Divider(height: 1, color: AppColors.borderLight),
-                SwitchListTile(
-                  title: const Text('Two-Factor Authentication', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Require a code sent to your phone', style: TextStyle(fontSize: 12)),
-                  value: _twoFactorEnabled,
-                  activeThumbColor: AppColors.primary,
-                  onChanged: (val) {
-                    setState(() => _twoFactorEnabled = val);
-                    _savePref('two_factor_enabled', val);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            const Text('Privacy', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            _buildSettingsContainer(
-              children: [
-                ListTile(
-                  title: const Text('Data Sharing', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Manage how your data is used for ads', style: TextStyle(fontSize: 12)),
-                  trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-                  onTap: () {
-                    showDialog(context: context, builder: (ctx) => AlertDialog(
-                      title: const Text('Data Sharing'),
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SwitchListTile(
-                            title: const Text('Personalized Ads'),
-                            value: true,
-                            onChanged: (v) {},
-                          ),
-                          SwitchListTile(
-                            title: const Text('Analytics'),
-                            value: true,
-                            onChanged: (v) {},
-                          ),
-                        ],
-                      ),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done'))
-                      ],
-                    ));
-                  },
-                ),
-                const Divider(height: 1, color: AppColors.borderLight),
-                ListTile(
-                  title: const Text('Request Account Deletion', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.errorRed)),
-                  subtitle: const Text('Permanently delete your Stay Q account', style: TextStyle(fontSize: 12)),
-                  trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.errorRed),
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        title: const Row(
-                          children: [
-                            Icon(Icons.warning_amber_rounded, color: AppColors.errorRed, size: 26),
-                            SizedBox(width: 10),
-                            Text('Delete Account?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                          ],
-                        ),
-                        content: const Text(
-                          'This action is permanent and cannot be undone. All your bookings, listings, and profile data will be permanently deleted from Stay Q servers.',
-                          style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textSecondary),
-                        ),
-                        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.errorRed,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              elevation: 0,
-                            ),
-                            onPressed: () async {
-                              Navigator.pop(ctx);
-                              final provider = context.read<AppProvider>();
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (_) => const Center(
-                                  child: Card(
-                                    child: Padding(
-                                      padding: EdgeInsets.all(24),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          CircularProgressIndicator(color: AppColors.errorRed),
-                                          SizedBox(height: 16),
-                                          Text('Deleting Stay Q Account...', style: TextStyle(fontWeight: FontWeight.bold)),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-
-                              final success = await provider.deleteAccount();
-
-                              if (context.mounted) {
-                                Navigator.of(context, rootNavigator: true).pop();
-                                Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
-                                  '/login',
-                                  (route) => false,
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      success
-                                          ? 'Your Stay Q account has been permanently deleted.'
-                                          : 'Account cleared and signed out.',
-                                    ),
-                                    backgroundColor: AppColors.errorRed,
-                                  ),
-                                );
-                              }
-                            }, 
-                            child: const Text('Confirm Delete', style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            const Text('Legal Compliance & Grievances', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            _buildSettingsContainer(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.gavel_rounded, color: AppColors.primary),
-                  title: const Text('Grievance Officer & Legal Desk', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Shayan Mandal · grievance@stayq.space', style: TextStyle(fontSize: 12)),
-                  trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Statutory Grievance Desk'),
-                        content: const Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Entity: QUATALYST PRIVATE LIMITED', style: TextStyle(fontWeight: FontWeight.bold)),
-                            Text('CIN: U62011GA2026PTC018230', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                            SizedBox(height: 12),
-                            Text('Appointed Grievance Officer:\nShayan Mandal', style: TextStyle(fontSize: 13)),
-                            SizedBox(height: 8),
-                            Text('Email: grievance@stayq.space\nSLA: Acknowledged within 48 hrs\nRedressed within 15 days', style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
-                            SizedBox(height: 12),
-                            Text('For standard booking & customer support, contact support@stayq.space.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                          ],
-                        ),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSettingsContainer({required List<Widget> children}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderLight),
-      ),
-      child: Column(
-        children: children,
-      ),
-    );
-  }
-
-  void _showChangePasswordBottomSheet(BuildContext context) {
-    final curController = TextEditingController();
-    final newController = TextEditingController();
-    final confirmController = TextEditingController();
-    
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-          left: 20, right: 20, top: 20,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Change Password', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextField(controller: curController, obscureText: true, decoration: const InputDecoration(labelText: 'Current Password', border: OutlineInputBorder())),
-            const SizedBox(height: 12),
-            TextField(controller: newController, obscureText: true, decoration: const InputDecoration(labelText: 'New Password', border: OutlineInputBorder())),
-            const SizedBox(height: 12),
-            TextField(controller: confirmController, obscureText: true, decoration: const InputDecoration(labelText: 'Confirm Password', border: OutlineInputBorder())),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () async {
-                  if (newController.text != confirmController.text) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
-                    return;
-                  }
-                  try {
-                    await FirebaseAuth.instance.currentUser?.updatePassword(newController.text);
-                    if (context.mounted) {
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated successfully')));
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                    }
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('Submit'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Security & privacy')),
+    body: ListView(padding: const EdgeInsets.all(20), children: [
+      ListTile(title: const Text('Change password'), subtitle: const Text('Verify your current password before changing it'),
+        trailing: const Icon(Icons.chevron_right), onTap: _changePassword),
+      const Divider(), ListTile(title: const Text('Two-factor authentication'), subtitle: Text(_mfaStatus)),
+      const ListTile(title: Text('Biometric app lock'), subtitle: Text('Not available in this version')),
+      const Divider(), const ListTile(title: Text('Data sharing preferences'), subtitle: Text('Consent controls are not available in this version. Contact support for privacy requests.')),
+      ListTile(title: Text(_deleting ? 'Deleting account…' : 'Delete account'),
+        textColor: Colors.red, onTap: _deleting ? null : _deleteAccount),
+    ]));
 }

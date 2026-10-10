@@ -12,7 +12,7 @@ plugins {
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
 }
 
 android {
@@ -31,7 +31,7 @@ android {
 
     defaultConfig {
         applicationId = "com.stayq.stay_q"
-        minSdk = flutter.minSdkVersion
+        minSdk = maxOf(flutter.minSdkVersion, 23)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -49,10 +49,18 @@ android {
     buildTypes {
         release {
             val releaseSigning = signingConfigs.getByName("release")
-            signingConfig = if (releaseSigning.storeFile != null && releaseSigning.storeFile!!.exists()) {
-                releaseSigning
-            } else {
-                signingConfigs.getByName("debug")
+            signingConfig = releaseSigning
+            // Debug builds remain usable without local release credentials.
+            // Release packaging must fail rather than silently change identity.
+            if (gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }) {
+                require(releaseSigning.storeFile?.exists() == true) {
+                    "Release signing requires a private android/key.properties and keystore."
+                }
+                require(!releaseSigning.keyAlias.isNullOrBlank() &&
+                        !releaseSigning.keyPassword.isNullOrBlank() &&
+                        !releaseSigning.storePassword.isNullOrBlank()) {
+                    "Release signing credentials are incomplete."
+                }
             }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

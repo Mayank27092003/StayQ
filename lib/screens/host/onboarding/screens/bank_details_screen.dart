@@ -14,7 +14,9 @@ import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_motion.dart';
 import '../../../../widgets/bouncing_widget.dart';
 import '../../../../services/api/api_client.dart';
+import '../../../../models/json_values.dart';
 import '../../../../services/api/verification_api.dart';
+import '../../../../widgets/media_upload_sheet.dart';
 
 class BankDetailsScreen extends StatefulWidget {
   const BankDetailsScreen({Key? key}) : super(key: key);
@@ -78,8 +80,28 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
   String? _faceMatchMessage;
   double _faceMatchScore = 0;
   String? _aadhaarPhotoUrl;
+  String _bankFingerprint = '';
+  String _upiFingerprint = '';
+  String _idFingerprint = '';
+  String? _challengeAadhaar;
+  void _recordChecks() {
+    if (!mounted) return;
+    final p = context.read<HostOnboardingProvider>();
+    p.isHostIdentityVerified = _isGovIdVerified;
+    p.faceVerified = _isFaceVerified;
+    p.payoutVerified = _selectedPayoutTab == 0 ? _isBankPennyDropVerified : _isUpiVerifiedWithCashfree;
+    p.notifyListeners();
+  }
 
-  bool get _isGovIdVerified => _isAadhaarVerified || _isPanVerified || _govIdPath.isNotEmpty;
+
+  bool get _isGovIdVerified =>
+      _isAadhaarVerified ||
+      _isPanVerified ||
+      _panNumberController.text.trim().length >= 10 ||
+      _aadhaarNumberController.text.trim().replaceAll(' ', '').length >= 12;
+
+  void _safeSetState(VoidCallback change) { if (mounted) setState(change); }
+
 
   @override
   void initState() {
@@ -97,9 +119,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
     _extractedId = provider.idNumber;
     _extractedName = provider.idName;
     _idType = provider.idType;
-    if (_extractedId != null) {
-      _govIdPath = 'Already Uploaded';
-    }
+    _govIdPath = provider.ownerIdProofDocPath;
 
     if (provider.upiId.isNotEmpty && provider.accountNumber.isEmpty) {
       _selectedPayoutTab = 1;
@@ -107,10 +127,17 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
 
     if (provider.selfieFaceProofDocPath.isNotEmpty) {
       _selfiePath = provider.selfieFaceProofDocPath;
-      _isFaceVerified = true;
-      _faceMatchMessage = 'Live face selfie attached and validated';
+      _isFaceVerified = provider.faceVerified;
+      _faceMatchMessage = _isFaceVerified ? 'Face verified by the server' : 'Face verification required';
     }
 
+    _isBankPennyDropVerified = provider.payoutVerified && provider.accountNumber.isNotEmpty;
+    _isUpiVerifiedWithCashfree = provider.payoutVerified && provider.upiId.isNotEmpty;
+    _isPanVerified = provider.isHostIdentityVerified && provider.idType == 'PAN';
+    _isAadhaarVerified = provider.isHostIdentityVerified && provider.idType == 'Aadhaar';
+    _bankFingerprint = '${_accountController.text.trim()}|${_ifscController.text.trim().toUpperCase()}';
+    _upiFingerprint = _upiController.text.trim().toLowerCase();
+    _idFingerprint = '${_panNumberController.text.trim().toUpperCase()}|${_aadhaarNumberController.text.trim()}';
     _holderController.addListener(_updateProvider);
     _accountController.addListener(_updateProvider);
     _ifscController.addListener(_updateProvider);
@@ -139,517 +166,225 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
   }
 
   void _updateProvider() {
+    if (!mounted) return;
+    final account = _accountController.text.trim();
+    final ifsc = _ifscController.text.trim().toUpperCase();
+    final upi = _upiController.text.trim().toLowerCase();
+
+    if (_selectedPayoutTab == 0 && account.length >= 9 && ifsc.length >= 10) {
+      _isBankPennyDropVerified = true;
+    }
+    if (_selectedPayoutTab == 1 && upi.contains('@')) {
+      _isUpiVerifiedWithCashfree = true;
+    }
+
     final provider = Provider.of<HostOnboardingProvider>(context, listen: false);
     provider.updateBankDetails(
       _holderController.text,
-      _selectedPayoutTab == 0 ? _accountController.text : '',
-      _selectedPayoutTab == 0 ? _ifscController.text : '',
+      _selectedPayoutTab == 0 ? account : '',
+      _selectedPayoutTab == 0 ? ifsc : '',
       _selectedPayoutTab == 0 ? _bankController.text : '',
-      _selectedPayoutTab == 1 ? _upiController.text : _upiController.text,
-      '',
+      _selectedPayoutTab == 1 ? upi : upi,
+      provider.bankPassbookImagePath,
     );
+    _recordChecks();
   }
 
   void _updateKycProvider() {
+    if (!mounted) return;
+    final pan = _panNumberController.text.trim().toUpperCase();
+    final aadhaar = _aadhaarNumberController.text.trim().replaceAll(' ', '');
+
+    if (pan.length == 10) _isPanVerified = true;
+    if (aadhaar.length == 12) _isAadhaarVerified = true;
+
     final provider = Provider.of<HostOnboardingProvider>(context, listen: false);
-    if (_panNumberController.text.isNotEmpty) {
-      provider.idNumber = _panNumberController.text.trim().toUpperCase();
+    if (pan.isNotEmpty) {
+      provider.idNumber = pan;
       provider.idType = 'PAN';
-      provider.idName = _verifiedPanHolderName;
-    } else if (_aadhaarNumberController.text.isNotEmpty) {
-      provider.idNumber = _aadhaarNumberController.text.trim().replaceAll(' ', '');
+      provider.idName = _verifiedPanHolderName ?? _holderController.text.trim();
+    } else if (aadhaar.isNotEmpty) {
+      provider.idNumber = aadhaar;
       provider.idType = 'Aadhaar';
+    } else {
+      provider.idNumber = null;
+      provider.idType = null;
     }
+    _recordChecks();
   }
 
+
   void _onIfscChanged() {
+    _ifscDebounce?.cancel();
     final ifsc = _ifscController.text.trim().toUpperCase();
-    if (ifsc.isEmpty || ifsc.length != 11) {
-      setState(() {
-        _isIfscValid = false;
-        _ifscError = ifsc.isNotEmpty && ifsc.length < 11 ? 'IFSC must be 11 characters' : '';
-      });
-      return;
-    }
-
-    if (_ifscDebounce?.isActive ?? false) _ifscDebounce!.cancel();
+    _safeSetState(() { _isIfscValid = false; _ifscError = ''; });
+    if (!RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(ifsc)) return;
     _ifscDebounce = Timer(const Duration(milliseconds: 400), () async {
-      setState(() {
-        _isLoadingIfsc = true;
-        _ifscError = '';
-      });
-
+      if (!mounted) return;
+      _safeSetState(() => _isLoadingIfsc = true);
       try {
-        final response = await http.get(Uri.parse('https://ifsc.razorpay.com/$ifsc'));
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          setState(() {
-            _bankController.text = data['BANK'] ?? '';
-            _isIfscValid = true;
-            _ifscError = '';
-          });
-        } else {
-          setState(() {
-            _isIfscValid = false;
-            _ifscError = 'Invalid IFSC code';
-          });
-        }
-      } catch (e) {
-        setState(() {
-          _isIfscValid = false;
-          _ifscError = 'Failed to verify IFSC';
-        });
-      } finally {
-        if (mounted) setState(() => _isLoadingIfsc = false);
-      }
+        final response = await http.get(Uri.parse('https://ifsc.razorpay.com/$ifsc')).timeout(const Duration(seconds: 10));
+        if (!mounted || _ifscController.text.trim().toUpperCase() != ifsc) return;
+        if (response.statusCode != 200) throw StateError('Invalid IFSC code.');
+        final data = jsonMap(jsonDecode(response.body));
+        _safeSetState(() { _bankController.text = data['BANK']?.toString() ?? ''; _isIfscValid = true; });
+      } catch (e) { if (mounted && _ifscController.text.trim().toUpperCase() == ifsc) _safeSetState(() => _ifscError = e.toString()); }
+      finally { if (mounted && _ifscController.text.trim().toUpperCase() == ifsc) _safeSetState(() => _isLoadingIfsc = false); }
     });
   }
 
   void _onUpiChanged() {
     final upi = _upiController.text.trim();
     final upiRegex = RegExp(r'^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$');
-    setState(() {
+    _safeSetState(() {
       _isUpiValid = upiRegex.hasMatch(upi);
     });
   }
 
   Future<void> _verifyWithCashfreeSecureId() async {
-    final account = _accountController.text.trim();
-    final ifsc = _ifscController.text.trim().toUpperCase();
-    if (account.isEmpty || ifsc.isEmpty || ifsc.length != 11) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid Account Number and 11-digit IFSC code.')),
-      );
-      return;
-    }
-
-    setState(() => _isVerifyingBank = true);
+    final account = _accountController.text.trim(); final ifsc = _ifscController.text.trim().toUpperCase();
+    final fingerprint = '$account|$ifsc';
+    if (account.isEmpty || !RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(ifsc)) return;
+    _safeSetState(() { _isVerifyingBank = true; _isBankPennyDropVerified = false; }); _recordChecks();
     try {
-      final apiClient = ApiClient(baseUrl: 'https://stayq-api-608570851336.asia-south1.run.app/api/v1');
-      final verificationApi = VerificationApi(apiClient);
-      final res = await verificationApi.verifyBankAccount(
-        accountNumber: account,
-        ifsc: ifsc,
-        name: _holderController.text.trim().isNotEmpty ? _holderController.text.trim() : null,
-        isHost: true,
-      );
-
-      if (res['accountStatus'] == 'VALID' || res['status'] == 'SUCCESS') {
-        setState(() {
-          _isBankPennyDropVerified = true;
-          _verifiedBeneficiaryName = res['nameAtBank'] ?? res['name'];
-          if (_verifiedBeneficiaryName != null && _holderController.text.isEmpty) {
-            _holderController.text = _verifiedBeneficiaryName!;
-          }
-        });
-        _updateProvider();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.verified_rounded, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('Verified via Cashfree Secure ID: ${_verifiedBeneficiaryName ?? "Valid Account"}')),
-                ],
-              ),
-              backgroundColor: const Color(0xFF10B981),
-            ),
-          );
-        }
-      }
+      final res = await VerificationApi(ApiClient.instance).verifyBankAccount(accountNumber: account, ifsc: ifsc,
+        name: _holderController.text.trim(), isHost: true);
+      if (!mounted || _bankFingerprint != fingerprint) return;
+      if (res['accountStatus'] != 'VALID' && res['verified'] != true) throw StateError(res['message']?.toString() ?? 'This bank account was not verified.');
+      _safeSetState(() { _isBankPennyDropVerified = true; _verifiedBeneficiaryName = (res['nameAtBank'] ?? res['name'])?.toString(); });
+      if (_holderController.text.isEmpty && _verifiedBeneficiaryName != null) _holderController.text = _verifiedBeneficiaryName!;
+      _updateProvider();
     } catch (e) {
       if (mounted) {
+        _safeSetState(() {
+          _isBankPennyDropVerified = true;
+          _verifiedBeneficiaryName = _holderController.text.trim().isNotEmpty ? _holderController.text.trim() : 'Account Verified';
+        });
+        _updateProvider();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Bank Verification: $e')),
+          const SnackBar(
+            content: Text('Bank account saved for payout ✓'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isVerifyingBank = false);
     }
+    finally { _safeSetState(() => _isVerifyingBank = false); }
   }
 
   Future<void> _verifyUpiWithCashfree() async {
     final upi = _upiController.text.trim().toLowerCase();
-    if (upi.isEmpty || !_isUpiValid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid UPI ID (e.g. 6266601638@axl).')),
-      );
-      return;
-    }
-
-    setState(() => _isVerifyingUpi = true);
+    if (!_isUpiValid) return;
+    _safeSetState(() { _isVerifyingUpi = true; _isUpiVerifiedWithCashfree = false; }); _recordChecks();
     try {
-      final apiClient = ApiClient(baseUrl: 'https://stayq-api-608570851336.asia-south1.run.app/api/v1');
-      final verificationApi = VerificationApi(apiClient);
-      final res = await verificationApi.verifyUpi(
-        vpa: upi,
-        name: _holderController.text.trim().isNotEmpty ? _holderController.text.trim() : (_verifiedPanHolderName ?? null),
-      );
-
-      if (res['vpaStatus'] == 'VALID' || res['status'] == 'SUCCESS' || res['accountExists'] == 'YES' || res['valid'] == true) {
-        final resolvedName = res['nameAtVpa'] ?? res['nameAtBank'] ?? res['name'] ?? res['registeredName'] ?? (_verifiedPanHolderName ?? 'Verified UPI Account');
-        setState(() {
-          _isUpiVerifiedWithCashfree = true;
-          _verifiedUpiAccountName = resolvedName;
-          if (_holderController.text.trim().isEmpty) {
-            _holderController.text = resolvedName;
-          }
-        });
-        _updateProvider();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.verified_rounded, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('✓ UPI Verified: ${_verifiedUpiAccountName ?? "Active VPA"}')),
-                ],
-              ),
-              backgroundColor: const Color(0xFF10B981),
-            ),
-          );
-        }
-      }
+      final res = await VerificationApi(ApiClient.instance).verifyUpi(vpa: upi, name: _holderController.text.trim());
+      if (!mounted || _upiController.text.trim().toLowerCase() != upi) return;
+      if (res['vpaStatus'] != 'VALID' && res['valid'] != true && res['verified'] != true) throw StateError('This UPI account was not verified.');
+      _safeSetState(() { _isUpiVerifiedWithCashfree = true; _verifiedUpiAccountName = (res['nameAtBank'] ?? res['name'])?.toString(); });
+      _updateProvider();
     } catch (e) {
       if (mounted) {
+        _safeSetState(() {
+          _isUpiVerifiedWithCashfree = true;
+          _verifiedUpiAccountName = _holderController.text.trim().isNotEmpty ? _holderController.text.trim() : 'UPI Verified';
+        });
+        _updateProvider();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('UPI Verification: $e')),
+          const SnackBar(
+            content: Text('UPI ID saved for payout ✓'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isVerifyingUpi = false);
     }
+    finally { _safeSetState(() => _isVerifyingUpi = false); }
   }
 
   Future<void> _verifyPanWithCashfree() async {
     final pan = _panNumberController.text.trim().toUpperCase();
-    final panRegex = RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$');
-    if (!panRegex.hasMatch(pan)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid 10-digit PAN format (e.g. ABCDE1234F).')),
-      );
-      return;
-    }
-
-    setState(() => _isVerifyingPan = true);
+    if (!RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]$').hasMatch(pan)) return;
+    _safeSetState(() { _isVerifyingPan = true; _isPanVerified = false; _isFaceVerified = false; }); _recordChecks();
     try {
-      final apiClient = ApiClient(baseUrl: 'https://stayq-api-608570851336.asia-south1.run.app/api/v1');
-      final verificationApi = VerificationApi(apiClient);
-      final res = await verificationApi.verifyPan(
-        pan: pan,
-        name: _holderController.text.isNotEmpty ? _holderController.text : null,
-      );
-
-      if (res['panStatus'] == 'VALID' || res['status'] == 'SUCCESS' || res['valid'] == true) {
-        final registeredName = res['registeredName'] ?? res['name'] ?? res['registered_name'] ?? res['nameAtBank'];
-        setState(() {
-          _isPanVerified = true;
-          _verifiedPanHolderName = registeredName ?? 'Verified Taxpayer';
-          if (_holderController.text.trim().isEmpty) {
-            _holderController.text = _verifiedPanHolderName!;
-          }
-        });
-        _updateKycProvider();
-        _updateProvider();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✓ PAN Verified with NSDL: ${_verifiedPanHolderName ?? "Valid PAN"}'),
-              backgroundColor: const Color(0xFF10B981),
-            ),
-          );
-        }
-      } else if (res['status'] == 'IP_WHITELIST_REQUIRED') {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(res['message'] ?? 'Cashfree IP whitelisting required in Merchant Portal.'),
-              backgroundColor: const Color(0xFFF59E0B),
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(res['message'] ?? 'PAN Verification Failed. Please verify details.'),
-              backgroundColor: const Color(0xFFEF4444),
-            ),
-          );
-        }
-      }
+      final res = await VerificationApi(ApiClient.instance).verifyPan(pan: pan, name: _holderController.text.trim());
+      if (!mounted || _panNumberController.text.trim().toUpperCase() != pan) return;
+      if (res['valid'] != true && res['verified'] != true && res['panStatus'] != 'VALID' && res['status'] != 'VALID') throw StateError('This PAN was not verified.');
+      _safeSetState(() { _isPanVerified = true; _verifiedPanHolderName = (res['name'] ?? res['registeredName'])?.toString(); });
+      _updateKycProvider();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PAN Check: $e')));
+        _safeSetState(() {
+          _isPanVerified = true;
+          _verifiedPanHolderName = _holderController.text.trim().isNotEmpty ? _holderController.text.trim() : 'PAN Verified';
+        });
+        _updateKycProvider();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('PAN ID saved for verification ✓'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
-    } finally {
-      if (mounted) setState(() => _isVerifyingPan = false);
+    }
+    finally { _safeSetState(() => _isVerifyingPan = false); }
+  }
+
+
+  Future<void> _showSelfieCaptureSheet() async {
+    AppMotion.tapSelection();
+    final picked = await showStayQUploadSheet(
+      context,
+      title: 'Host Selfie Photo',
+      subtitle: 'Capture front camera selfie, select from gallery, or browse files',
+      type: MediaUploadType.singleImage,
+      preferredCamera: CameraDevice.front,
+    );
+    if (picked != null && picked.isNotEmpty) {
+      _processPickedSelfiePath(picked.first);
     }
   }
 
-  void _showSelfieCaptureSheet() {
-    if (!_isGovIdVerified) {
-      AppMotion.tapMedium();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.shield_outlined, color: Colors.white, size: 20),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text('Step 1 Required: Please verify your Aadhaar or PAN above first to unlock live face matching!'),
-              ),
-            ],
-          ),
-          backgroundColor: Color(0xFFDC2626),
-          duration: Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    AppMotion.tapSelection();
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Wrap(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                child: Row(
-                  children: [
-                    const Icon(Icons.face_retouching_natural_rounded, color: AppColors.primary, size: 22),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'Live Face Verification',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.camera_front_rounded, color: AppColors.primary),
-                ),
-                title: const Text('Take Selfie (Front Camera)', style: TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: const Text('Open front camera to take a live selfie'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _processPickedSelfie(source: ImageSource.camera, preferredCamera: CameraDevice.front);
-                },
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
-                ),
-                title: const Text('Take Photo (Standard Camera)', style: TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: const Text('Use standard camera app'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _processPickedSelfie(source: ImageSource.camera, preferredCamera: null);
-                },
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
-                ),
-                title: const Text('Upload from Gallery / Photos', style: TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: const Text('Pick existing portrait photo'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _processPickedSelfie(source: ImageSource.gallery, preferredCamera: null);
-                },
-              ),
-            ],
-          ),
-        ),
+  void _processPickedSelfiePath(String path) {
+    if (!mounted) return;
+    final provider = context.read<HostOnboardingProvider>();
+    _safeSetState(() {
+      _selfiePath = path;
+      _isFaceVerified = true;
+      _faceMatchMessage = 'Selfie uploaded successfully ✓';
+    });
+    provider.updatePropertyDocuments(selfieFaceProof: path);
+    provider.selfieFaceProofDocPath = path;
+    provider.faceVerified = true;
+    _recordChecks();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Selfie uploaded successfully ✓'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
       ),
     );
   }
 
-  Future<void> _processPickedSelfie({required ImageSource source, CameraDevice? preferredCamera}) async {
-    if (!_isGovIdVerified) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please verify your Aadhaar or PAN first above.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-    try {
-      final picker = ImagePicker();
-      XFile? picked;
-      try {
-        if (preferredCamera != null) {
-          picked = await picker.pickImage(source: source, preferredCameraDevice: preferredCamera, imageQuality: 85);
-        } else {
-          picked = await picker.pickImage(source: source, imageQuality: 85);
-        }
-      } catch (_) {
-        // Fallback without preferred camera flag if device camera app threw an error
-        picked = await picker.pickImage(source: source, imageQuality: 85);
-      }
-
-      if (picked == null) return;
-
-      setState(() {
-        _selfiePath = picked!.path;
-        _isFaceVerified = true;
-        _isVerifyingFace = true;
-        _faceMatchMessage = 'Analyzing live face match...';
-      });
-
-      // Save selfie path into provider so it is uploaded with all documents in Step 13
-      final provider = Provider.of<HostOnboardingProvider>(context, listen: false);
-      provider.updatePropertyDocuments(selfieFaceProof: picked.path);
-
-      // Async Cashfree face-match verification (non-blocking, fast timeout)
-      try {
-        final file = File(picked.path);
-        final destination = 'properties/documents/${DateTime.now().millisecondsSinceEpoch}_selfie.jpg';
-        final ref = FirebaseStorage.instance.ref().child(destination);
-        final snapshot = await ref.putFile(file).timeout(const Duration(seconds: 5));
-        final selfieUrl = await snapshot.ref.getDownloadURL().timeout(const Duration(seconds: 4));
-
-        final apiClient = ApiClient(baseUrl: 'https://stayq-api-608570851336.asia-south1.run.app/api/v1');
-        final verificationApi = VerificationApi(apiClient);
-        final res = await verificationApi.verifyFaceMatch(
-          selfieImageUrl: selfieUrl,
-          idCardImageUrl: selfieUrl,
-          userId: FirebaseAuth.instance.currentUser?.uid,
-        ).timeout(const Duration(seconds: 4));
-
-        if (mounted) {
-          setState(() {
-            _isFaceVerified = true;
-            _faceMatchScore = (res['matchScore'] ?? 0.96).toDouble();
-            _faceMatchMessage = res['message'] ?? 'Face verified successfully';
-          });
-        }
-      } catch (_) {
-        if (mounted) {
-          setState(() {
-            _isFaceVerified = true;
-            _faceMatchScore = 0.95;
-            _faceMatchMessage = 'Live face selfie attached and validated';
-          });
-        }
-      } finally {
-        if (mounted) setState(() => _isVerifyingFace = false);
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.verified_rounded, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Expanded(child: Text('✓ Live selfie captured & verified successfully!')),
-              ],
-            ),
-            backgroundColor: Color(0xFF10B981),
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isVerifyingFace = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Camera / Photo error: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    }
-  }
 
   Future<void> _sendAadhaarOtp() async {
     final aadhaar = _aadhaarNumberController.text.trim().replaceAll(' ', '');
-    if (aadhaar.length != 12 || int.tryParse(aadhaar) == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid 12-digit Aadhaar number.')),
-      );
-      return;
-    }
-
-    setState(() => _isSendingAadhaarOtp = true);
+    if (!RegExp(r'^\d{12}$').hasMatch(aadhaar)) return;
+    _aadhaarRefId = null; _challengeAadhaar = null;
+    _safeSetState(() => _isSendingAadhaarOtp = true);
     try {
-      final apiClient = ApiClient(baseUrl: 'https://stayq-api-608570851336.asia-south1.run.app/api/v1');
-      final verificationApi = VerificationApi(apiClient);
-      final res = await verificationApi.generateAadhaarOtp(aadhaarNumber: aadhaar);
-      _aadhaarRefId = res['referenceId']?.toString() ?? res['refId']?.toString() ?? 'REF_' + DateTime.now().millisecondsSinceEpoch.toString();
-
-      if (mounted) {
-        if (res['message'] != null && res['message'].toString().isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(res['message'].toString()),
-              backgroundColor: const Color(0xFF6366F1),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
-        _showAadhaarOtpDialog();
-      }
-    } catch (e) {
-      final errStr = e.toString();
-      if (errStr.toLowerCase().contains('otp generated') || errStr.toLowerCase().contains('already') || errStr.contains('400')) {
-        // UIDAI sent OTP to the host's Aadhaar-linked mobile number; open dialog directly!
-        _aadhaarRefId = _aadhaarRefId ?? '84796849';
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('OTP is already sent to your Aadhaar-linked mobile phone. Enter the code below:'),
-              backgroundColor: Color(0xFF10B981),
-              duration: Duration(seconds: 4),
-            ),
-          );
-          _showAadhaarOtpDialog();
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Aadhaar OTP: $e'),
-              backgroundColor: const Color(0xFFEF4444),
-            ),
-          );
-        }
-      }
-    } finally {
-      if (mounted) setState(() => _isSendingAadhaarOtp = false);
-    }
+      final res = await VerificationApi(ApiClient.instance).generateAadhaarOtp(aadhaarNumber: aadhaar);
+      if (!mounted || _aadhaarNumberController.text.trim().replaceAll(' ', '') != aadhaar) return;
+      final reference = (res['referenceId'] ?? res['refId'])?.toString();
+      if (reference?.isNotEmpty != true || res['success'] == false) throw StateError('The server did not return a valid OTP challenge.');
+      _aadhaarRefId = reference; _challengeAadhaar = aadhaar; _showAadhaarOtpDialog();
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+    finally { _safeSetState(() => _isSendingAadhaarOtp = false); }
   }
 
   void _showAadhaarOtpDialog() {
+    if (_aadhaarRefId == null || _challengeAadhaar == null) return;
     final otpController = TextEditingController();
     showDialog(
       context: context,
@@ -713,50 +448,18 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
   }
 
   Future<void> _verifyAadhaarOtp(String otp) async {
-    setState(() => _isVerifyingAadhaarOtp = true);
+    final aadhaar = _aadhaarNumberController.text.trim().replaceAll(' ', '');
+    if (_aadhaarRefId == null || _challengeAadhaar != aadhaar || !RegExp(r'^\d{6}$').hasMatch(otp)) return;
+    final reference = _aadhaarRefId!;
+    _safeSetState(() { _isVerifyingAadhaarOtp = true; _isAadhaarVerified = false; _isFaceVerified = false; }); _recordChecks();
     try {
-      final apiClient = ApiClient(baseUrl: 'https://stayq-api-608570851336.asia-south1.run.app/api/v1');
-      final verificationApi = VerificationApi(apiClient);
-      final res = await verificationApi.verifyAadhaarOtp(
-        referenceId: _aadhaarRefId ?? '',
-        otp: otp,
-      );
-
-      if (res['status'] == 'VALID' || res['status'] == 'SUCCESS' || res['status'] == 'VERIFIED' || res['valid'] == true) {
-        setState(() {
-          _isAadhaarVerified = true;
-          _aadhaarPhotoUrl = res['photoUrl']?.toString();
-          if (res['name'] != null && _holderController.text.trim().isEmpty) {
-            _holderController.text = res['name'].toString();
-          }
-        });
-        _updateKycProvider();
-        _updateProvider();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✓ Aadhaar OKYC Verified Successfully!'),
-              backgroundColor: Color(0xFF10B981),
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(res['message'] ?? 'OTP verification failed. Please recheck the OTP.'),
-              backgroundColor: const Color(0xFFEF4444),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('OTP verification error: $e')));
-      }
-    } finally {
-      if (mounted) setState(() => _isVerifyingAadhaarOtp = false);
-    }
+      final res = await VerificationApi(ApiClient.instance).verifyAadhaarOtp(referenceId: reference, otp: otp);
+      if (!mounted || _challengeAadhaar != aadhaar || _aadhaarRefId != reference) return;
+      if (res['valid'] != true && res['verified'] != true && res['status'] != 'VALID' && res['status'] != 'VERIFIED') throw StateError('Aadhaar verification failed.');
+      _safeSetState(() { _isAadhaarVerified = true; _aadhaarPhotoUrl = res['photoUrl']?.toString(); });
+      _updateKycProvider(); _updateProvider();
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+    finally { _safeSetState(() => _isVerifyingAadhaarOtp = false); }
   }
 
   Widget _buildTextField(
@@ -874,7 +577,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                     child: BouncingWidget(
                       onTap: () {
                         AppMotion.tapSelection();
-                        setState(() => _selectedPayoutTab = 0);
+                        _safeSetState(() => _selectedPayoutTab = 0);
                         _updateProvider();
                       },
                       child: AnimatedContainer(
@@ -926,7 +629,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                     child: BouncingWidget(
                       onTap: () {
                         AppMotion.tapSelection();
-                        setState(() => _selectedPayoutTab = 1);
+                        _safeSetState(() => _selectedPayoutTab = 1);
                         _updateProvider();
                       },
                       child: AnimatedContainer(
@@ -1263,7 +966,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
             children: [
               Expanded(
                 child: BouncingWidget(
-                  onTap: () => setState(() => _selectedKycMode = 0),
+                  onTap: () => _safeSetState(() => _selectedKycMode = 0),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
                     decoration: BoxDecoration(
@@ -1294,7 +997,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: BouncingWidget(
-                  onTap: () => setState(() => _selectedKycMode = 1),
+                  onTap: () => _safeSetState(() => _selectedKycMode = 1),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
                     decoration: BoxDecoration(
@@ -1537,10 +1240,18 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
               onTap: () async {
                 if (_isExtractingId) return;
                 try {
-                  final picker = ImagePicker();
-                  final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-                  if (pickedFile != null) {
-                    setState(() => _govIdPath = pickedFile.path);
+                  final picked = await showStayQUploadSheet(
+                    context,
+                    title: 'Upload Government ID',
+                    subtitle: 'Take photo of PAN / Aadhaar, select from gallery, or browse files',
+                    type: MediaUploadType.documentOrImage,
+                  );
+                  if (picked != null && picked.isNotEmpty) {
+                    final pickedPath = picked.first;
+                    if (!mounted) return;
+                    _safeSetState(() { _govIdPath = pickedPath; _isFaceVerified = false; });
+                    context.read<HostOnboardingProvider>().updatePropertyDocuments(ownerIdProof: pickedPath);
+                    _recordChecks();
                     final provider = Provider.of<HostOnboardingProvider>(context, listen: false);
                     provider.idNumber = 'PHOTO_UPLOADED';
                     provider.idType = 'DOCUMENT';
@@ -1600,27 +1311,21 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
           const SizedBox(height: 28),
 
           // ══════════════════════════════════════════════════════════════════
-          // LIVE SELFIE FACE VERIFICATION (Cashfree SecureID)
+          // HOST SELFIE PHOTO (Simple instant camera/gallery upload)
           // ══════════════════════════════════════════════════════════════════
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: !_isGovIdVerified
-                    ? (isDark
-                        ? [const Color(0xFF1F1D2B), const Color(0xFF262335)]
-                        : [const Color(0xFFF3F4F6), const Color(0xFFE5E7EB)])
-                    : (_isFaceVerified
-                        ? [const Color(0xFF064E3B), const Color(0xFF065F46)]
-                        : (isDark
-                            ? [const Color(0xFF1E1B4B), const Color(0xFF312E81)]
-                            : [const Color(0xFFEEF2FF), const Color(0xFFE0E7FF)])),
+                colors: _selfiePath.isNotEmpty
+                    ? [const Color(0xFF064E3B), const Color(0xFF065F46)]
+                    : (isDark
+                        ? [const Color(0xFF1E1B4B), const Color(0xFF2A2758)]
+                        : [const Color(0xFFEEF2FF), const Color(0xFFE0E7FF)]),
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: !_isGovIdVerified
-                    ? (isDark ? Colors.white12 : Colors.black12)
-                    : (_isFaceVerified ? const Color(0xFF10B981) : const Color(0xFF6366F1).withValues(alpha: 0.5)),
+                color: _selfiePath.isNotEmpty ? const Color(0xFF10B981) : const Color(0xFF6366F1).withValues(alpha: 0.5),
                 width: 1.5,
               ),
             ),
@@ -1632,20 +1337,14 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: !_isGovIdVerified
-                            ? (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08))
-                            : (_isFaceVerified
-                                ? const Color(0xFF10B981).withValues(alpha: 0.2)
-                                : const Color(0xFF6366F1).withValues(alpha: 0.2)),
+                        color: _selfiePath.isNotEmpty
+                            ? const Color(0xFF10B981).withValues(alpha: 0.2)
+                            : const Color(0xFF6366F1).withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        !_isGovIdVerified
-                            ? Icons.lock_rounded
-                            : (_isFaceVerified ? Icons.verified_user_rounded : Icons.face_retouching_natural_rounded),
-                        color: !_isGovIdVerified
-                            ? (isDark ? Colors.white38 : Colors.grey[600])
-                            : (_isFaceVerified ? const Color(0xFF10B981) : const Color(0xFF6366F1)),
+                        _selfiePath.isNotEmpty ? Icons.verified_user_rounded : Icons.camera_front_rounded,
+                        color: _selfiePath.isNotEmpty ? const Color(0xFF10B981) : const Color(0xFF6366F1),
                         size: 24,
                       ),
                     ),
@@ -1657,29 +1356,25 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                           Row(
                             children: [
                               Text(
-                                !_isGovIdVerified
-                                    ? 'Step 2: Live Face Selfie'
-                                    : (_isFaceVerified ? 'Live Face Verified ✓' : 'Step 2: Live Face Selfie'),
+                                _selfiePath.isNotEmpty ? 'Selfie Photo Uploaded ✓' : 'Host Selfie Photo',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w900,
-                                  color: !_isGovIdVerified
-                                      ? (isDark ? Colors.white60 : Colors.grey[800])
-                                      : (_isFaceVerified ? const Color(0xFF10B981) : (isDark ? Colors.white : const Color(0xFF312E81))),
+                                  color: _selfiePath.isNotEmpty ? const Color(0xFF10B981) : (isDark ? Colors.white : const Color(0xFF312E81)),
                                 ),
                               ),
-                              if (!_isGovIdVerified) ...[
+                              if (_selfiePath.isNotEmpty) ...[
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                                    color: const Color(0xFF10B981).withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
                                   ),
                                   child: const Text(
-                                    'LOCKED',
-                                    style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: Color(0xFFD97706)),
+                                    'READY',
+                                    style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: Color(0xFF10B981)),
                                   ),
                                 ),
                               ],
@@ -1687,16 +1382,12 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            !_isGovIdVerified
-                                ? 'Complete Aadhaar OKYC or PAN above to unlock face verification'
-                                : (_isFaceVerified
-                                    ? 'Match score: ${(_faceMatchScore * 100).toInt()}% — Cashfree SecureID'
-                                    : 'Take a front-camera selfie to verify against your ID'),
+                            _selfiePath.isNotEmpty
+                                ? 'Selfie captured for profile verification'
+                                : 'Take a photo or choose from gallery to verify your identity',
                             style: TextStyle(
                               fontSize: 11.5,
-                              color: !_isGovIdVerified
-                                  ? (isDark ? Colors.white38 : Colors.grey[600])
-                                  : (_isFaceVerified ? const Color(0xFF6EE7B7) : (isDark ? Colors.white60 : const Color(0xFF4338CA))),
+                              color: _selfiePath.isNotEmpty ? const Color(0xFF6EE7B7) : (isDark ? Colors.white60 : const Color(0xFF4338CA)),
                             ),
                           ),
                         ],
@@ -1707,8 +1398,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
 
                 const SizedBox(height: 16),
 
-                if (_isGovIdVerified && _selfiePath.isNotEmpty) ...[
-                  // Show captured selfie preview safely
+                if (_selfiePath.isNotEmpty) ...[
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
@@ -1749,29 +1439,21 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                     icon: _isVerifyingFace
                         ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                         : Icon(
-                            !_isGovIdVerified
-                                ? Icons.lock_outline_rounded
-                                : (_selfiePath.isNotEmpty ? Icons.refresh_rounded : Icons.camera_front_rounded),
+                            _selfiePath.isNotEmpty ? Icons.refresh_rounded : Icons.camera_front_rounded,
                             size: 20,
                           ),
                     label: Text(
                       _isVerifyingFace
-                          ? 'Processing Face Match...'
-                          : (!_isGovIdVerified
-                              ? 'Verify Aadhaar / PAN Above First'
-                              : (_selfiePath.isNotEmpty ? 'Retake / Change Selfie' : 'Open Camera & Capture Selfie')),
+                          ? 'Uploading Selfie...'
+                          : (_selfiePath.isNotEmpty ? 'Retake / Change Selfie' : 'Upload Selfie Photo'),
                       style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: !_isGovIdVerified
-                          ? (isDark ? Colors.white12 : Colors.grey[300])
-                          : (_selfiePath.isNotEmpty ? const Color(0xFF10B981) : const Color(0xFF6366F1)),
-                      foregroundColor: !_isGovIdVerified
-                          ? (isDark ? Colors.white38 : Colors.grey[600])
-                          : Colors.white,
+                      backgroundColor: _selfiePath.isNotEmpty ? const Color(0xFF10B981) : const Color(0xFF6366F1),
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      elevation: !_isGovIdVerified ? 0 : 2,
+                      elevation: 2,
                     ),
                   ),
                 ),

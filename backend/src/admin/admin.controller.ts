@@ -1,7 +1,24 @@
-import { Controller, Get, Put, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Body,
+  Param,
+  Query,
+  Post,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole, PropertyStatus } from '@prisma/client';
-import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
 import { AdminGuard } from './guards/admin.guard';
@@ -9,7 +26,8 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AdminService } from './admin.service';
 
 class AuditQueryDto {
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(200) limit?: number = 50;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(200) limit?: number =
+    50;
   @IsOptional() @IsString() @MaxLength(80) action?: string;
   @IsOptional() @IsString() @MaxLength(80) targetType?: string;
   @IsOptional() @IsString() @MaxLength(100) targetId?: string;
@@ -37,14 +55,22 @@ export class AdminController {
   }
 
   @Get('dashboard')
-  getDashboard() { return this.adminService.getDashboardStats(); }
+  getDashboard() {
+    return this.adminService.getDashboardStats();
+  }
 
   @Get('users')
-  getAllUsers() { return this.adminService.getAllUsers(); }
+  getAllUsers() {
+    return this.adminService.getAllUsers();
+  }
 
   @Put('users/:id/roles')
-  updateUserRole(@Param('id') id: string, @Body('roles') roles: UserRole[]) {
-    return this.adminService.updateUserRole(id, roles);
+  updateUserRole(
+    @CurrentUser('id') actor: string,
+    @Param('id') id: string,
+    @Body('roles') roles: UserRole[],
+  ) {
+    return this.adminService.updateUserRole(id, roles, actor);
   }
 
   @Get('audit-logs')
@@ -53,13 +79,35 @@ export class AdminController {
   }
 
   @Get('properties')
-  getAllProperties() { return this.adminService.getAllProperties(); }
+  getAllProperties() {
+    return this.adminService.getAllProperties();
+  }
 
   @Put('properties/:id/status')
-  updatePropertyStatus(@Param('id') id: string, @Body('status') status: PropertyStatus, @Req() req: any) {
+  updatePropertyStatus(
+    @Param('id') id: string,
+    @Body('status') status: PropertyStatus,
+    @Req() req: any,
+  ) {
     return this.adminService.updatePropertyStatus(id, status, req.user.id);
   }
 
+  @Post('properties/:id/verify-documents')
+  reviewDocuments(
+    @Param('id') id: string,
+    @Body() body: any,
+    @CurrentUser() actor: any,
+  ) {
+    return this.adminService.reviewDocuments(
+      id,
+      body.approved,
+      body.note,
+      actor,
+    );
+  }
+
   @Get('bookings')
-  getAllBookings() { return this.adminService.getAllBookings(); }
+  getAllBookings() {
+    return this.adminService.getAllBookings();
+  }
 }

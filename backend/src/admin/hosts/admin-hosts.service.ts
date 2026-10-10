@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   BookingStatus,
   HostStatus,
@@ -11,9 +15,22 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminAuditService } from '../audit/admin-audit.service';
 import { NotificationsService } from '../../notifications/notifications.service';
-import { buildPaginatedResult, PaginatedResult, toSkipTake } from '../dto/pagination.dto';
-import { decimalToNumber, roundCurrency, roundRate, sumDecimals } from '../common/serialization';
-import { HostQueryDto, UpdateHostStatusDto, UpdateSuperhostDto } from './dto/host.dto';
+import {
+  buildPaginatedResult,
+  PaginatedResult,
+  toSkipTake,
+} from '../dto/pagination.dto';
+import {
+  decimalToNumber,
+  roundCurrency,
+  roundRate,
+  sumDecimals,
+} from '../common/serialization';
+import {
+  HostQueryDto,
+  UpdateHostStatusDto,
+  UpdateSuperhostDto,
+} from './dto/host.dto';
 
 const REVENUE_BOOKING_STATUSES: BookingStatus[] = [
   BookingStatus.CONFIRMED,
@@ -89,7 +106,9 @@ export class AdminHostsService {
           responseRate: true,
           responseTime: true,
           createdAt: true,
-          payoutAccount: { select: { verified: true, accountHolderName: true } },
+          payoutAccount: {
+            select: { verified: true, accountHolderName: true },
+          },
           _count: { select: { properties: true } },
         },
       }),
@@ -105,7 +124,9 @@ export class AdminHostsService {
           _count: { _all: true },
         })
       : [];
-    const activeByHost = new Map(activeCounts.map((row) => [row.hostId, row._count._all]));
+    const activeByHost = new Map(
+      activeCounts.map((row) => [row.hostId, row._count._all]),
+    );
 
     const data: HostListItem[] = hosts.map((host) => ({
       id: host.id,
@@ -124,8 +145,12 @@ export class AdminHostsService {
       propertyCount: host._count.properties,
       activePropertyCount: activeByHost.get(host.id) ?? 0,
       // Null distinguishes "no payout account on file" from "on file, unverified".
-      payoutAccountVerified: host.payoutAccount ? host.payoutAccount.verified : null,
-      payoutAccountName: host.payoutAccount ? host.payoutAccount.accountHolderName : null,
+      payoutAccountVerified: host.payoutAccount
+        ? host.payoutAccount.verified
+        : null,
+      payoutAccountName: host.payoutAccount
+        ? host.payoutAccount.accountHolderName
+        : null,
     }));
 
     return buildPaginatedResult(data, total, query);
@@ -170,51 +195,68 @@ export class AdminHostsService {
 
     if (!host) throw new NotFoundException('Host not found.');
     if (!host.roles.includes(UserRole.HOST)) {
-      throw new BadRequestException('This account does not hold the HOST role.');
+      throw new BadRequestException(
+        'This account does not hold the HOST role.',
+      );
     }
 
-    const [properties, propertyStatusCounts, bookingAgg, earnings, reviewAgg] = await Promise.all([
-      this.prisma.property.findMany({
-        where: { hostId },
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          title: true,
-          city: true,
-          status: true,
-          category: true,
-          pricePerNight: true,
-          createdAt: true,
-          _count: { select: { bookings: true, reviews: true } },
-        },
-      }),
-      this.prisma.property.groupBy({
-        by: ['status'],
-        where: { hostId },
-        _count: { _all: true },
-      }),
-      this.prisma.booking.aggregate({
-        where: { property: { hostId }, status: { in: REVENUE_BOOKING_STATUSES } },
-        _count: { _all: true },
-        _sum: { totalAmount: true },
-      }),
-      this.prisma.hostEarning.findMany({
-        where: { hostId },
-        select: { netPayout: true, grossAmount: true, platformFee: true, payoutStatus: true },
-      }),
-      this.prisma.review.aggregate({
-        where: { property: { hostId } },
-        _count: { _all: true },
-        _avg: { rating: true },
-      }),
-    ]);
+    const [properties, propertyStatusCounts, bookingAgg, earnings, reviewAgg] =
+      await Promise.all([
+        this.prisma.property.findMany({
+          where: { hostId },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            title: true,
+            city: true,
+            status: true,
+            category: true,
+            pricePerNight: true,
+            createdAt: true,
+            _count: { select: { bookings: true, reviews: true } },
+          },
+        }),
+        this.prisma.property.groupBy({
+          by: ['status'],
+          where: { hostId },
+          _count: { _all: true },
+        }),
+        this.prisma.booking.aggregate({
+          where: {
+            property: { hostId },
+            status: { in: REVENUE_BOOKING_STATUSES },
+          },
+          _count: { _all: true },
+          _sum: { totalAmount: true },
+        }),
+        this.prisma.hostEarning.findMany({
+          where: { hostId },
+          select: {
+            netPayout: true,
+            grossAmount: true,
+            platformFee: true,
+            payoutStatus: true,
+          },
+        }),
+        this.prisma.review.aggregate({
+          where: { property: { hostId } },
+          _count: { _all: true },
+          _avg: { rating: true },
+        }),
+      ]);
 
     const cancelledCount = await this.prisma.booking.count({
       where: { property: { hostId }, status: BookingStatus.CANCELLED },
     });
 
-    const paidOut = earnings.filter((e) => e.payoutStatus === PayoutStatus.COMPLETED);
-    const pendingPayout = earnings.filter((e) => e.payoutStatus !== PayoutStatus.COMPLETED);
+    const paidOut = earnings.filter(
+      (e) => e.payoutStatus === PayoutStatus.COMPLETED,
+    );
+    const pendingPayout = earnings.filter(
+      (e) =>
+        e.payoutStatus !== PayoutStatus.COMPLETED &&
+        e.payoutStatus !== PayoutStatus.ON_HOLD,
+    );
 
     return {
       ...host,
@@ -233,34 +275,69 @@ export class AdminHostsService {
         ),
         completedBookings: bookingAgg._count._all,
         cancelledBookings: cancelledCount,
-        grossBookingValue: roundCurrency(decimalToNumber(bookingAgg._sum.totalAmount) ?? 0),
-        lifetimeNetPayout: roundCurrency(sumDecimals(earnings.map((e) => e.netPayout))),
-        paidOutAmount: roundCurrency(sumDecimals(paidOut.map((e) => e.netPayout))),
-        pendingPayoutAmount: roundCurrency(sumDecimals(pendingPayout.map((e) => e.netPayout))),
-        platformFeesCollected: roundCurrency(sumDecimals(earnings.map((e) => e.platformFee))),
+        grossBookingValue: roundCurrency(
+          decimalToNumber(bookingAgg._sum.totalAmount) ?? 0,
+        ),
+        lifetimeNetPayout: roundCurrency(
+          sumDecimals(earnings.map((e) => e.netPayout)),
+        ),
+        paidOutAmount: roundCurrency(
+          sumDecimals(paidOut.map((e) => e.netPayout)),
+        ),
+        pendingPayoutAmount: roundCurrency(
+          sumDecimals(pendingPayout.map((e) => e.netPayout)),
+        ),
+        platformFeesCollected: roundCurrency(
+          sumDecimals(earnings.map((e) => e.platformFee)),
+        ),
         reviewCount: reviewAgg._count._all,
         // Null when no reviews exist, rather than reporting a 0.0 rating.
         averageRating:
-          reviewAgg._count._all === 0 ? null : roundRate(reviewAgg._avg.rating ?? null),
+          reviewAgg._count._all === 0
+            ? null
+            : roundRate(reviewAgg._avg.rating ?? null),
       },
     };
   }
 
-  async updateStatus(hostId: string, dto: UpdateHostStatusDto, adminId: string) {
+  async updateStatus(
+    hostId: string,
+    dto: UpdateHostStatusDto,
+    adminId: string,
+  ) {
     const host = await this.prisma.user.findUnique({
       where: { id: hostId },
-      select: { id: true, roles: true, hostStatus: true },
+      select: {
+        id: true,
+        roles: true,
+        hostStatus: true,
+        isHostVerified: true,
+        deletedAt: true,
+        payoutAccount: { select: { verified: true } },
+      },
     });
     if (!host) throw new NotFoundException('Host not found.');
     if (!host.roles.includes(UserRole.HOST)) {
-      throw new BadRequestException('This account does not hold the HOST role.');
+      throw new BadRequestException(
+        'This account does not hold the HOST role.',
+      );
     }
     if (dto.hostStatus === HostStatus.SUSPENDED && !dto.reason) {
-      throw new BadRequestException('A reason is required when suspending a host.');
+      throw new BadRequestException(
+        'A reason is required when suspending a host.',
+      );
     }
 
+    if (
+      dto.hostStatus === 'APPROVED' &&
+      (!host.isHostVerified || !host.payoutAccount?.verified || host.deletedAt)
+    )
+      throw new BadRequestException(
+        'Approve the reviewed host application before restoring approval',
+      );
     const updated = await this.audit.runWithAudit(
       async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Property" WHERE "hostId"=${hostId} ORDER BY id FOR UPDATE`;
         const user = await tx.user.update({
           where: { id: hostId },
           data: {
@@ -280,6 +357,7 @@ export class AdminHostsService {
         // Suspension pauses the host's live inventory so guests cannot book a
         // listing from a host who is no longer permitted to operate.
         let pausedProperties = 0;
+        const restoredProperties = 0;
         if (dto.hostStatus === HostStatus.SUSPENDED) {
           const result = await tx.property.updateMany({
             where: { hostId, status: PropertyStatus.ACTIVE },
@@ -288,7 +366,7 @@ export class AdminHostsService {
           pausedProperties = result.count;
         }
 
-        return { ...user, pausedProperties };
+        return { ...user, pausedProperties, restoredProperties };
       },
       (result) => ({
         adminId,
@@ -307,14 +385,20 @@ export class AdminHostsService {
     return updated;
   }
 
-  async updateSuperhost(hostId: string, dto: UpdateSuperhostDto, adminId: string) {
+  async updateSuperhost(
+    hostId: string,
+    dto: UpdateSuperhostDto,
+    adminId: string,
+  ) {
     const host = await this.prisma.user.findUnique({
       where: { id: hostId },
       select: { id: true, roles: true, isSuperhost: true },
     });
     if (!host) throw new NotFoundException('Host not found.');
     if (!host.roles.includes(UserRole.HOST)) {
-      throw new BadRequestException('This account does not hold the HOST role.');
+      throw new BadRequestException(
+        'This account does not hold the HOST role.',
+      );
     }
 
     return this.audit.runWithAudit(
@@ -341,17 +425,20 @@ export class AdminHostsService {
   async summary() {
     const hostWhere: Prisma.UserWhereInput = { roles: { has: UserRole.HOST } };
 
-    const [total, superhosts, byStatus, awaitingReview, verifiedPayouts] = await Promise.all([
-      this.prisma.user.count({ where: hostWhere }),
-      this.prisma.user.count({ where: { ...hostWhere, isSuperhost: true } }),
-      this.prisma.user.groupBy({
-        by: ['hostStatus'],
-        where: hostWhere,
-        _count: { _all: true },
-      }),
-      this.prisma.property.count({ where: { status: PropertyStatus.PENDING_REVIEW } }),
-      this.prisma.hostPayoutAccount.count({ where: { verified: true } }),
-    ]);
+    const [total, superhosts, byStatus, awaitingReview, verifiedPayouts] =
+      await Promise.all([
+        this.prisma.user.count({ where: hostWhere }),
+        this.prisma.user.count({ where: { ...hostWhere, isSuperhost: true } }),
+        this.prisma.user.groupBy({
+          by: ['hostStatus'],
+          where: hostWhere,
+          _count: { _all: true },
+        }),
+        this.prisma.property.count({
+          where: { status: PropertyStatus.PENDING_REVIEW },
+        }),
+        this.prisma.hostPayoutAccount.count({ where: { verified: true } }),
+      ]);
 
     return {
       totalHosts: total,
@@ -359,7 +446,10 @@ export class AdminHostsService {
       superhosts,
       // `null` keys represent hosts with no recorded lifecycle decision yet.
       byStatus: Object.fromEntries(
-        byStatus.map((row) => [row.hostStatus ?? 'UNREVIEWED', row._count._all]),
+        byStatus.map((row) => [
+          row.hostStatus ?? 'UNREVIEWED',
+          row._count._all,
+        ]),
       ),
       propertiesAwaitingReview: awaitingReview,
       verifiedPayoutAccounts: verifiedPayouts,
@@ -373,7 +463,9 @@ export class AdminHostsService {
     });
     if (!host) throw new NotFoundException('Host not found.');
     if (!host.roles.includes(UserRole.HOST)) {
-      throw new BadRequestException('This account does not hold the HOST role.');
+      throw new BadRequestException(
+        'This account does not hold the HOST role.',
+      );
     }
 
     await this.notifications.sendNotification(

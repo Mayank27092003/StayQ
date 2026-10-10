@@ -1,3 +1,5 @@
+import 'package:provider/provider.dart';
+import '../../../../providers/host_onboarding_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../theme/app_colors.dart';
@@ -31,55 +33,19 @@ class _QubeAiListingAssistantWidgetState extends State<QubeAiListingAssistantWid
   ];
 
   Future<void> _generateListing(String query) async {
-    if (query.trim().isEmpty) return;
-    AppMotion.tapHeavy();
+    if (_isGenerating) return;
+    final p = context.read<HostOnboardingProvider>();
+    if (p.city.trim().isEmpty || p.description.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter the property location and description first.'))); return;
+    }
     setState(() {
-      _isGenerating = true;
-      _hasGenerated = false;
+      _generatedTitle = p.title.trim().isNotEmpty ? p.title.trim() : '${p.bedrooms}-bedroom ${p.propertyType.toLowerCase().replaceAll('_', ' ')} in ${p.city}';
+      _generatedDesc = '${p.description.trim()}\n\n${p.bedrooms} bedrooms, ${p.bathrooms} bathrooms. Maximum ${p.maxGuests} guests.';
+      if (p.amenities.isNotEmpty) _generatedDesc += '\nAmenities entered by the host: ${p.amenities.join(', ')}.';
+      _generatedPrice = p.pricePerNight.round();
+      _suggestedAmenities = List<String>.from(p.amenities);
+      _isGenerating = false; _hasGenerated = true;
     });
-
-    // Simulate AI generation with intelligent contextual templates
-    await Future.delayed(const Duration(milliseconds: 1200));
-
-    final q = query.toLowerCase();
-    if (q.contains('goa') || q.contains('pool') || q.contains('beach')) {
-      _generatedTitle = 'The Azure Sunlit Sanctuary | Private Pool & Butler';
-      _generatedDesc =
-          'Nestled among swaying palms in Candolim, this Portuguese-inspired 3-bedroom villa offers a private pool, sun deck, curated cocktail bar, and 24/7 dedicated butler service for unforgettable coastal escapes.';
-      _generatedPrice = 16500;
-      _suggestedAmenities = ['Private Pool', 'High-Speed Wi-Fi', 'Air Conditioning', 'Chef on Demand', 'Free Parking'];
-    } else if (q.contains('cabin') || q.contains('manali') || q.contains('snow')) {
-      _generatedTitle = 'Pinecrest Alpine Chalet | Nordic Fireplace & Glacier Views';
-      _generatedDesc =
-          'Experience panoramic Himalayan vistas from this handcrafted cedarwood chalet. Features a roaring stone fireplace, Scandinavian glass sauna, heated flooring, and direct access to tranquil pine trails.';
-      _generatedPrice = 11800;
-      _suggestedAmenities = ['Wood Fireplace', 'Mountain View', 'High-Speed Wi-Fi', 'Heated Floors', 'Dedicated Workspace'];
-    } else if (q.contains('udaipur') || q.contains('lake') || q.contains('haveli')) {
-      _generatedTitle = 'Lake Pichola Royal Heritage Suite | Sunset Terrace';
-      _generatedDesc =
-          'Immerse in royal Mewari opulence. Enjoy marble archways, handcrafted jharokhas, sunset dining overlooking Lake Pichola, and bespoke rooftop stargazing experiences.';
-      _generatedPrice = 19500;
-      _suggestedAmenities = ['Lake View', 'Rooftop Terrace', 'Butler Service', 'High-Speed Wi-Fi', 'Complimentary Breakfast'];
-    } else if (q.contains('rv') || q.contains('caravan') || q.contains('camping')) {
-      _generatedTitle = 'Nomad Cruiser X | All-Terrain RV with Panoramic Skylight';
-      _generatedDesc =
-          'Your luxury off-grid home on wheels. Complete with solar power, king-sized skylight bed, modular kitchen, outdoor awning, and Starlink high-speed internet wherever your journey takes you.';
-      _generatedPrice = 8500;
-      _suggestedAmenities = ['Solar Power', 'Kitchenette', 'Awning & Camp Chairs', 'Portable Wi-Fi', 'All-Terrain Setup'];
-    } else {
-      _generatedTitle = 'Serene Haven Estate | Bespoke Luxury & Nature Retreat';
-      _generatedDesc =
-          'A thoughtfully designed boutique sanctuary offering modern architectural elegance, lush garden courtyards, high-speed connectivity, and curated local gourmet dining.';
-      _generatedPrice = 13500;
-      _suggestedAmenities = ['High-Speed Wi-Fi', 'Air Conditioning', 'Private Garden', 'Free Parking', 'Chef on Demand'];
-    }
-
-    if (mounted) {
-      setState(() {
-        _isGenerating = false;
-        _hasGenerated = true;
-      });
-    }
   }
 
   @override
@@ -120,11 +86,11 @@ class _QubeAiListingAssistantWidgetState extends State<QubeAiListingAssistantWid
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Qube AI Host Co-Pilot',
+                      'Listing draft helper',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                     ),
                     Text(
-                      'Type a few words to auto-generate a captivating listing',
+                      'Build a draft from your entered property facts; review before applying',
                       style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ],

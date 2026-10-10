@@ -14,7 +14,10 @@ class TripsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
-    final bookings = provider.bookings;
+    final bookings = provider.bookings.where((bk) =>
+        bk.isPaid ||
+        (bk.status != BookingStatus.pending && bk.status != BookingStatus.cancelled)
+    ).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -74,9 +77,9 @@ class TripsScreen extends StatelessWidget {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(16),
-                                child: (bk.stay.imageUrls.isNotEmpty && bk.stay.imageUrls.first.startsWith('http'))
+                                child: (bk.stay.imageUrls.isNotEmpty && bk.stay.firstImage.startsWith('http'))
                                     ? Image.network(
-                                        bk.stay.imageUrls.first,
+                                        bk.stay.firstImage,
                                         width: 80,
                                         height: 80,
                                         fit: BoxFit.cover,

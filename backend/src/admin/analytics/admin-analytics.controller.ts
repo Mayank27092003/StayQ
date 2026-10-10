@@ -13,19 +13,26 @@ export class AdminAnalyticsController {
   constructor(private readonly analytics: AdminAnalyticsService) {}
 
   @Get('overview')
-  @ApiOperation({ summary: 'Platform counters and settled revenue for a window' })
+  @ApiOperation({
+    summary: 'Platform counters and settled revenue for a window',
+  })
   overview(@Query() query: AnalyticsRangeQueryDto) {
     return this.analytics.overview(query);
   }
 
   @Get('timeseries')
-  @ApiOperation({ summary: 'Booking, revenue, and signup series with a continuous axis' })
+  @ApiOperation({
+    summary: 'Booking, revenue, and signup series with a continuous axis',
+  })
   timeseries(@Query() query: AnalyticsRangeQueryDto) {
     return this.analytics.timeseries(query);
   }
 
   @Get('breakdown')
-  @ApiOperation({ summary: 'Realised booking distribution by category, city, and property type' })
+  @ApiOperation({
+    summary:
+      'Realised booking distribution by category, city, and property type',
+  })
   breakdown(@Query() query: AnalyticsRangeQueryDto) {
     return this.analytics.breakdown(query);
   }
@@ -49,7 +56,9 @@ export class AdminAnalyticsController {
   }
 
   @Get('revenue')
-  @ApiOperation({ summary: 'Revenue detail including refunds and the payout pipeline' })
+  @ApiOperation({
+    summary: 'Revenue detail including refunds and the payout pipeline',
+  })
   revenue(@Query() query: AnalyticsRangeQueryDto) {
     return this.analytics.revenue(query);
   }

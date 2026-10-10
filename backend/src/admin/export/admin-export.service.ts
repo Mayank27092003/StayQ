@@ -25,12 +25,12 @@ export class AdminExportService {
       this.prisma.property.count(),
       this.prisma.booking.count(),
       this.prisma.payment.count(),
-      this.prisma.hostEarning.count().catch(() => 0),
+      this.prisma.hostEarning.count(),
       this.prisma.review.count(),
-      this.prisma.supportTicket.count().catch(() => 0),
+      this.prisma.supportTicket.count(),
       this.prisma.broadcast.count(),
       this.prisma.adminStaff.count(),
-      this.prisma.coupon.count().catch(() => 0),
+      this.prisma.coupon.count(),
     ]);
 
     return {
@@ -111,9 +111,9 @@ export class AdminExportService {
         },
       }),
       this.prisma.payment.findMany(),
-      this.prisma.hostEarning.findMany().catch(() => []),
+      this.prisma.hostEarning.findMany(),
       this.prisma.review.findMany(),
-      this.prisma.supportTicket.findMany().catch(() => []),
+      this.prisma.supportTicket.findMany(),
       this.prisma.broadcast.findMany(),
       this.prisma.adminStaff.findMany({
         select: {
@@ -129,17 +129,21 @@ export class AdminExportService {
           createdAt: true,
         },
       }),
-      this.prisma.coupon.findMany().catch(() => []),
-      this.prisma.adminAuditLog.findMany({ take: 200, orderBy: { createdAt: 'desc' } }).catch(() => []),
+      this.prisma.coupon.findMany(),
+      this.prisma.adminAuditLog.findMany({
+        take: 200,
+        orderBy: { createdAt: 'desc' },
+      }),
     ]);
 
     return {
       migrationMetadata: {
-        platform: 'Stay Q Enterprise',
+        platform: 'StayQ Enterprise',
         version: '2.0.0',
         exportDate: new Date().toISOString(),
         databaseEngine: 'PostgreSQL 16 / Prisma ORM',
-        format: 'STAYQ_UNIVERSAL_MIGRATION_V1',
+        format: 'STAYQ_ADMIN_EXPORT_V1',
+        restorableBackup: false,
         recordCounts: {
           users: users.length,
           properties: properties.length,
@@ -179,10 +183,14 @@ export class AdminExportService {
         rows = await this.prisma.user.findMany();
         break;
       case 'properties':
-        rows = await this.prisma.property.findMany({ include: { images: true } });
+        rows = await this.prisma.property.findMany({
+          include: { images: true },
+        });
         break;
       case 'bookings':
-        rows = await this.prisma.booking.findMany({ include: { payment: true } });
+        rows = await this.prisma.booking.findMany({
+          include: { payment: true },
+        });
         break;
       case 'payments':
         rows = await this.prisma.payment.findMany();
@@ -200,9 +208,12 @@ export class AdminExportService {
         rows = await this.prisma.adminStaff.findMany();
         break;
       default:
-        throw new NotFoundException(`Table "${tableName}" not found for export.`);
+        throw new NotFoundException(
+          `Table "${tableName}" not found for export.`,
+        );
     }
 
+    rows = rows.map(({ passwordHash, ...safe }) => safe);
     return {
       table: tableName,
       count: rows.length,

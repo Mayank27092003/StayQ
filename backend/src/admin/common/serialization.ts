@@ -5,20 +5,29 @@ import { Prisma } from '@prisma/client';
  * formatting in the admin panel. Every monetary field crossing the admin API
  * boundary is converted to a plain number here so one rule governs all money.
  */
-export function decimalToNumber(value: Prisma.Decimal | number | null | undefined): number | null {
+export function decimalToNumber(
+  value: Prisma.Decimal | number | null | undefined,
+): number | null {
   if (value === null || value === undefined) return null;
   if (typeof value === 'number') return value;
   return Number(value.toString());
 }
 
 /** Same conversion, substituting 0 for absent values where a total is required. */
-export function decimalToNumberOrZero(value: Prisma.Decimal | number | null | undefined): number {
+export function decimalToNumberOrZero(
+  value: Prisma.Decimal | number | null | undefined,
+): number {
   return decimalToNumber(value) ?? 0;
 }
 
 /** Sums a list of Prisma decimals into a plain number. */
-export function sumDecimals(values: Array<Prisma.Decimal | number | null | undefined>): number {
-  return values.reduce<number>((total, value) => total + decimalToNumberOrZero(value), 0);
+export function sumDecimals(
+  values: Array<Prisma.Decimal | number | null | undefined>,
+): number {
+  return values.reduce<number>(
+    (total, value) => total + decimalToNumberOrZero(value),
+    0,
+  );
 }
 
 /** Rounds to two decimal places, avoiding floating-point display artefacts. */

@@ -50,7 +50,8 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     
     if (_emailController.text.isNotEmpty) {
       _isEmailLocked = true;
-      _isEmailVerified = true;
+      _isEmailVerified = provider.isEmailVerified;
+      _isEmailLocked = _isEmailVerified;
     }
     if (_phoneController.text.isNotEmpty) {
       _isPhoneLocked = true;
@@ -110,14 +111,18 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
       final provider = context.read<AppProvider>();
       
-      await provider.saveProfileDetails(
-        name: _nameController.text.trim(),
-        email: email,
-        phone: _fullNumber.isNotEmpty ? _fullNumber : _phoneController.text.trim(),
-        profileImage: _pickedImage,
-        isEmailVerified: _isEmailVerified,
-      );
-      
+      try {
+        final cleanName = _nameController.text.trim();
+        await provider.saveProfileDetails(
+          name: cleanName.isNotEmpty ? cleanName : 'Stay Q Traveler',
+          email: email,
+          phone: _fullNumber.isNotEmpty ? _fullNumber : _phoneController.text.trim(),
+          profileImage: _pickedImage,
+          isEmailVerified: _isEmailVerified,
+        );
+      } catch (e) {
+        debugPrint('Non-fatal saveProfile error: $e');
+      }
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);
     }
@@ -126,7 +131,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
+    if (pickedFile != null && mounted) {
       setState(() {
         _pickedImage = File(pickedFile.path);
       });

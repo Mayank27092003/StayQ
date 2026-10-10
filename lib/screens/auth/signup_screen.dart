@@ -44,7 +44,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
               Text(
-                widget.isHostSignUp ? 'Become a Stay Q Host' : 'Join Stay Q Today',
+                widget.isHostSignUp ? 'Become a StayQ Host' : 'Join StayQ Today',
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -135,7 +135,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       text: TextSpan(
                         style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                         children: [
-                          const TextSpan(text: 'I agree to Stay Q\'s '),
+                          const TextSpan(text: 'I agree to StayQ\'s '),
                           TextSpan(
                             text: 'Terms of Service',
                             style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
@@ -161,33 +161,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
               const SizedBox(height: 32),
 
               ElevatedButton(
-                onPressed: () {
-                  if (!_formKey.currentState!.validate()) return;
-                  if (!_acceptTerms) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('You must accept the terms and conditions')),
-                    );
-                    return;
-                  }
-                  
-                  final provider = Provider.of<AppProvider>(context, listen: false);
-                  provider.signUp(
-                    _nameController.text.trim(),
-                    _emailController.text.trim(),
-                    _passwordController.text,
-                  );
-
-                  if (widget.isHostSignUp) {
-                    if (!provider.isHostMode) provider.toggleHostMode();
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const HostOnboardingScreen()),
-                    );
-                  } else {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LocationPermissionScreen()),
-                    );
+                onPressed: () async {
+                  if (!_formKey.currentState!.validate() || !_acceptTerms) return;
+                  final provider = context.read<AppProvider>();
+                  if (provider.isLoadingAuth) return;
+                  try {
+                    await provider.signUp(_nameController.text.trim(), _emailController.text.trim(), _passwordController.text);
+                    if (!mounted) return;
+                    if (widget.isHostSignUp) {
+                      provider.setHostMode(true);
+                      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HostOnboardingScreen()));
+                    } else {
+                      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LocationPermissionScreen()));
+                    }
+                  } catch (e) {
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
                   }
                 },
                 child: Text(widget.isHostSignUp ? 'Create Host Account' : 'Agree & Create Account'),

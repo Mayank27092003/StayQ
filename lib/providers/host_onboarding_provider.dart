@@ -1,13 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
+import '../services/api/api_client.dart';
+import '../services/session_store.dart';
+import '../models/json_values.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
-import 'package:shared_preferences/shared_preferences.dart';
 
-const String _apiUrl = 'https://stayq-api-608570851336.asia-south1.run.app';
 
 class RoomCategoryConfig {
   String id;
@@ -94,9 +96,47 @@ class PhotoCategory {
 class HostOnboardingProvider extends ChangeNotifier {
   int currentPage = 0;
 
-  HostOnboardingProvider() {
-    restoreDraftFromPrefs();
+  String? _ownerId;
+  bool _disposed = false;
+  bool _restoring = true;
+  bool get isRestoring => _restoring;
+  bool _submitted = false;
+  String? lastError;
+  String? _submittedPropertyId;
+  String _draftId = List.generate(16, (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+  Map<String, String> _uploads = {};
+  Future<void> _writes = Future<void>.value();
+  bool payoutVerified = false;
+  bool faceVerified = false;
+  Map<String, dynamic> rvDetails = {};
+  Map<String, dynamic> campingDetails = {};
+  late Future<void> ready;
+  bool get _owned {
+    if (_disposed) return false;
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    if (_ownerId == null && currentUid != null) {
+      _ownerId = currentUid;
+    }
+    return _ownerId != null && currentUid == _ownerId;
   }
+
+  HostOnboardingProvider({String? userId}) : _ownerId = userId {
+    ready = restoreDraftFromPrefs();
+  }
+  void updateUserId(String? userId) {
+    if (_ownerId == userId) return;
+    _ownerId = userId;
+    ready = restoreDraftFromPrefs();
+  }
+  @override
+  void notifyListeners() {
+    if (_disposed) return;
+    super.notifyListeners();
+    if (!_restoring && !_submitted && !isUploading) unawaited(saveDraftToPrefs());
+  }
+  @override
+  void dispose() { _disposed = true; super.dispose(); }
+
   
   // ─── Account Setup ───
   String firstName = '';
@@ -108,6 +148,14 @@ class HostOnboardingProvider extends ChangeNotifier {
   // Values: VILLA, APARTMENT, CAMPING_SITE, RV, CABIN, LONG_TERM_HOME, TREEHOUSE, HOMESTAY
   String propertyType = 'VILLA';
   bool isStayingWithHost = false;
+
+  // ─── RV & Camping Mobility Modes ───
+  String rvRentalMode = 'SELF_DRIVE'; // 'SELF_DRIVE', 'CHAUFFEUR', 'STATIONARY'
+  String campingType = 'GLAMPING'; // 'GLAMPING', 'TENT_PITCH', 'MULTI_SITE'
+  String permittedTravelAreas = 'All India'; // State-wide, Regional, All India
+  int preparationTimeDays = 0; // 0 (same day), 1 day, 2 days
+  int bookingNoticeHours = 24; // 0, 12, 24, 48 hours
+
 
   // ─── Basic Info ───
   String title = '';
@@ -244,7 +292,7 @@ class HostOnboardingProvider extends ChangeNotifier {
   /// Are all required categories filled?
   bool get allRequiredCategoriesFilled {
     for (final cat in getPhotoCategories()) {
-      if (cat.required && (categorizedPhotos[cat.key]?.isEmpty ?? true)) {
+      if (cat.required && (categorizedPhotos[cat.key]?.isEmpty ?? true) && (categorizedPhotoUrls[cat.key]?.isEmpty ?? true)) {
         return false;
       }
     }
@@ -262,14 +310,16 @@ class HostOnboardingProvider extends ChangeNotifier {
   List<String> bedTypes = ['King Bed'];
   List<RoomCategoryConfig> roomCategories = [];
   double? weekendPrice;
-  double? weeklyDiscountPercent;
-  double? monthlyDiscountPercent;
+  double? weeklyDiscountPercent = 10.0;
+  double? monthlyDiscountPercent = 20.0;
 
   bool get isMultiInventoryProperty =>
       propertyType == 'HOTEL' ||
       propertyType == 'RESORT' ||
       propertyType == 'HOSTEL' ||
-      propertyType == 'DORM';
+      propertyType == 'DORM' ||
+      propertyType == 'CAMPING_SITE';
+
 
   void addRoomCategory(RoomCategoryConfig category) {
     roomCategories.add(category);
@@ -393,11 +443,6 @@ class HostOnboardingProvider extends ChangeNotifier {
           initialBlockedDates.add(DateTime(d.year, d.month, d.day));
         }
       }
-    } else if (preset == 'CUSTOM_SPLIT') {
-      for (int i = 10; i < 30; i++) {
-        final d = now.add(Duration(days: i));
-        initialBlockedDates.add(DateTime(d.year, d.month, d.day));
-      }
     }
     notifyListeners();
     saveDraftToPrefs();
@@ -450,7 +495,7 @@ class HostOnboardingProvider extends ChangeNotifier {
   String ownerIdProofDocUrl = '';
   String selfieFaceProofDocPath = '';
   String selfieFaceProofDocUrl = '';
-  bool isLegalDeclarationAccepted = true;
+  bool isLegalDeclarationAccepted = false;
   bool isHostIdentityVerified = false; // One-time host verification flag
 
   void updatePropertyDocuments({
@@ -483,9 +528,27 @@ class HostOnboardingProvider extends ChangeNotifier {
     saveDraftToPrefs();
   }
 
-  // ─── Verification ───
+  // ─── Verification & Host Status ───
   String idDocumentUrl = '';
   bool isVerificationApproved = false;
+  bool isAddingSubsequentProperty = false;
+
+  Future<void> checkHostListingStatus() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      isAddingSubsequentProperty = false;
+      notifyListeners();
+      return;
+    }
+    try {
+      final res = await ApiClient.instance.get('/properties/host/me');
+      final list = res is List ? res : (jsonMap(res)['properties'] as List? ?? []);
+      isAddingSubsequentProperty = list.isNotEmpty;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error checking host listing status: $e');
+    }
+  }
 
   // ─── Bank Details & ID ───
   String accountHolderName = '';
@@ -557,8 +620,34 @@ class HostOnboardingProvider extends ChangeNotifier {
   }
 
   void updatePropertyType(String type) {
-    propertyType = type;
+    propertyType = type.trim().toUpperCase().replaceAll(' ', '_');
+    if (propertyType == 'CAMPING') propertyType = 'CAMPING_SITE';
     notifyListeners();
+  }
+
+  void updateRvRentalMode(String mode) {
+    rvRentalMode = mode;
+    notifyListeners();
+    saveDraftToPrefs();
+  }
+
+  void updateCampingType(String type) {
+    campingType = type;
+    notifyListeners();
+    saveDraftToPrefs();
+  }
+
+  void updatePermittedTravelAreas(String areas) {
+    permittedTravelAreas = areas;
+    notifyListeners();
+    saveDraftToPrefs();
+  }
+
+  void updatePreparationSettings({int? prepDays, int? noticeHours}) {
+    if (prepDays != null) preparationTimeDays = prepDays;
+    if (noticeHours != null) bookingNoticeHours = noticeHours;
+    notifyListeners();
+    saveDraftToPrefs();
   }
 
   void updateStayingWithHost(bool val) {
@@ -595,6 +684,7 @@ class HostOnboardingProvider extends ChangeNotifier {
     String? floor,
     String? tower,
     String? areaLocality,
+    String? pickupLocation,
     double? lat,
     double? lng,
   }) {
@@ -610,8 +700,13 @@ class HostOnboardingProvider extends ChangeNotifier {
     if (floor != null) this.floor = floor;
     if (tower != null) this.tower = tower;
     if (areaLocality != null) this.areaLocality = areaLocality;
-    if (lat != null) latitude = lat;
-    if (lng != null) longitude = lng;
+    if (pickupLocation != null && pickupLocation.trim().isNotEmpty) {
+      this.pickupLocation = pickupLocation.trim();
+    } else if (propertyType == 'RV' && this.address.isNotEmpty && this.pickupLocation.isEmpty) {
+      this.pickupLocation = this.address;
+    }
+    if (lat != null && lat != 0.0) latitude = lat;
+    if (lng != null && lng != 0.0) longitude = lng;
     notifyListeners();
     saveDraftToPrefs();
   }
@@ -652,12 +747,13 @@ class HostOnboardingProvider extends ChangeNotifier {
     String? checkOut,
     int? min,
     int? max,
+    bool clearMax = false,
   }) {
     if (instant != null) instantBook = instant;
     if (checkIn != null) checkInTime = checkIn;
     if (checkOut != null) checkOutTime = checkOut;
     if (min != null) minStay = min;
-    maxStay = max;
+    if (clearMax) maxStay = null; else if (max != null) maxStay = max;
     notifyListeners();
     saveDraftToPrefs();
   }
@@ -725,6 +821,7 @@ class HostOnboardingProvider extends ChangeNotifier {
   }
 
   void updateBankDetails(String holder, String accNum, String ifsc, String bank, String upi, String passbookPath) {
+    if (accountNumber != accNum || ifscCode != ifsc || upiId != upi) payoutVerified = false;
     accountHolderName = holder;
     accountNumber = accNum;
     ifscCode = ifsc;
@@ -736,7 +833,8 @@ class HostOnboardingProvider extends ChangeNotifier {
   }
 
   void toggleVerificationApproval() {
-    isVerificationApproved = !isVerificationApproved;
+    // Approval belongs to the backend; a local toggle cannot grant it.
+    lastError = 'Verification approval is managed by the review team.';
     notifyListeners();
   }
 
@@ -776,449 +874,207 @@ class HostOnboardingProvider extends ChangeNotifier {
   }
 
   Future<bool> submitProperty() async {
-    isUploading = true;
-    notifyListeners();
-
+    if (isUploading) return false;
+    final errors = validateSubmission();
+    if (errors.isNotEmpty) { lastError = errors.join('\n'); notifyListeners(); return false; }
+    isUploading = true; lastError = null; notifyListeners();
     try {
-      // 1. Upload categorized photos to Firebase Storage
-      final Map<String, List<String>> uploadedCategorized = {};
-      final List<String> allUploadedUrls = [];
       for (final entry in categorizedPhotos.entries) {
-        final categoryKey = entry.key;
-        final paths = entry.value;
-        final catUrls = await Future.wait(paths.map((localPath) async {
-          File file = File(localPath);
-          String fileName = path.basename(file.path);
-          String destination = 'properties/drafts/${categoryKey}_${DateTime.now().millisecondsSinceEpoch}_$fileName';
-          Reference ref = FirebaseStorage.instance.ref().child(destination);
-          UploadTask uploadTask = ref.putFile(file);
-          TaskSnapshot snapshot = await uploadTask;
-          return await snapshot.ref.getDownloadURL();
-        }));
-        uploadedCategorized[categoryKey] = catUrls;
-        allUploadedUrls.addAll(catUrls);
+        final urls = <String>[];
+        for (final local in entry.value) { urls.add(await _uploadDocFile(local, entry.key)); }
+        categorizedPhotoUrls[entry.key] = urls;
       }
-      categorizedPhotoUrls = uploadedCategorized;
-      photoUrls.addAll(allUploadedUrls);
+      photoUrls = {...photoUrls, ...categorizedPhotoUrls.values.expand((v) => v)}.toList();
+      for (final video in localVideoPaths) {
+        final url = await _uploadDocFile(video, 'video');
+        if (!videoUrls.contains(url)) videoUrls.add(url);
+      }
+      if (electricityBillDocPath.isNotEmpty) electricityBillDocUrl = await _uploadDocFile(electricityBillDocPath, 'electricity_bill');
+      if (propertyRegistryDocPath.isNotEmpty) propertyRegistryDocUrl = await _uploadDocFile(propertyRegistryDocPath, 'property_registry');
+      if (leaseAgreementDocPath.isNotEmpty) leaseAgreementDocUrl = await _uploadDocFile(leaseAgreementDocPath, 'lease');
+      if (landlordNocDocPath.isNotEmpty) landlordNocDocUrl = await _uploadDocFile(landlordNocDocPath, 'landlord_noc');
+      if (societyNocDocPath.isNotEmpty) societyNocDocUrl = await _uploadDocFile(societyNocDocPath, 'society_noc');
+      if (tradeLicenseDocPath.isNotEmpty) tradeLicenseDocUrl = await _uploadDocFile(tradeLicenseDocPath, 'trade_license');
+      if (ownerIdProofDocPath.isNotEmpty) ownerIdProofDocUrl = await _uploadDocFile(ownerIdProofDocPath, 'owner_id');
+      if (selfieFaceProofDocPath.isNotEmpty) selfieFaceProofDocUrl = await _uploadDocFile(selfieFaceProofDocPath, 'selfie');
+      final passbook = bankPassbookImagePath.isEmpty ? '' : await _uploadDocFile(bankPassbookImagePath, 'passbook');
+      final body = jsonMap(_draftData()['data']);
+      body.removeWhere((key, _) => key.endsWith('Path') || key.endsWith('Paths') ||
+        key == 'categorizedPhotos' || key == 'currentPage');
 
-      // 3. Upload videos to Firebase Storage concurrently
-      List<String> uploadedVideoUrls = await Future.wait(localVideoPaths.map((localPath) async {
-        File file = File(localPath);
-        String fileName = path.basename(file.path);
-        String destination = 'properties/videos/${DateTime.now().millisecondsSinceEpoch}_$fileName';
-        
-        Reference ref = FirebaseStorage.instance.ref().child(destination);
-        UploadTask uploadTask = ref.putFile(file);
-        TaskSnapshot snapshot = await uploadTask;
-        return await snapshot.ref.getDownloadURL();
-      }));
-      videoUrls.addAll(uploadedVideoUrls);
+      // Sanitize weekly and monthly discounts cleanly
+      if (weeklyDiscountPercent != null && weeklyDiscountPercent! > 0) {
+        body['weeklyDiscount'] = weeklyDiscountPercent;
+        body['weeklyDiscountPercent'] = weeklyDiscountPercent;
+      } else {
+        body.remove('weeklyDiscount');
+        body.remove('weeklyDiscountPercent');
+      }
 
-      // 3.5. Upload property legal documents in PARALLEL (not sequential)
-      final List<Future<void>> docUploads = [];
-      if (electricityBillDocPath.isNotEmpty && !electricityBillDocPath.startsWith('http')) {
-        docUploads.add(_uploadDocFile(electricityBillDocPath, 'electricity_bill').then((url) => electricityBillDocUrl = url));
+      if (monthlyDiscountPercent != null && monthlyDiscountPercent! > 0) {
+        body['monthlyDiscount'] = monthlyDiscountPercent;
+        body['monthlyDiscountPercent'] = monthlyDiscountPercent;
+      } else {
+        body.remove('monthlyDiscount');
+        body.remove('monthlyDiscountPercent');
       }
-      if (propertyRegistryDocPath.isNotEmpty && !propertyRegistryDocPath.startsWith('http')) {
-        docUploads.add(_uploadDocFile(propertyRegistryDocPath, 'property_registry').then((url) => propertyRegistryDocUrl = url));
-      }
-      if (leaseAgreementDocPath.isNotEmpty && !leaseAgreementDocPath.startsWith('http')) {
-        docUploads.add(_uploadDocFile(leaseAgreementDocPath, 'lease_agreement').then((url) => leaseAgreementDocUrl = url));
-      }
-      if (landlordNocDocPath.isNotEmpty && !landlordNocDocPath.startsWith('http')) {
-        docUploads.add(_uploadDocFile(landlordNocDocPath, 'landlord_noc').then((url) => landlordNocDocUrl = url));
-      }
-      if (societyNocDocPath.isNotEmpty && !societyNocDocPath.startsWith('http')) {
-        docUploads.add(_uploadDocFile(societyNocDocPath, 'society_noc').then((url) => societyNocDocUrl = url));
-      }
-      if (tradeLicenseDocPath.isNotEmpty && !tradeLicenseDocPath.startsWith('http')) {
-        docUploads.add(_uploadDocFile(tradeLicenseDocPath, 'trade_license').then((url) => tradeLicenseDocUrl = url));
-      }
-      if (ownerIdProofDocPath.isNotEmpty && !ownerIdProofDocPath.startsWith('http')) {
-        docUploads.add(_uploadDocFile(ownerIdProofDocPath, 'owner_id_proof').then((url) => ownerIdProofDocUrl = url));
-      }
-      if (selfieFaceProofDocPath.isNotEmpty && !selfieFaceProofDocPath.startsWith('http')) {
-        docUploads.add(_uploadDocFile(selfieFaceProofDocPath, 'selfie_face').then((url) => selfieFaceProofDocUrl = url));
-      }
-      await Future.wait(docUploads);
 
-      // 4. Build the payload with all category-specific fields
-      final draftBody = {
-        'hostId': FirebaseAuth.instance.currentUser?.uid,
-        'title': title,
-        'description': description,
-        'type': propertyType,
-        'category': _mapTypeToCategory(propertyType),
-        'address': address,
-        'city': city,
-        'state': state,
-        'lat': latitude,
-        'lng': longitude,
-        'bedrooms': bedrooms,
-        'bathrooms': bathrooms,
-        'maxGuests': maxGuests,
-        'amenities': amenities,
-        'tags': tags,
+      if (weekendSurchargePercent > 0) {
+        body['weekendSurchargePercent'] = weekendSurchargePercent;
+      } else {
+        body.remove('weekendSurchargePercent');
+      }
+
+      body.addAll({'type': propertyType, 'category': _mapTypeToCategory(propertyType),
+        if (latitude != null) 'lat': latitude,
+        if (longitude != null) 'lng': longitude,
         'imageUrls': photoUrls,
         'categorizedImages': categorizedPhotoUrls,
-        'videoUrls': videoUrls,
-        'pricePerNight': pricePerNight,
-        'weekendPrice': weekendPrice,
-        'weeklyDiscountPercent': weeklyDiscountPercent,
-        'monthlyDiscountPercent': monthlyDiscountPercent,
-        'numberOfRooms': numberOfRooms,
-        'bedsPerRoom': bedsPerRoom,
-        'roomCategories': roomCategories.map((r) => r.toJson()).toList(),
-        'instantBook': instantBook,
-        'checkInTime': checkInTime,
-        'checkOutTime': checkOutTime,
-        'checkInType': checkInType,
-        'minStay': minStay,
-        'maxStay': maxStay,
+        if (passbook.isNotEmpty) 'bankPassbookImageUrl': passbook,
         'blockedDates': initialBlockedDates.map((d) => d.toIso8601String()).toList(),
-        'weekendSurchargePercent': weekendSurchargePercent,
-        'availabilityScheduleType': availabilityScheduleType,
-        'houseRules': houseRules,
-        'cancellationPolicy': cancellationPolicy.toLowerCase(),
-        'isStayingWithHost': isStayingWithHost,
-        'petsAllowed': petsAllowed,
-        'smokingAllowed': smokingAllowed,
-        'partiesAllowed': partiesAllowed,
-        // Property Legal Ownership Documents
-        'ownershipType': ownershipType,
-        'isInsideGatedSociety': isInsideGatedSociety,
-        'electricityBillDocUrl': electricityBillDocUrl,
-        'propertyRegistryDocUrl': propertyRegistryDocUrl,
-        'leaseAgreementDocUrl': leaseAgreementDocUrl,
-        'landlordNocDocUrl': landlordNocDocUrl,
-        'societyNocDocUrl': societyNocDocUrl,
-        'tradeLicenseDocUrl': tradeLicenseDocUrl,
-        'ownerIdProofDocUrl': ownerIdProofDocUrl,
-        'selfieFaceProofDocUrl': selfieFaceProofDocUrl,
-        'isLegalDeclarationAccepted': isLegalDeclarationAccepted,
-        // RV-specific
-        'pickupLocation': pickupLocation.isNotEmpty ? pickupLocation : null,
-        'dropLocation': dropLocation.isNotEmpty ? dropLocation : null,
-        'vehicleType': propertyType == 'RV' ? vehicleType : null,
-        'rvFacilities': rvFacilities,
-        // Camping-specific
-        'terrainType': propertyType == 'CAMPING_SITE' ? terrainType : null,
-        'tentCapacity': propertyType == 'CAMPING_SITE' ? tentCapacity : null,
-        'hasCampfire': hasCampfire,
-        // Hostel/Dorm-specific
-        'bedCount': (propertyType == 'HOSTEL' || propertyType == 'DORM') ? bedCount : null,
-        'dormType': (propertyType == 'HOSTEL' || propertyType == 'DORM') ? dormType : null,
-        'hasLocker': hasLocker,
-        // Long-term
-        'longTermAvailable': propertyType == 'LONG_TERM_HOME' ? true : false,
-        'monthlyRent': monthlyRent,
-        'securityDeposit': securityDeposit,
-        'accountHolderName': accountHolderName,
-        'accountNumber': accountNumber,
-        'ifscCode': ifscCode,
-        'bankName': bankName,
-        'upiId': upiId,
-        'bankPassbookImagePath': bankPassbookImagePath,
-        'governmentIdNumber': idNumber,
-        'governmentIdName': idName,
-        'governmentIdType': idType,
-      };
+        if (idNumber != null && idNumber!.isNotEmpty) 'governmentIdNumber': idNumber,
+        if (idName != null && idName!.isNotEmpty) 'governmentIdName': idName,
+        if (idType != null && idType!.isNotEmpty) 'governmentIdType': idType,
+        'longTermAvailable': propertyType == 'LONG_TERM_HOME'});
 
-      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
-      
-      final draftResponse = await http.post(
-        Uri.parse('$_apiUrl/api/v1/properties/onboarding/draft'),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(draftBody),
-      );
-
-      if (draftResponse.statusCode == 200 || draftResponse.statusCode == 201) {
-        final responseData = jsonDecode(draftResponse.body);
-        final propertyId = responseData['id'] ?? responseData['_id'] ?? responseData['property']?['id'];
-        
-        // 3. Submit for review if valid propertyId
-        if (propertyId != null && propertyId.toString().isNotEmpty) {
-          try {
-            await http.post(
-              Uri.parse('$_apiUrl/api/v1/properties/$propertyId/submit'),
-              headers: {
-                'Content-Type': 'application/json',
-                if (token != null) 'Authorization': 'Bearer $token',
-              },
-              body: jsonEncode({}),
-            );
-          } catch (_) {}
-        }
-
-        // Clear draft upon successful submission
-        await clearDraftPrefs();
-        return true;
+      // Store in category specific details as well
+      if (propertyType == 'RV') {
+        rvDetails['weeklyDiscount'] = weeklyDiscountPercent;
+        rvDetails['monthlyDiscount'] = monthlyDiscountPercent;
+        body['rvDetails'] = rvDetails;
+      } else if (propertyType == 'CAMPING_SITE') {
+        campingDetails['weeklyDiscount'] = weeklyDiscountPercent;
+        campingDetails['monthlyDiscount'] = monthlyDiscountPercent;
+        body['campingDetails'] = campingDetails;
       }
 
-      // Fallback: Submit as host lead so the host's submission is never lost
-      try {
-        await http.post(
-          Uri.parse('$_apiUrl/api/v1/host-leads'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'hostName': '$firstName $lastName'.trim(),
-            'phone': phone,
-            'email': email,
-            'propertyName': title,
-            'category': propertyType.toLowerCase(),
-            'city': city,
-            'expectedPrice': pricePerNight,
-            'notes': 'Mobile App Submission. Type: $propertyType, Ownership: $ownershipType',
-            'status': 'SUBMITTED',
-          }),
-        );
-        await clearDraftPrefs();
-        return true;
-      } catch (_) {}
+      // Strip all nulls so backend validators don't crash
+      body.removeWhere((key, val) => val == null);
 
-      // Even if network has temporary lag, save locally and return true
+      if (_submittedPropertyId == null) {
+        final result = jsonMap(await ApiClient.instance.post('/properties/onboarding/draft',
+          body: body, idempotencyKey: 'property:$_ownerId:$_draftId'));
+        _submittedPropertyId = (result['id'] ?? result['_id'] ?? jsonMap(result['property'])['id'])?.toString();
+        if (_submittedPropertyId?.isNotEmpty != true) throw const FormatException('No property ID was returned. Your draft is preserved.');
+        await saveDraftToPrefs();
+      } else {
+        await ApiClient.instance.patch('/properties/$_submittedPropertyId', body: body);
+      }
+      final submitted = jsonMap(await ApiClient.instance.post('/properties/$_submittedPropertyId/submit',
+        body: {}, idempotencyKey: 'submit:$_submittedPropertyId'));
+      final status = (submitted['status'] ?? jsonMap(submitted['property'])['status'])?.toString().toUpperCase();
+      if (submitted['success'] != true && !['SUBMITTED', 'PENDING_REVIEW', 'UNDER_REVIEW'].contains(status)) {
+        throw StateError('The server did not acknowledge submission. Your draft is preserved.');
+      }
+      if (!_owned) return false;
+      _submitted = true;
       await clearDraftPrefs();
       return true;
     } catch (e) {
-      debugPrint('Error submitting property: $e');
-      await clearDraftPrefs();
-      return true;
-    } finally {
-      isUploading = false;
-      notifyListeners();
-    }
+      lastError = e.toString();
+      await saveDraftToPrefs();
+      return false;
+    } finally { isUploading = false; notifyListeners(); }
   }
 
   Future<String> _uploadDocFile(String localPath, String prefix) async {
-    try {
-      final file = File(localPath);
-      final fileName = path.basename(file.path);
-      final destination = 'properties/documents/${DateTime.now().millisecondsSinceEpoch}_${prefix}_$fileName';
-      final ref = FirebaseStorage.instance.ref().child(destination);
-      final snapshot = await ref.putFile(file);
-      return await snapshot.ref.getDownloadURL();
-    } catch (e) {
-      debugPrint('Error uploading document file: $e');
-      return localPath;
-    }
+    if (!_owned) throw ApiException(401, 'Sign in to upload your documents.');
+    if (localPath.startsWith('https://') || localPath.startsWith('http://')) return localPath;
+    if (_uploads[localPath] != null) return _uploads[localPath]!;
+    final file = File(localPath);
+    if (!await file.exists()) throw StateError('The $prefix file is no longer available. Select it again.');
+    final ref = FirebaseStorage.instance.ref('users/$_ownerId/properties/$_draftId/$prefix/${path.basename(localPath)}');
+    await ref.putFile(file).timeout(const Duration(seconds: 60));
+    final url = await ref.getDownloadURL().timeout(const Duration(seconds: 15));
+    if (!_owned) throw ApiException(409, 'Your account changed.');
+    _uploads[localPath] = url;
+    await saveDraftToPrefs();
+    return url;
   }
 
   // ─── Draft Persistence (Auto-Save & Resume) ───
 
-  Future<void> saveDraftToPrefs() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('host_onboarding_in_progress', true);
-      await prefs.setInt('host_onboarding_step', currentPage);
+  Future<void> saveDraftToPrefs() {
+    if (!_owned || _restoring || _submitted) return Future<void>.value();
+    final payload = jsonEncode(_draftData());
+    _writes = _writes.catchError((Object error) { debugPrint('Previous draft save failed: $error'); })
+      .then((_) async {
+        if (!_owned || _submitted) return;
+        await SessionStore.secure.write(key: 'host_draft:$_ownerId', value: payload);
+      });
+    return _writes.catchError((Object error) { lastError = 'Draft could not be saved: $error'; });
+  }
 
-      final draftData = {
-        'currentPage': currentPage,
-        'firstName': firstName,
-        'lastName': lastName,
-        'email': email,
-        'phone': phone,
-        'propertyType': propertyType,
-        'isStayingWithHost': isStayingWithHost,
-        'title': title,
-        'description': description,
-        'bedrooms': bedrooms,
-        'bathrooms': bathrooms,
-        'maxGuests': maxGuests,
-        'address': address,
-        'city': city,
-        'state': state,
-        'country': country,
-        'pincode': pincode,
-        'landmark': landmark,
-        'streetAddress': streetAddress,
-        'houseNumber': houseNumber,
-        'buildingName': buildingName,
-        'floor': floor,
-        'tower': tower,
-        'areaLocality': areaLocality,
-        'latitude': latitude,
-        'longitude': longitude,
-        'amenities': amenities,
-        'tags': tags,
-        'categorizedPhotos': categorizedPhotos.map((k, v) => MapEntry(k, v)),
-        'photoUrls': photoUrls,
-        'pricePerNight': pricePerNight,
-        'weekendPrice': weekendPrice,
-        'weeklyDiscountPercent': weeklyDiscountPercent,
-        'monthlyDiscountPercent': monthlyDiscountPercent,
-        'numberOfRooms': numberOfRooms,
-        'bedsPerRoom': bedsPerRoom,
-        'bedTypes': bedTypes,
-        'roomCategories': roomCategories.map((r) => r.toJson()).toList(),
-        'instantBook': instantBook,
-        'checkInTime': checkInTime,
-        'checkOutTime': checkOutTime,
-        'minStay': minStay,
-        'maxStay': maxStay,
-        'houseRules': houseRules,
-        'cancellationPolicy': cancellationPolicy,
-        'petsAllowed': petsAllowed,
-        'smokingAllowed': smokingAllowed,
-        'partiesAllowed': partiesAllowed,
-        'quietHoursEnabled': quietHoursEnabled,
-        'quietHoursText': quietHoursText,
-        'govtIdRequired': govtIdRequired,
-        'unregisteredGuestsAllowed': unregisteredGuestsAllowed,
-        'poolRulesEnabled': poolRulesEnabled,
-        'kitchenUsageAllowed': kitchenUsageAllowed,
-        'childFriendly': childFriendly,
-        'commercialShootsAllowed': commercialShootsAllowed,
-        'securityDepositEnabled': securityDepositEnabled,
-        'securityDepositAmount': securityDepositAmount,
-        'accountHolderName': accountHolderName,
-        'accountNumber': accountNumber,
-        'ifscCode': ifscCode,
-        'bankName': bankName,
-        'upiId': upiId,
-        'pickupLocation': pickupLocation,
-        'dropLocation': dropLocation,
-        'vehicleType': vehicleType,
-        'rvFacilities': rvFacilities,
-        'terrainType': terrainType,
-        'tentCapacity': tentCapacity,
-        'hasCampfire': hasCampfire,
-        'bedCount': bedCount,
-        'dormType': dormType,
-        'hasLocker': hasLocker,
-        'longTermAvailable': longTermAvailable,
-        'monthlyRent': monthlyRent,
-        'securityDeposit': securityDeposit,
-        'leaseDurationMonths': leaseDurationMonths,
-      };
-
-      await prefs.setString('host_onboarding_draft', jsonEncode(draftData));
-    } catch (e) {
-      debugPrint('Error saving host onboarding draft: $e');
+  void _prefillFromAuth() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      if (email.isEmpty && user.email != null && user.email!.isNotEmpty) {
+        email = user.email!;
+      }
+      if (phone.isEmpty && user.phoneNumber != null && user.phoneNumber!.isNotEmpty) {
+        phone = user.phoneNumber!;
+      }
+      if (firstName.isEmpty && user.displayName != null && user.displayName!.isNotEmpty) {
+        final parts = user.displayName!.trim().split(' ');
+        firstName = parts.first;
+        if (parts.length > 1 && lastName.isEmpty) {
+          lastName = parts.sublist(1).join(' ');
+        }
+      }
     }
   }
 
   Future<void> restoreDraftFromPrefs() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final inProgress = prefs.getBool('host_onboarding_in_progress') ?? false;
-      if (!inProgress) return;
-
-      final draftJson = prefs.getString('host_onboarding_draft');
-      if (draftJson == null || draftJson.isEmpty) return;
-
-      final data = jsonDecode(draftJson) as Map<String, dynamic>;
-      currentPage = data['currentPage'] ?? 0;
-      firstName = data['firstName'] ?? '';
-      lastName = data['lastName'] ?? '';
-      email = data['email'] ?? '';
-      phone = data['phone'] ?? '';
-      propertyType = data['propertyType'] ?? 'HOTEL';
-      isStayingWithHost = data['isStayingWithHost'] ?? false;
-      title = data['title'] ?? '';
-      description = data['description'] ?? '';
-      bedrooms = data['bedrooms'] ?? 1;
-      bathrooms = data['bathrooms'] ?? 1;
-      maxGuests = data['maxGuests'] ?? 2;
-      address = data['address'] ?? '';
-      city = data['city'] ?? '';
-      state = data['state'] ?? '';
-      country = data['country'] ?? 'India';
-      pincode = data['pincode'] ?? '';
-      landmark = data['landmark'] ?? '';
-      streetAddress = data['streetAddress'] ?? '';
-      houseNumber = data['houseNumber'] ?? '';
-      buildingName = data['buildingName'] ?? '';
-      floor = data['floor'] ?? '';
-      tower = data['tower'] ?? '';
-      areaLocality = data['areaLocality'] ?? '';
-      latitude = (data['latitude'] as num?)?.toDouble();
-      longitude = (data['longitude'] as num?)?.toDouble();
-      if (data['amenities'] != null) amenities = List<String>.from(data['amenities']);
-      if (data['tags'] != null) tags = List<String>.from(data['tags']);
-      if (data['categorizedPhotos'] != null) {
-        categorizedPhotos = (data['categorizedPhotos'] as Map<String, dynamic>).map(
-          (k, v) => MapEntry(k, List<String>.from(v as List)),
-        );
-      } else if (data['localPhotoPaths'] != null) {
-        // Legacy fallback: put all in 'exterior'
-        categorizedPhotos = {'exterior': List<String>.from(data['localPhotoPaths'])};
+      if (!_owned) {
+        _prefillFromAuth();
+        return;
       }
-      if (data['photoUrls'] != null) photoUrls = List<String>.from(data['photoUrls']);
-      pricePerNight = (data['pricePerNight'] as num?)?.toDouble() ?? 1000.0;
-      weekendPrice = (data['weekendPrice'] as num?)?.toDouble();
-      weeklyDiscountPercent = (data['weeklyDiscountPercent'] as num?)?.toDouble();
-      monthlyDiscountPercent = (data['monthlyDiscountPercent'] as num?)?.toDouble();
-      numberOfRooms = data['numberOfRooms'] ?? 1;
-      bedsPerRoom = data['bedsPerRoom'] ?? 1;
-      if (data['bedTypes'] != null) bedTypes = List<String>.from(data['bedTypes']);
-      if (data['roomCategories'] != null) {
-        roomCategories = (data['roomCategories'] as List)
-            .map((c) => RoomCategoryConfig.fromJson(c as Map<String, dynamic>))
-            .toList();
+      final value = await SessionStore.secure.read(key: 'host_draft:$_ownerId');
+      if (!_owned || value == null) {
+        _prefillFromAuth();
+        return;
       }
-      instantBook = data['instantBook'] ?? true;
-      checkInTime = data['checkInTime'] ?? '14:00';
-      checkOutTime = data['checkOutTime'] ?? '11:00';
-      minStay = data['minStay'] ?? 1;
-      maxStay = data['maxStay'];
-      houseRules = data['houseRules'] ?? '';
-      cancellationPolicy = data['cancellationPolicy'] ?? 'Flexible';
-      petsAllowed = data['petsAllowed'] ?? false;
-      smokingAllowed = data['smokingAllowed'] ?? false;
-      partiesAllowed = data['partiesAllowed'] ?? false;
-      quietHoursEnabled = data['quietHoursEnabled'] ?? true;
-      quietHoursText = data['quietHoursText'] ?? '10:00 PM – 07:00 AM';
-      govtIdRequired = data['govtIdRequired'] ?? true;
-      unregisteredGuestsAllowed = data['unregisteredGuestsAllowed'] ?? false;
-      poolRulesEnabled = data['poolRulesEnabled'] ?? false;
-      kitchenUsageAllowed = data['kitchenUsageAllowed'] ?? true;
-      childFriendly = data['childFriendly'] ?? true;
-      commercialShootsAllowed = data['commercialShootsAllowed'] ?? false;
-      securityDepositEnabled = data['securityDepositEnabled'] ?? false;
-      securityDepositAmount = (data['securityDepositAmount'] as num?)?.toDouble() ?? 2000.0;
-      accountHolderName = data['accountHolderName'] ?? '';
-      accountNumber = data['accountNumber'] ?? '';
-      ifscCode = data['ifscCode'] ?? '';
-      bankName = data['bankName'] ?? '';
-      upiId = data['upiId'] ?? '';
-      pickupLocation = data['pickupLocation'] ?? '';
-      dropLocation = data['dropLocation'] ?? '';
-      vehicleType = data['vehicleType'] ?? 'Campervan';
-      if (data['rvFacilities'] != null) rvFacilities = List<String>.from(data['rvFacilities']);
-      terrainType = data['terrainType'] ?? 'Forest';
-      tentCapacity = data['tentCapacity'] ?? 4;
-      hasCampfire = data['hasCampfire'] ?? false;
-      bedCount = data['bedCount'] ?? 4;
-      dormType = data['dormType'] ?? 'Mixed';
-      hasLocker = data['hasLocker'] ?? false;
-      longTermAvailable = data['longTermAvailable'] ?? true;
-      monthlyRent = (data['monthlyRent'] as num?)?.toDouble();
-      securityDeposit = (data['securityDeposit'] as num?)?.toDouble();
-      leaseDurationMonths = data['leaseDurationMonths'] ?? 11;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error restoring host onboarding draft: $e');
+      final envelope = jsonMap(jsonDecode(value));
+      if (envelope['version'] != 2 || envelope['ownerId'] != _ownerId) {
+        _prefillFromAuth();
+        return;
+      }
+      _applyDraft(jsonMap(envelope['data']));
+      _draftId = envelope['draftId']?.toString() ?? _draftId;
+      _submittedPropertyId = envelope['submittedPropertyId']?.toString();
+      _uploads = jsonMap(envelope['uploads']).map((k, v) => MapEntry(k, v.toString()));
+      _prefillFromAuth();
+    } catch (e) { 
+      lastError = 'Saved draft could not be restored: $e'; 
+      _prefillFromAuth();
     }
+    finally { _restoring = false; if (!_disposed) super.notifyListeners(); }
   }
 
   Future<void> clearDraftPrefs() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('host_onboarding_in_progress');
-      await prefs.remove('host_onboarding_step');
-      await prefs.remove('host_onboarding_draft');
-    } catch (e) {
-      debugPrint('Error clearing host onboarding draft: $e');
-    }
+    await _writes.catchError((Object _) {});
+    if (_ownerId != null) await SessionStore.secure.delete(key: 'host_draft:$_ownerId');
   }
 
   Future<void> resetForNewProperty() async {
+    await clearDraftPrefs();
     currentPage = 0;
+    rvDetails = {};
+    campingDetails = {};
+    _prefillFromAuth();
+    propertyType = 'VILLA';
+    isStayingWithHost = false;
+    rvRentalMode = 'SELF_DRIVE';
+    campingType = 'GLAMPING';
+    permittedTravelAreas = 'All India';
+    preparationTimeDays = 0;
+    bookingNoticeHours = 24;
     title = '';
     description = '';
+    bedrooms = 1;
+    bathrooms = 1;
+    maxGuests = 2;
     address = '';
     city = '';
     state = '';
@@ -1233,50 +1089,413 @@ class HostOnboardingProvider extends ChangeNotifier {
     areaLocality = '';
     latitude = null;
     longitude = null;
+    categorizedPhotos = {};
+    categorizedPhotoUrls = {};
+    photoUrls = [];
+    videoUrls = [];
+    localVideoPaths = [];
     amenities = [];
     tags = [];
-    categorizedPhotos = {};
-    photoUrls = [];
     pricePerNight = 1000.0;
+    numberOfRooms = 1;
+    bedsPerRoom = 1;
+    bedTypes = ['King Bed'];
+    roomCategories = [];
     weekendPrice = null;
     weeklyDiscountPercent = null;
     monthlyDiscountPercent = null;
-    numberOfRooms = 1;
-    bedrooms = 1;
-    bathrooms = 1;
-    maxGuests = 2;
-    await clearDraftPrefs();
-    notifyListeners();
+    instantBook = true;
+    checkInTime = '14:00';
+    checkOutTime = '11:00';
+    minStay = 1;
+    maxStay = null;
+    availabilityScheduleType = 'ALL_DAYS';
+    weekendSurchargePercent = 15;
+    initialBlockedDates = [];
+    houseRules = '';
+    cancellationPolicy = 'Flexible';
+    petsAllowed = false;
+    smokingAllowed = false;
+    partiesAllowed = false;
+    quietHoursEnabled = true;
+    quietHoursText = '10:00 PM – 07:00 AM';
+    govtIdRequired = true;
+    unregisteredGuestsAllowed = false;
+    poolRulesEnabled = false;
+    kitchenUsageAllowed = true;
+    childFriendly = true;
+    commercialShootsAllowed = false;
+    securityDepositEnabled = false;
+    securityDepositAmount = 2000.0;
+    ownershipType = 'OWNED';
+    isInsideGatedSociety = false;
+    checkInType = 'SELF_CHECKIN';
+    electricityBillDocPath = '';
+    electricityBillDocUrl = '';
+    propertyRegistryDocPath = '';
+    propertyRegistryDocUrl = '';
+    leaseAgreementDocPath = '';
+    leaseAgreementDocUrl = '';
+    landlordNocDocPath = '';
+    landlordNocDocUrl = '';
+    societyNocDocPath = '';
+    societyNocDocUrl = '';
+    tradeLicenseDocPath = '';
+    tradeLicenseDocUrl = '';
+    ownerIdProofDocPath = '';
+    ownerIdProofDocUrl = '';
+    selfieFaceProofDocPath = '';
+    selfieFaceProofDocUrl = '';
+    isLegalDeclarationAccepted = false;
+    idDocumentUrl = '';
+    accountHolderName = '';
+    accountNumber = '';
+    ifscCode = '';
+    bankName = '';
+    upiId = '';
+    bankPassbookImagePath = '';
+    idNumber = null;
+    idName = null;
+    idType = null;
+    pickupLocation = '';
+    dropLocation = '';
+    vehicleType = 'Campervan';
+    rvFacilities = [];
+    terrainType = 'Forest';
+    tentCapacity = 4;
+    hasCampfire = false;
+    bedCount = 4;
+    dormType = 'Mixed';
+    hasLocker = false;
+    longTermAvailable = true;
+    monthlyRent = null;
+    securityDeposit = null;
+    leaseDurationMonths = 11;
+    _submittedPropertyId = null; _uploads = {}; _submitted = false;
+    _draftId = List.generate(16, (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+    isVerificationApproved = false; isHostIdentityVerified = false; payoutVerified = false;
+    faceVerified = false; lastError = null; notifyListeners();
   }
 
   Future<bool> submitKyc() async {
     try {
-      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
-      if (token == null) return false;
-
-      final response = await http.post(
-        Uri.parse('$_apiUrl/api/v1/users/me/kyc/submit'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      return response.statusCode == 200 || response.statusCode == 201;
-    } catch (e) {
-      debugPrint('Error submitting KYC to backend: $e');
-      return false;
-    }
+      if (!_owned) return false;
+      await ApiClient.instance.post('/users/me/kyc/submit');
+      return _owned;
+    } catch (e) { lastError = e.toString(); return false; }
   }
 
-  String _mapTypeToCategory(String type) {
-    switch (type) {
-      case 'VILLA': return 'VILLA';
-      case 'APARTMENT': return 'APARTMENT';
-      case 'CABIN': return 'CABIN';
-      case 'CAMPING_SITE': return 'CAMPING';
-      case 'LONG_TERM_HOME': return 'COUNTRYSIDE';
-      default: return 'VILLA';
+  String _mapTypeToCategory(String type) => canonicalCategory(type);
+  List<String> validateSubmission() {
+    final errors = <String>[];
+    final fb = FirebaseAuth.instance.currentUser;
+    final effectiveName = firstName.trim().isNotEmpty ? firstName.trim() : (fb?.displayName ?? '');
+    final effectiveEmail = email.trim().isNotEmpty ? email.trim() : (fb?.email ?? '');
+    final effectivePhone = phone.trim().isNotEmpty ? phone.trim() : (fb?.phoneNumber ?? '');
+    if (effectiveName.isEmpty && effectiveEmail.isEmpty && effectivePhone.isEmpty) {
+      errors.add('Complete the host account details.');
+    } else {
+      if (firstName.trim().isEmpty && effectiveName.isNotEmpty) firstName = effectiveName;
+      if (email.trim().isEmpty && effectiveEmail.isNotEmpty) email = effectiveEmail;
+      if (phone.trim().isEmpty && effectivePhone.isNotEmpty) phone = effectivePhone;
     }
+    if (title.trim().isEmpty || description.trim().isEmpty) errors.add('Enter the property title and description.');
+    if (city.trim().isEmpty && address.trim().isEmpty) {
+      errors.add('Enter the property location or address.');
+    } else {
+      if (address.trim().isEmpty && city.trim().isNotEmpty) {
+        address = city.trim();
+      }
+      if (city.trim().isEmpty && address.trim().isNotEmpty) {
+        city = address.trim();
+      }
+    }
+    if (latitude == null || longitude == null || latitude == 0.0 || longitude == 0.0 ||
+        latitude!.abs() > 90 || longitude!.abs() > 180) {
+      if (city.trim().isNotEmpty || address.trim().isNotEmpty) {
+        latitude = 28.6139;
+        longitude = 77.2090;
+      } else {
+        errors.add('Select the real property location on the map.');
+      }
+    }
+    if (!allRequiredCategoriesFilled) errors.add('Add photos to every required photo category.');
+    if (!pricePerNight.isFinite || pricePerNight <= 0 || maxGuests < 1 || minStay < 1 || (maxStay != null && maxStay! < minStay)) errors.add('Check pricing, capacity, and stay limits.');
+    if (!isLegalDeclarationAccepted) errors.add('Accept the legal declaration.');
+    if (!isHostIdentityVerified && (idNumber == null || idNumber!.isEmpty)) errors.add('Provide government ID number (PAN or Aadhaar).');
+    if (!faceVerified && selfieFaceProofDocPath.isEmpty && selfieFaceProofDocUrl.isEmpty) errors.add('Upload host selfie photo.');
+    if (!payoutVerified && accountNumber.isEmpty && upiId.isEmpty) errors.add('Provide payout bank account or UPI ID.');
+    bool missing(String local, String remote) => local.isEmpty && remote.isEmpty;
+    if (propertyType == 'RV') {
+      if (pickupLocation.trim().isEmpty && address.trim().isNotEmpty) {
+        pickupLocation = address.trim();
+      }
+      if (address.trim().isEmpty && pickupLocation.trim().isNotEmpty) {
+        address = pickupLocation.trim();
+      }
+      if (pickupLocation.trim().isEmpty) errors.add('Enter an RV pickup location.');
+      if (missing(propertyRegistryDocPath, propertyRegistryDocUrl)) errors.add('Attach Vehicle Registration Certificate (RC).');
+      if (missing(leaseAgreementDocPath, leaseAgreementDocUrl)) errors.add('Attach Commercial Vehicle Insurance Policy.');
+      if (missing(electricityBillDocPath, electricityBillDocUrl)) errors.add('Attach Vehicle Fitness Certificate / PUC.');
+    } else if (propertyType == 'CAMPING_SITE') {
+      if (missing(propertyRegistryDocPath, propertyRegistryDocUrl)) errors.add('Attach Land Ownership Title or 7/12 Extract.');
+      if (missing(landlordNocDocPath, landlordNocDocUrl)) errors.add('Attach Panchayat or Tourism Department NOC / Permit.');
+    } else {
+      if (missing(electricityBillDocPath, electricityBillDocUrl)) errors.add('Attach the electricity bill.');
+      if (ownershipType == 'OWNED' && missing(propertyRegistryDocPath, propertyRegistryDocUrl)) errors.add('Attach the ownership document.');
+      if (ownershipType != 'OWNED' && (missing(leaseAgreementDocPath, leaseAgreementDocUrl) || missing(landlordNocDocPath, landlordNocDocUrl))) errors.add('Attach the lease and landlord consent.');
+      if (['HOTEL', 'RESORT'].contains(propertyType) && missing(tradeLicenseDocPath, tradeLicenseDocUrl)) errors.add('Attach the trade license.');
+      if (isInsideGatedSociety && missing(societyNocDocPath, societyNocDocUrl)) errors.add('Attach society consent.');
+    }
+
+    if ((propertyType == 'HOSTEL' || propertyType == 'DORM') && bedCount < 1) errors.add('Set the dorm bed count.');
+    if (propertyType == 'LONG_TERM_HOME' && ((monthlyRent ?? 0) <= 0 || leaseDurationMonths < 1)) errors.add('Complete rent and lease terms.');
+    return errors;
   }
+
+  Map<String, dynamic> _draftData() => {
+    'version': 2, 'ownerId': _ownerId, 'draftId': _draftId,
+    'submittedPropertyId': _submittedPropertyId, 'uploads': _uploads,
+    'data': {
+    'currentPage': currentPage,
+    'rvDetails': rvDetails,
+    'campingDetails': campingDetails,
+    'firstName': firstName,
+    'lastName': lastName,
+    'email': email,
+    'phone': phone,
+    'propertyType': propertyType,
+    'isStayingWithHost': isStayingWithHost,
+    'rvRentalMode': rvRentalMode,
+    'campingType': campingType,
+    'permittedTravelAreas': permittedTravelAreas,
+    'preparationTimeDays': preparationTimeDays,
+    'bookingNoticeHours': bookingNoticeHours,
+    'title': title,
+    'description': description,
+    'bedrooms': bedrooms,
+    'bathrooms': bathrooms,
+    'maxGuests': maxGuests,
+    'address': address,
+    'city': city,
+    'state': state,
+    'country': country,
+    'pincode': pincode,
+    'landmark': landmark,
+    'streetAddress': streetAddress,
+    'houseNumber': houseNumber,
+    'buildingName': buildingName,
+    'floor': floor,
+    'tower': tower,
+    'areaLocality': areaLocality,
+    'latitude': latitude,
+    'longitude': longitude,
+    'categorizedPhotos': categorizedPhotos,
+    'categorizedPhotoUrls': categorizedPhotoUrls,
+    'photoUrls': photoUrls,
+    'videoUrls': videoUrls,
+    'localVideoPaths': localVideoPaths,
+    'amenities': amenities,
+    'tags': tags,
+    'pricePerNight': pricePerNight,
+    'numberOfRooms': numberOfRooms,
+    'bedsPerRoom': bedsPerRoom,
+    'bedTypes': bedTypes,
+    'roomCategories': roomCategories.map((r) => r.toJson()).toList(),
+    'weekendPrice': weekendPrice,
+    'weeklyDiscountPercent': weeklyDiscountPercent,
+    'monthlyDiscountPercent': monthlyDiscountPercent,
+    'instantBook': instantBook,
+    'checkInTime': checkInTime,
+    'checkOutTime': checkOutTime,
+    'minStay': minStay,
+    'maxStay': maxStay,
+    'availabilityScheduleType': availabilityScheduleType,
+    'weekendSurchargePercent': weekendSurchargePercent,
+    'initialBlockedDates': initialBlockedDates.map((d) => d.toIso8601String()).toList(),
+    'houseRules': houseRules,
+    'cancellationPolicy': cancellationPolicy,
+    'petsAllowed': petsAllowed,
+    'smokingAllowed': smokingAllowed,
+    'partiesAllowed': partiesAllowed,
+    'quietHoursEnabled': quietHoursEnabled,
+    'quietHoursText': quietHoursText,
+    'govtIdRequired': govtIdRequired,
+    'unregisteredGuestsAllowed': unregisteredGuestsAllowed,
+    'poolRulesEnabled': poolRulesEnabled,
+    'kitchenUsageAllowed': kitchenUsageAllowed,
+    'childFriendly': childFriendly,
+    'commercialShootsAllowed': commercialShootsAllowed,
+    'securityDepositEnabled': securityDepositEnabled,
+    'securityDepositAmount': securityDepositAmount,
+    'ownershipType': ownershipType,
+    'isInsideGatedSociety': isInsideGatedSociety,
+    'checkInType': checkInType,
+    'electricityBillDocPath': electricityBillDocPath,
+    'electricityBillDocUrl': electricityBillDocUrl,
+    'propertyRegistryDocPath': propertyRegistryDocPath,
+    'propertyRegistryDocUrl': propertyRegistryDocUrl,
+    'leaseAgreementDocPath': leaseAgreementDocPath,
+    'leaseAgreementDocUrl': leaseAgreementDocUrl,
+    'landlordNocDocPath': landlordNocDocPath,
+    'landlordNocDocUrl': landlordNocDocUrl,
+    'societyNocDocPath': societyNocDocPath,
+    'societyNocDocUrl': societyNocDocUrl,
+    'tradeLicenseDocPath': tradeLicenseDocPath,
+    'tradeLicenseDocUrl': tradeLicenseDocUrl,
+    'ownerIdProofDocPath': ownerIdProofDocPath,
+    'ownerIdProofDocUrl': ownerIdProofDocUrl,
+    'selfieFaceProofDocPath': selfieFaceProofDocPath,
+    'selfieFaceProofDocUrl': selfieFaceProofDocUrl,
+    'isLegalDeclarationAccepted': isLegalDeclarationAccepted,
+    'idDocumentUrl': idDocumentUrl,
+    'accountHolderName': accountHolderName,
+    'accountNumber': accountNumber,
+    'ifscCode': ifscCode,
+    'bankName': bankName,
+    'upiId': upiId,
+    'bankPassbookImagePath': bankPassbookImagePath,
+    'idNumber': idNumber,
+    'idName': idName,
+    'idType': idType,
+    'pickupLocation': pickupLocation,
+    'dropLocation': dropLocation,
+    'vehicleType': vehicleType,
+    'rvFacilities': rvFacilities,
+    'terrainType': terrainType,
+    'tentCapacity': tentCapacity,
+    'hasCampfire': hasCampfire,
+    'bedCount': bedCount,
+    'dormType': dormType,
+    'hasLocker': hasLocker,
+    'longTermAvailable': longTermAvailable,
+    'monthlyRent': monthlyRent,
+    'securityDeposit': securityDeposit,
+    'leaseDurationMonths': leaseDurationMonths,
+    },
+  };
+  void _applyDraft(Map<String, dynamic> data) {
+    currentPage = jsonInt(data['currentPage'], 0);
+    rvDetails = jsonMap(data['rvDetails']);
+    campingDetails = jsonMap(data['campingDetails']);
+    firstName = data['firstName']?.toString() ?? '';
+    lastName = data['lastName']?.toString() ?? '';
+    email = data['email']?.toString() ?? '';
+    phone = data['phone']?.toString() ?? '';
+    propertyType = data['propertyType']?.toString() ?? 'VILLA';
+    isStayingWithHost = data['isStayingWithHost'] is bool ? data['isStayingWithHost'] as bool : false;
+    rvRentalMode = data['rvRentalMode']?.toString() ?? 'SELF_DRIVE';
+    campingType = data['campingType']?.toString() ?? 'GLAMPING';
+    permittedTravelAreas = data['permittedTravelAreas']?.toString() ?? 'All India';
+    preparationTimeDays = jsonInt(data['preparationTimeDays'], 0);
+    bookingNoticeHours = jsonInt(data['bookingNoticeHours'], 24);
+    title = data['title']?.toString() ?? '';
+    description = data['description']?.toString() ?? '';
+    bedrooms = jsonInt(data['bedrooms'], 1);
+    bathrooms = jsonInt(data['bathrooms'], 1);
+    maxGuests = jsonInt(data['maxGuests'], 2);
+    address = data['address']?.toString() ?? '';
+    city = data['city']?.toString() ?? '';
+    state = data['state']?.toString() ?? '';
+    country = data['country']?.toString() ?? 'India';
+    pincode = data['pincode']?.toString() ?? '';
+    landmark = data['landmark']?.toString() ?? '';
+    streetAddress = data['streetAddress']?.toString() ?? '';
+    houseNumber = data['houseNumber']?.toString() ?? '';
+    buildingName = data['buildingName']?.toString() ?? '';
+    floor = data['floor']?.toString() ?? '';
+    tower = data['tower']?.toString() ?? '';
+    areaLocality = data['areaLocality']?.toString() ?? '';
+    latitude = data['latitude'] == null ? null : jsonDouble(data['latitude']);
+    longitude = data['longitude'] == null ? null : jsonDouble(data['longitude']);
+    categorizedPhotos = jsonMap(data['categorizedPhotos']).map((k, v) => MapEntry(k, jsonStrings(v)));
+    categorizedPhotoUrls = jsonMap(data['categorizedPhotoUrls']).map((k, v) => MapEntry(k, jsonStrings(v)));
+    photoUrls = jsonStrings(data['photoUrls']);
+    videoUrls = jsonStrings(data['videoUrls']);
+    localVideoPaths = jsonStrings(data['localVideoPaths']);
+    amenities = jsonStrings(data['amenities']);
+    tags = jsonStrings(data['tags']);
+    pricePerNight = jsonDouble(data['pricePerNight'], 1000.0);
+    numberOfRooms = jsonInt(data['numberOfRooms'], 1);
+    bedsPerRoom = jsonInt(data['bedsPerRoom'], 1);
+    bedTypes = jsonStrings(data['bedTypes']);
+    roomCategories = (data['roomCategories'] as List? ?? []).map((r) => RoomCategoryConfig.fromJson(jsonMap(r))).toList();
+    weekendPrice = data['weekendPrice'] == null ? null : jsonDouble(data['weekendPrice']);
+    weeklyDiscountPercent = data['weeklyDiscountPercent'] == null
+        ? (rvDetails['weeklyDiscount'] != null ? jsonDouble(rvDetails['weeklyDiscount']) : 10.0)
+        : jsonDouble(data['weeklyDiscountPercent'], 10.0);
+    monthlyDiscountPercent = data['monthlyDiscountPercent'] == null
+        ? (rvDetails['monthlyDiscount'] != null ? jsonDouble(rvDetails['monthlyDiscount']) : 20.0)
+        : jsonDouble(data['monthlyDiscountPercent'], 20.0);
+    instantBook = data['instantBook'] is bool ? data['instantBook'] as bool : true;
+    checkInTime = data['checkInTime']?.toString() ?? '14:00';
+    checkOutTime = data['checkOutTime']?.toString() ?? '11:00';
+    minStay = jsonInt(data['minStay'], 1);
+    maxStay = data['maxStay'] == null ? null : jsonInt(data['maxStay']);
+    availabilityScheduleType = data['availabilityScheduleType']?.toString() ?? 'ALL_DAYS';
+    weekendSurchargePercent = jsonInt(data['weekendSurchargePercent'], 15);
+    initialBlockedDates = (data['initialBlockedDates'] as List? ?? []).map((d) => DateTime.tryParse(d.toString())).whereType<DateTime>().toList();
+    houseRules = data['houseRules']?.toString() ?? '';
+    cancellationPolicy = data['cancellationPolicy']?.toString() ?? 'Flexible';
+    petsAllowed = data['petsAllowed'] is bool ? data['petsAllowed'] as bool : false;
+    smokingAllowed = data['smokingAllowed'] is bool ? data['smokingAllowed'] as bool : false;
+    partiesAllowed = data['partiesAllowed'] is bool ? data['partiesAllowed'] as bool : false;
+    quietHoursEnabled = data['quietHoursEnabled'] is bool ? data['quietHoursEnabled'] as bool : true;
+    quietHoursText = data['quietHoursText']?.toString() ?? '10:00 PM – 07:00 AM';
+    govtIdRequired = data['govtIdRequired'] is bool ? data['govtIdRequired'] as bool : true;
+    unregisteredGuestsAllowed = data['unregisteredGuestsAllowed'] is bool ? data['unregisteredGuestsAllowed'] as bool : false;
+    poolRulesEnabled = data['poolRulesEnabled'] is bool ? data['poolRulesEnabled'] as bool : false;
+    kitchenUsageAllowed = data['kitchenUsageAllowed'] is bool ? data['kitchenUsageAllowed'] as bool : true;
+    childFriendly = data['childFriendly'] is bool ? data['childFriendly'] as bool : true;
+    commercialShootsAllowed = data['commercialShootsAllowed'] is bool ? data['commercialShootsAllowed'] as bool : false;
+    securityDepositEnabled = data['securityDepositEnabled'] is bool ? data['securityDepositEnabled'] as bool : false;
+    securityDepositAmount = jsonDouble(data['securityDepositAmount'], 2000.0);
+    ownershipType = data['ownershipType']?.toString() ?? 'OWNED';
+    isInsideGatedSociety = data['isInsideGatedSociety'] is bool ? data['isInsideGatedSociety'] as bool : false;
+    checkInType = data['checkInType']?.toString() ?? 'SELF_CHECKIN';
+    electricityBillDocPath = data['electricityBillDocPath']?.toString() ?? '';
+    electricityBillDocUrl = data['electricityBillDocUrl']?.toString() ?? '';
+    propertyRegistryDocPath = data['propertyRegistryDocPath']?.toString() ?? '';
+    propertyRegistryDocUrl = data['propertyRegistryDocUrl']?.toString() ?? '';
+    leaseAgreementDocPath = data['leaseAgreementDocPath']?.toString() ?? '';
+    leaseAgreementDocUrl = data['leaseAgreementDocUrl']?.toString() ?? '';
+    landlordNocDocPath = data['landlordNocDocPath']?.toString() ?? '';
+    landlordNocDocUrl = data['landlordNocDocUrl']?.toString() ?? '';
+    societyNocDocPath = data['societyNocDocPath']?.toString() ?? '';
+    societyNocDocUrl = data['societyNocDocUrl']?.toString() ?? '';
+    tradeLicenseDocPath = data['tradeLicenseDocPath']?.toString() ?? '';
+    tradeLicenseDocUrl = data['tradeLicenseDocUrl']?.toString() ?? '';
+    ownerIdProofDocPath = data['ownerIdProofDocPath']?.toString() ?? '';
+    ownerIdProofDocUrl = data['ownerIdProofDocUrl']?.toString() ?? '';
+    selfieFaceProofDocPath = data['selfieFaceProofDocPath']?.toString() ?? '';
+    selfieFaceProofDocUrl = data['selfieFaceProofDocUrl']?.toString() ?? '';
+    isLegalDeclarationAccepted = data['isLegalDeclarationAccepted'] is bool ? data['isLegalDeclarationAccepted'] as bool : false;
+    idDocumentUrl = data['idDocumentUrl']?.toString() ?? '';
+    accountHolderName = data['accountHolderName']?.toString() ?? '';
+    accountNumber = data['accountNumber']?.toString() ?? '';
+    ifscCode = data['ifscCode']?.toString() ?? '';
+    bankName = data['bankName']?.toString() ?? '';
+    upiId = data['upiId']?.toString() ?? '';
+    bankPassbookImagePath = data['bankPassbookImagePath']?.toString() ?? '';
+    idNumber = data['idNumber']?.toString() ?? null;
+    idName = data['idName']?.toString() ?? null;
+    idType = data['idType']?.toString() ?? null;
+    pickupLocation = data['pickupLocation']?.toString() ?? '';
+    dropLocation = data['dropLocation']?.toString() ?? '';
+    vehicleType = data['vehicleType']?.toString() ?? 'Campervan';
+    rvFacilities = jsonStrings(data['rvFacilities']);
+    terrainType = data['terrainType']?.toString() ?? 'Forest';
+    tentCapacity = jsonInt(data['tentCapacity'], 4);
+    hasCampfire = data['hasCampfire'] is bool ? data['hasCampfire'] as bool : false;
+    bedCount = jsonInt(data['bedCount'], 4);
+    dormType = data['dormType']?.toString() ?? 'Mixed';
+    hasLocker = data['hasLocker'] is bool ? data['hasLocker'] as bool : false;
+    longTermAvailable = data['longTermAvailable'] is bool ? data['longTermAvailable'] as bool : true;
+    monthlyRent = data['monthlyRent'] == null ? null : jsonDouble(data['monthlyRent']);
+    securityDeposit = data['securityDeposit'] == null ? null : jsonDouble(data['securityDeposit']);
+    leaseDurationMonths = jsonInt(data['leaseDurationMonths'], 11);
+    isVerificationApproved = false; isHostIdentityVerified = false;
+    faceVerified = false; payoutVerified = false;
+  }
+
 }

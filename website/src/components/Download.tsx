@@ -28,14 +28,24 @@ export function Download() {
 
               {/* Store links are placeholders until the listings are live —
                   labelled honestly rather than pointing nowhere. */}
-              <div className="cta__actions">
-                <span className="btn btn--onviolet btn--lg" aria-disabled="true">
-                  <Apple size={19} aria-hidden="true" />
-                  iOS — coming soon
-                </span>
-                <span className="btn btn--outline-light btn--lg" aria-disabled="true">
-                  <Smartphone size={19} aria-hidden="true" />
-                  Android — coming soon
+              <div className="cta__actions" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <a
+                  href="https://play.google.com/store/apps/details?id=com.stayq.stay_q"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn--primary btn--lg"
+                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.6rem' }}
+                >
+                  <Smartphone size={20} aria-hidden="true" />
+                  <span>Get it on Google Play</span>
+                </a>
+                <span
+                  className="btn btn--outline-light btn--lg"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', opacity: 0.9, cursor: 'default' }}
+                  title="iOS App has been submitted to Apple App Store review team"
+                >
+                  <Apple size={20} aria-hidden="true" />
+                  <span>iOS App: In Review with Apple Team</span>
                 </span>
               </div>
             </div>

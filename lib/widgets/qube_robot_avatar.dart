@@ -123,13 +123,13 @@ class _QubeRobotAvatarState extends State<QubeRobotAvatar> with TickerProviderSt
                         BoxShadow(
                           color: isThinking
                               ? const Color(0xFF06B6D4).withValues(alpha: 0.6)
-                              : const Color(0xFF8B5CF6).withValues(alpha: 0.38),
+                              : const Color(0xFF0EA5E9).withValues(alpha: 0.25),
                           blurRadius: isThinking ? 22 : 14,
                           spreadRadius: isThinking ? 4 : 1,
                         ),
                         if (isThinking)
                           BoxShadow(
-                            color: const Color(0xFFEC4899).withValues(alpha: 0.35),
+                            color: const Color(0xFF0284C7).withValues(alpha: 0.35),
                             blurRadius: 16,
                             spreadRadius: 2,
                           ),
@@ -161,7 +161,7 @@ class _QubeRobotAvatarState extends State<QubeRobotAvatar> with TickerProviderSt
                         colors: [
                           Colors.transparent,
                           Color(0xFF06B6D4),
-                          Color(0xFFA855F7),
+                          Color(0xFF38BDF8),
                           Colors.transparent,
                         ],
                         stops: [0.0, 0.4, 0.7, 1.0],
@@ -178,18 +178,14 @@ class _QubeRobotAvatarState extends State<QubeRobotAvatar> with TickerProviderSt
             height: s,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF7C3AED), Color(0xFF3B82F6), Color(0xFF06B6D4)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: const Color(0xFF0F172A),
               border: Border.all(
-                color: widget.isThinking ? const Color(0xFF22D3EE) : Colors.white,
+                color: widget.isThinking ? const Color(0xFF22D3EE) : const Color(0xFF334155),
                 width: s > 60 ? 2.5 : 1.8,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
+                  color: Colors.black.withValues(alpha: 0.25),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -197,10 +193,10 @@ class _QubeRobotAvatarState extends State<QubeRobotAvatar> with TickerProviderSt
             ),
             child: ClipOval(
               child: Image.asset(
-                'assets/images/qube_robot.jpg',
+                'assets/images/qube_stayq_bellhop_avatar.png',
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
-                  color: const Color(0xFF6366F1),
+                  color: const Color(0xFF0F172A),
                   child: Icon(
                     Icons.smart_toy_rounded,
                     color: Colors.white,

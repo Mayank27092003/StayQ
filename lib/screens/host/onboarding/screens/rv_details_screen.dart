@@ -1,3 +1,6 @@
+import '../../../../models/json_values.dart';
+import 'package:provider/provider.dart';
+import '../../../../providers/host_onboarding_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../theme/app_colors.dart';
@@ -61,13 +64,141 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
   final _mileageController = TextEditingController();
   final _conditionNotesController = TextEditingController();
 
+  final List<String> _customCorridors = [];
+
+  void _showAddCustomCorridorDialog() {
+    final textController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Add Custom Travel Corridor', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter the name of your permitted driving route or area (e.g. "Delhi - Spiti Valley Loop"):',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: textController,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'e.g. Manali - Leh Highway',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final text = textController.text.trim();
+              if (text.isNotEmpty) {
+                _editState(() {
+                  if (!_customCorridors.contains(text)) {
+                    _customCorridors.add(text);
+                  }
+                  _draft.updatePermittedTravelAreas(text);
+                });
+                Navigator.pop(ctx);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Add & Select', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   // UI State
   final List<bool> _isExpanded = List.generate(8, (_) => false);
 
   @override
   void initState() {
     super.initState();
-    _isExpanded[0] = true; // Open first section by default
+    _draft = context.read<HostOnboardingProvider>();
+    final data = _draft.rvDetails;
+    _makeController.text = data['makeController']?.toString() ?? _makeController.text;
+    _modelController.text = data['modelController']?.toString() ?? _modelController.text;
+    _yearController.text = data['yearController']?.toString() ?? _yearController.text;
+    _pickupController.text = data['pickupController']?.toString() ?? _pickupController.text;
+    _dropController.text = data['dropController']?.toString() ?? _dropController.text;
+    _extraKmRateController.text = data['extraKmRateController']?.toString() ?? _extraKmRateController.text;
+    _perDayRateController.text = data['perDayRateController']?.toString() ?? _perDayRateController.text;
+    _insuranceController.text = data['insuranceController']?.toString() ?? _insuranceController.text;
+    _mileageController.text = data['mileageController']?.toString() ?? _mileageController.text;
+    _conditionNotesController.text = data['conditionNotesController']?.toString() ?? _conditionNotesController.text;
+    _rvType = data['rvType']?.toString() ?? _rvType;
+    _fuelType = data['fuelType']?.toString() ?? _fuelType;
+    _beds = jsonInt(data['beds'], _beds);
+    _hasKitchen = data['hasKitchen'] is bool ? data['hasKitchen'] as bool : _hasKitchen;
+    _hasBathroom = data['hasBathroom'] is bool ? data['hasBathroom'] as bool : _hasBathroom;
+    _hasAc = data['hasAc'] is bool ? data['hasAc'] as bool : _hasAc;
+    _sameDropLocation = data['sameDropLocation'] is bool ? data['sameDropLocation'] as bool : _sameDropLocation;
+    _deliveryAvailable = data['deliveryAvailable'] is bool ? data['deliveryAvailable'] as bool : _deliveryAvailable;
+    _kmPackage = data['kmPackage']?.toString() ?? _kmPackage;
+    _minAge = jsonDouble(data['minAge'], _minAge);
+    _petFriendly = data['petFriendly'] is bool ? data['petFriendly'] as bool : _petFriendly;
+    _offRoadAllowed = data['offRoadAllowed'] is bool ? data['offRoadAllowed'] as bool : _offRoadAllowed;
+    for (final entry in jsonMap(data['equipment']).entries) { if (_equipment.containsKey(entry.key)) _equipment[entry.key] = entry.value == true; }
+    _isExpanded[0] = true;
+    _makeController.addListener(_persist);
+    _modelController.addListener(_persist);
+    _yearController.addListener(_persist);
+    _pickupController.addListener(_persist);
+    _dropController.addListener(_persist);
+    _extraKmRateController.addListener(_persist);
+    _perDayRateController.addListener(_persist);
+    _insuranceController.addListener(_persist);
+    _mileageController.addListener(_persist);
+    _conditionNotesController.addListener(_persist);
+  }
+
+  late HostOnboardingProvider _draft;
+  void _editState(VoidCallback change) { if (!mounted) return; setState(change); _persist(); }
+  void _persist() {
+    if (!mounted) return;
+    _draft.rvDetails = {
+      'makeController': _makeController.text,
+      'modelController': _modelController.text,
+      'yearController': _yearController.text,
+      'pickupController': _pickupController.text,
+      'dropController': _dropController.text,
+      'extraKmRateController': _extraKmRateController.text,
+      'perDayRateController': _perDayRateController.text,
+      'insuranceController': _insuranceController.text,
+      'mileageController': _mileageController.text,
+      'conditionNotesController': _conditionNotesController.text,
+      'rvType': _rvType,
+      'fuelType': _fuelType,
+      'beds': _beds,
+      'hasKitchen': _hasKitchen,
+      'hasBathroom': _hasBathroom,
+      'hasAc': _hasAc,
+      'sameDropLocation': _sameDropLocation,
+      'deliveryAvailable': _deliveryAvailable,
+      'kmPackage': _kmPackage,
+      'minAge': _minAge,
+      'petFriendly': _petFriendly,
+      'offRoadAllowed': _offRoadAllowed,
+      'equipment': _equipment,
+    };
+    _draft.pickupLocation = _pickupController.text.trim();
+    _draft.dropLocation = _sameDropLocation ? _pickupController.text.trim() : _dropController.text.trim();
+    _draft.vehicleType = _rvType;
+    _draft.rvFacilities = [if (_hasKitchen) 'Kitchen', if (_hasBathroom) 'Bathroom', if (_hasAc) 'Air conditioning',
+      ..._equipment.entries.where((e) => e.value).map((e) => e.key)];
+    final rate = double.tryParse(_perDayRateController.text); if (rate != null && rate > 0) _draft.pricePerNight = rate;
+    _draft.notifyListeners();
   }
 
   @override
@@ -214,7 +345,7 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
                 elevation: 0,
                 expandedHeaderPadding: const EdgeInsets.symmetric(vertical: 8),
                 expansionCallback: (int index, bool isExpanded) {
-                  setState(() {
+                  _editState(() {
                     _isExpanded[index] = isExpanded;
                   });
                 },
@@ -240,7 +371,7 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
                               return ChoiceChip(
                                 label: Text(type),
                                 selected: isSelected,
-                                onSelected: (val) => setState(() => _rvType = type),
+                                onSelected: (val) => _editState(() => _rvType = type),
                                 selectedColor: AppColors.primary,
                                 labelStyle: TextStyle(color: isSelected ? Colors.white : AppColors.textPrimary),
                               );
@@ -272,7 +403,7 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
                                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                                       ),
                                       items: ['Gasoline', 'Diesel', 'Electric'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                                      onChanged: (val) => setState(() => _fuelType = val!),
+                                      onChanged: (val) => _editState(() => _fuelType = val!),
                                     ),
                                     const SizedBox(height: 16),
                                   ],
@@ -304,24 +435,24 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
                                   IconButton(
                                     icon: const Icon(Icons.remove_circle_outline),
                                     color: AppColors.primary,
-                                    onPressed: () => setState(() { if (_beds > 1) _beds--; }),
+                                    onPressed: () => _editState(() { if (_beds > 1) _beds--; }),
                                   ),
                                   Text('$_beds', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                                   IconButton(
                                     icon: const Icon(Icons.add_circle_outline),
                                     color: AppColors.primary,
-                                    onPressed: () => setState(() => _beds++),
+                                    onPressed: () => _editState(() => _beds++),
                                   ),
                                 ],
                               ),
                             ],
                           ),
                           const SizedBox(height: 16),
-                          _buildToggleCard('Kitchen Available', _hasKitchen, (v) => setState(() => _hasKitchen = v), Icons.kitchen),
+                          _buildToggleCard('Kitchen Available', _hasKitchen, (v) => _editState(() => _hasKitchen = v), Icons.kitchen),
                           const SizedBox(height: 12),
-                          _buildToggleCard('Bathroom (Shower/Toilet)', _hasBathroom, (v) => setState(() => _hasBathroom = v), Icons.bathtub),
+                          _buildToggleCard('Bathroom (Shower/Toilet)', _hasBathroom, (v) => _editState(() => _hasBathroom = v), Icons.bathtub),
                           const SizedBox(height: 12),
-                          _buildToggleCard('Air Conditioning', _hasAc, (v) => setState(() => _hasAc = v), Icons.ac_unit),
+                          _buildToggleCard('Air Conditioning', _hasAc, (v) => _editState(() => _hasAc = v), Icons.ac_unit),
                         ],
                       ),
                     ),
@@ -341,7 +472,7 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
                         children: _equipment.keys.map((item) {
                           final isSelected = _equipment[item]!;
                           return GestureDetector(
-                            onTap: () => setState(() => _equipment[item] = !isSelected),
+                            onTap: () => _editState(() => _equipment[item] = !isSelected),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -384,12 +515,10 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
                         ),
                         itemCount: _photoSlots.length,
                         itemBuilder: (context, index) {
-                          final isUploaded = _uploadedPhotos.contains(index);
+                          const photoKeys = ['exterior_front', 'exterior_side', 'driver_dashboard', 'living_lounge', 'kitchen_galley', 'onboard_bathroom', 'sleeping_berth', 'facilities_storage'];
+                          final isUploaded = _draft.getPhotosForCategory(photoKeys[index]).isNotEmpty;
                           return GestureDetector(
-                            onTap: () => setState(() {
-                              if (isUploaded) _uploadedPhotos.remove(index);
-                              else _uploadedPhotos.add(index);
-                            }),
+                            onTap: () => _editState(() { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add RV photos in the Photos step.'))); }),
                             child: Container(
                               decoration: BoxDecoration(
                                 color: isUploaded ? AppColors.primary.withOpacity(0.1) : AppColors.surfaceLight,
@@ -431,64 +560,104 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
                     isExpanded: _isExpanded[4],
                     canTapOnHeader: true,
                     backgroundColor: Colors.transparent,
-                    headerBuilder: (context, isExpanded) => _buildSectionHeader('Pickup, Drop & Km Allowance', Icons.location_on),
+                    headerBuilder: (context, isExpanded) => _buildSectionHeader(
+                      _draft.rvRentalMode == 'STATIONARY' ? 'RV Parked Location & Handover' : 'Pickup, Drop & Travel Corridors',
+                      Icons.location_on,
+                    ),
                     body: Padding(
                       padding: const EdgeInsets.only(bottom: 24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildTextField('RV Pickup Location * (e.g. Goa Airport / Panaji Hub)', _pickupController),
-                          const SizedBox(height: 12),
-                          _buildToggleCard(
-                            'Drop Location same as Pickup?',
-                            _sameDropLocation,
-                            (v) => setState(() => _sameDropLocation = v),
-                            Icons.swap_horiz_rounded,
+                          _buildTextField(
+                            _draft.rvRentalMode == 'STATIONARY'
+                                ? 'Parked Rig Location / Base * (e.g. Scenic Farm, Lonavala)'
+                                : 'RV Pickup Location * (e.g. Goa Airport / Panaji Hub)',
+                            _pickupController,
                           ),
-                          if (!_sameDropLocation) ...[
+                          if (_draft.rvRentalMode != 'STATIONARY') ...[
                             const SizedBox(height: 12),
-                            _buildTextField('Designated Drop Location / Hubs *', _dropController),
-                          ],
-                          const SizedBox(height: 12),
-                          _buildToggleCard('Doorstep RV Delivery & Handover Available?', _deliveryAvailable, (v) => setState(() => _deliveryAvailable = v), Icons.local_shipping),
-                          const SizedBox(height: 20),
-
-                          const Text('Daily Included Kilometer Allowance *', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary)),
-                          const SizedBox(height: 4),
-                          const Text('Select the driving allowance included in your daily base rate:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                          const SizedBox(height: 10),
-
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: ['80 Km/day', '100 Km/day', '150 Km/day', '250 Km/day', 'Unlimited'].map((pkg) {
-                              final isSel = _kmPackage == pkg;
-                              return ChoiceChip(
-                                label: Text(pkg, style: TextStyle(color: isSel ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
-                                selected: isSel,
-                                selectedColor: AppColors.primary,
-                                backgroundColor: AppColors.surfaceLight,
-                                onSelected: (sel) {
-                                  if (sel) setState(() => _kmPackage = pkg);
-                                },
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 16),
-
-                          Row(
-                            children: [
-                              if (_kmPackage != 'Unlimited') ...[
-                                Expanded(
-                                  child: _buildTextField('Extra Km Charge (₹/km)', _extraKmRateController, type: TextInputType.number),
-                                ),
-                                const SizedBox(width: 14),
-                              ],
-                              Expanded(
-                                child: _buildTextField('Per Day Rental (₹/day)', _perDayRateController, type: TextInputType.number),
-                              ),
+                            _buildToggleCard(
+                              'Drop Location same as Pickup?',
+                              _sameDropLocation,
+                              (v) => _editState(() => _sameDropLocation = v),
+                              Icons.swap_horiz_rounded,
+                            ),
+                            if (!_sameDropLocation) ...[
+                              const SizedBox(height: 12),
+                              _buildTextField('Designated Drop Location / Hubs *', _dropController),
                             ],
-                          ),
+                            const SizedBox(height: 12),
+                            _buildToggleCard('Doorstep RV Delivery & Handover Available?', _deliveryAvailable, (v) => _editState(() => _deliveryAvailable = v), Icons.local_shipping),
+                            const SizedBox(height: 16),
+                            const Text('Permitted Travel Corridors & Areas *', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary)),
+                            const SizedBox(height: 4),
+                            const Text('Specify where guests are authorized to drive this rig:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                ...{'All India', 'Himachal & Ladakh Circuit', 'Goa & Konkan Coastal Route', 'Rajasthan Desert Corridor', 'Western Ghats Route', ..._customCorridors, if (_draft.permittedTravelAreas.isNotEmpty) _draft.permittedTravelAreas}.map((area) {
+                                  final isSel = _draft.permittedTravelAreas == area;
+                                  return ChoiceChip(
+                                    label: Text(area, style: TextStyle(color: isSel ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
+                                    selected: isSel,
+                                    selectedColor: AppColors.primary,
+                                    backgroundColor: AppColors.surfaceLight,
+                                    onSelected: (sel) {
+                                      if (sel) _editState(() => _draft.updatePermittedTravelAreas(area));
+                                    },
+                                  );
+                                }),
+                                ActionChip(
+                                  avatar: const Icon(Icons.add_road_rounded, size: 16, color: AppColors.primary),
+                                  label: const Text('+ Add Custom Corridor', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+                                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                                  onPressed: _showAddCustomCorridorDialog,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            const Text('Daily Included Kilometer Allowance *', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary)),
+                            const SizedBox(height: 4),
+                            const Text('Select the driving allowance included in your daily base rate:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: ['80 Km/day', '100 Km/day', '150 Km/day', '250 Km/day', 'Unlimited'].map((pkg) {
+                                final isSel = _kmPackage == pkg;
+                                return ChoiceChip(
+                                  label: Text(pkg, style: TextStyle(color: isSel ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
+                                  selected: isSel,
+                                  selectedColor: AppColors.primary,
+                                  backgroundColor: AppColors.surfaceLight,
+                                  onSelected: (sel) {
+                                    if (sel) _editState(() => _kmPackage = pkg);
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                if (_kmPackage != 'Unlimited') ...[
+                                  Expanded(
+                                    child: _buildTextField('Extra Km Charge (₹/km)', _extraKmRateController, type: TextInputType.number),
+                                  ),
+                                  const SizedBox(width: 14),
+                                ],
+                                Expanded(
+                                  child: _buildTextField('Per Day Rental (₹/day)', _perDayRateController, type: TextInputType.number),
+                                ),
+                              ],
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 12),
+                            _buildTextField('Per Night Stay Rate (₹/night)', _perDayRateController, type: TextInputType.number),
+                          ],
                         ],
                       ),
                     ),
@@ -499,26 +668,31 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
                     isExpanded: _isExpanded[5],
                     canTapOnHeader: true,
                     backgroundColor: Colors.transparent,
-                    headerBuilder: (context, isExpanded) => _buildSectionHeader('Driving Rules', Icons.rule),
+                    headerBuilder: (context, isExpanded) => _buildSectionHeader(
+                      _draft.rvRentalMode == 'STATIONARY' ? 'RV Stay Rules' : 'Driving & Trip Rules',
+                      Icons.rule,
+                    ),
                     body: Padding(
                       padding: const EdgeInsets.only(bottom: 24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Minimum Driver Age: ${_minAge.toInt()} years', style: const TextStyle(fontWeight: FontWeight.w600)),
-                          Slider(
-                            value: _minAge,
-                            min: 18,
-                            max: 30,
-                            divisions: 12,
-                            activeColor: AppColors.primary,
-                            label: _minAge.round().toString(),
-                            onChanged: (val) => setState(() => _minAge = val),
-                          ),
-                          const SizedBox(height: 12),
-                          _buildToggleCard('Pet Friendly', _petFriendly, (v) => setState(() => _petFriendly = v), Icons.pets),
-                          const SizedBox(height: 12),
-                          _buildToggleCard('Off-Road Allowed', _offRoadAllowed, (v) => setState(() => _offRoadAllowed = v), Icons.terrain),
+                          if (_draft.rvRentalMode != 'STATIONARY') ...[
+                            Text('Minimum Driver Age: ${_minAge.toInt()} years', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            Slider(
+                              value: _minAge,
+                              min: 18,
+                              max: 30,
+                              divisions: 12,
+                              activeColor: AppColors.primary,
+                              label: _minAge.round().toString(),
+                              onChanged: (val) => _editState(() => _minAge = val),
+                            ),
+                            const SizedBox(height: 12),
+                            _buildToggleCard('Off-Road Driving Allowed', _offRoadAllowed, (v) => _editState(() => _offRoadAllowed = v), Icons.terrain),
+                            const SizedBox(height: 12),
+                          ],
+                          _buildToggleCard('Pet Friendly', _petFriendly, (v) => _editState(() => _petFriendly = v), Icons.pets),
                         ],
                       ),
                     ),

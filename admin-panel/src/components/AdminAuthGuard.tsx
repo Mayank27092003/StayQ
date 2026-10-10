@@ -86,9 +86,9 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
     ) {
       hasRouteAccess = hasModuleAccess("hosts");
       requiredModuleName = "Hosts Directory & Applications";
-    } else if (pathname.startsWith("/revenue")) {
+    } else if (pathname.startsWith("/revenue") || pathname.startsWith("/subscriptions")) {
       hasRouteAccess = hasModuleAccess("revenue");
-      requiredModuleName = "Revenue & Financials";
+      requiredModuleName = "Revenue & Subscriptions";
     } else if (pathname.startsWith("/taxes")) {
       hasRouteAccess = hasModuleAccess("taxes") || hasModuleAccess("revenue");
       requiredModuleName = "TDS & Tax Compliance";

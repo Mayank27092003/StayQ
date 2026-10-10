@@ -1,29 +1,15 @@
-import { Injectable, BadRequestException, NotFoundException, UnauthorizedException, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  UnauthorizedException,
+  ServiceUnavailableException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../notifications/email.service';
 import * as crypto from 'crypto';
-
-function hashPassword(password: string): string {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
-  return `${salt}:${hash}`;
-}
-
-function verifyPassword(password: string, combined: string): boolean {
-  if (!combined || !combined.includes(':')) return false;
-  const [salt, key] = combined.split(':');
-  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
-  return key === hash;
-}
-
-function generateSecurePassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*';
-  let password = 'SQ@';
-  for (let i = 0; i < 8; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
-}
+import { text } from '../../common/utils/input.util';
 
 @Injectable()
 export class AdminStaffService implements OnModuleInit {
@@ -33,15 +19,7 @@ export class AdminStaffService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    // Check and auto-seed initial 3 staff accounts if database has 0 staff
-    try {
-      const count = await this.prisma.adminStaff.count();
-      if (count === 0) {
-        await this.seedInitialStaff();
-      }
-    } catch (e) {
-      console.warn('[AdminStaffService] Auto-seed check failed or skipped:', e);
-    }
+    /* Staff accounts are provisioned explicitly; no startup credentials or automatic mail. */
   }
 
   /**
@@ -51,66 +29,9 @@ export class AdminStaffService implements OnModuleInit {
    * 3. Customer Support Staff (SQ-EMP-1003)
    */
   async seedInitialStaff() {
-    const defaultPassword = 'StayQ@Staff2026';
-    const passwordHash = hashPassword(defaultPassword);
-
-    const initialStaff = [
-      {
-        staffId: 'SQ-EMP-1001',
-        fullName: 'Operations Desk',
-        email: 'hello@stayq.space',
-        department: 'Operations & Ground Ops',
-        role: 'MASTER_ADMIN',
-        status: 'ACTIVE',
-        allowedModules: ['bookings', 'properties', 'experiences', 'revenue', 'taxes', 'analytics', 'export', 'staff'],
-        phoneNumber: '+91 92252 70718',
-      },
-      {
-        staffId: 'SQ-EMP-1002',
-        fullName: 'Stay Q Support Desk',
-        email: 'support@stayq.space',
-        department: 'Customer Support Desk',
-        role: 'STAFF',
-        status: 'ACTIVE',
-        allowedModules: ['support', 'reviews', 'bookings'],
-        phoneNumber: '+91 92252 70718',
-      },
-      {
-        staffId: 'SQ-EMP-1003',
-        fullName: 'Grievance Officer',
-        email: 'grievance@stayq.space',
-        department: 'Trust, Safety & Legal Grievance',
-        role: 'STAFF',
-        status: 'ACTIVE',
-        allowedModules: ['support', 'moderation', 'reviews'],
-        phoneNumber: '+91 92252 70718',
-      },
-    ];
-
-    for (const s of initialStaff) {
-      const exists = await this.prisma.adminStaff.findFirst({
-        where: { OR: [{ email: s.email }, { staffId: s.staffId }] },
-      });
-      if (!exists) {
-        await this.prisma.adminStaff.create({
-          data: {
-            ...s,
-            passwordHash,
-          },
-        });
-        // Create initial creation audit log
-        await this.prisma.staffActivityLog.create({
-          data: {
-            staffId: 'SYSTEM',
-            staffName: 'Platform Initialization',
-            email: 'hello@stayq.space',
-            module: 'staff',
-            action: 'INITIAL_SEED',
-            description: `Provisioned initial staff account ${s.staffId} (${s.fullName}) for ${s.department}`,
-          },
-        });
-      }
-    }
+    throw new BadRequestException(
+      'Automatic default-password provisioning is disabled',
+    );
   }
 
   /**
@@ -163,6 +84,8 @@ export class AdminStaffService implements OnModuleInit {
     return {
       success: true,
       count: staffWithPresence.length,
+      authenticationProvider: 'FIREBASE',
+      accessManagedSeparately: true,
       staff: staffWithPresence,
     };
   }
@@ -186,23 +109,41 @@ export class AdminStaffService implements OnModuleInit {
       where: { email: dto.email.trim().toLowerCase() },
     });
     if (existing) {
-      throw new BadRequestException('A staff member with this email already exists.');
+      throw new BadRequestException(
+        'A staff member with this email already exists.',
+      );
     }
 
     // Generate unique Staff ID or use custom
     let staffId = dto.customStaffId?.trim().toUpperCase();
     if (!staffId) {
-      const count = await this.prisma.adminStaff.count();
-      staffId = `SQ-EMP-${1000 + count + 1}`;
+      staffId = 'SQ-EMP-' + crypto.randomBytes(6).toString('hex').toUpperCase();
     } else {
-      const idExists = await this.prisma.adminStaff.findUnique({ where: { staffId } });
+      const idExists = await this.prisma.adminStaff.findUnique({
+        where: { staffId },
+      });
       if (idExists) {
-        throw new BadRequestException(`Staff ID ${staffId} is already assigned to another employee.`);
+        throw new BadRequestException(
+          `Staff ID ${staffId} is already assigned to another employee.`,
+        );
       }
     }
 
-    const plainPassword = dto.customPassword?.trim() || generateSecurePassword();
-    const passwordHash = hashPassword(plainPassword);
+    if (dto.customPassword !== undefined)
+      throw new BadRequestException(
+        'Passwords are managed by Firebase; omit customPassword',
+      );
+    const passwordHash = 'DISABLED:' + crypto.randomBytes(32).toString('hex');
+    text(dto.fullName, 'Full name', 150);
+    text(dto.email, 'Email', 254);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dto.email.trim()))
+      throw new BadRequestException('Invalid email');
+    if (
+      !Array.isArray(dto.allowedModules) ||
+      dto.allowedModules.length > 30 ||
+      dto.allowedModules.some((m) => typeof m !== 'string' || m.length > 60)
+    )
+      throw new BadRequestException('Invalid modules');
 
     const newStaff = await this.prisma.adminStaff.create({
       data: {
@@ -213,9 +154,10 @@ export class AdminStaffService implements OnModuleInit {
         department: dto.department || 'Operations & Ground Ops',
         role: dto.role || 'STAFF',
         status: 'ACTIVE',
-        allowedModules: dto.allowedModules && dto.allowedModules.length > 0
-          ? dto.allowedModules
-          : ['properties', 'bookings'],
+        allowedModules:
+          dto.allowedModules && dto.allowedModules.length > 0
+            ? dto.allowedModules
+            : ['properties', 'bookings'],
         phoneNumber: dto.phoneNumber?.trim() || null,
         createdById: dto.createdById || null,
       },
@@ -232,23 +174,10 @@ export class AdminStaffService implements OnModuleInit {
       targetId: newStaff.id,
     });
 
-    // Send Welcome Email with credentials via Hostinger SMTP
-    try {
-      await this.emailService.sendStaffCredentialsEmail({
-        staffName: newStaff.fullName,
-        staffId: newStaff.staffId,
-        email: newStaff.email,
-        initialPassword: plainPassword,
-        department: newStaff.department,
-        allowedModules: newStaff.allowedModules,
-      });
-    } catch (err) {
-      console.warn('[StaffService] Email notification warning:', err);
-    }
-
     return {
       success: true,
-      message: 'Staff member created successfully.',
+      message:
+        'Staff directory entry created. Assign access separately through a verified Firebase account.',
       staff: {
         id: newStaff.id,
         staffId: newStaff.staffId,
@@ -261,33 +190,51 @@ export class AdminStaffService implements OnModuleInit {
         phoneNumber: newStaff.phoneNumber,
         createdAt: newStaff.createdAt,
       },
-      credentials: {
-        staffId: newStaff.staffId,
-        email: newStaff.email,
-        plainPassword,
-      },
+      authenticationProvider: 'FIREBASE',
+      accessManagedSeparately: true,
     };
   }
 
   /**
    * Update staff permissions or status
    */
-  async updateStaff(id: string, dto: {
-    fullName?: string;
-    department?: string;
-    role?: string;
-    status?: string;
-    allowedModules?: string[];
-    phoneNumber?: string;
-    newPassword?: string;
-    adminStaffId?: string;
-    adminStaffName?: string;
-  }) {
+  async updateStaff(
+    id: string,
+    dto: {
+      fullName?: string;
+      department?: string;
+      role?: string;
+      status?: string;
+      allowedModules?: string[];
+      phoneNumber?: string;
+      newPassword?: string;
+      adminStaffId?: string;
+      adminStaffName?: string;
+    },
+  ) {
     const staff = await this.prisma.adminStaff.findUnique({ where: { id } });
     if (!staff) {
       throw new NotFoundException('Staff member not found.');
     }
 
+    if (dto.newPassword !== undefined)
+      throw new BadRequestException(
+        'Passwords are managed by Firebase; omit newPassword',
+      );
+    if (
+      dto.status !== undefined &&
+      !['ACTIVE', 'SUSPENDED', 'INACTIVE'].includes(dto.status)
+    )
+      throw new BadRequestException('Invalid staff status');
+    if (
+      dto.allowedModules !== undefined &&
+      (!Array.isArray(dto.allowedModules) ||
+        dto.allowedModules.length > 30 ||
+        dto.allowedModules.some((m) => typeof m !== 'string' || m.length > 60))
+    )
+      throw new BadRequestException('Invalid modules');
+    for (const field of ['fullName', 'department', 'role'])
+      if (dto[field] !== undefined) text(dto[field], field, 150);
     const updateData: any = {};
     if (dto.fullName) updateData.fullName = dto.fullName.trim();
     if (dto.department) updateData.department = dto.department;
@@ -295,9 +242,6 @@ export class AdminStaffService implements OnModuleInit {
     if (dto.status) updateData.status = dto.status;
     if (dto.allowedModules) updateData.allowedModules = dto.allowedModules;
     if (dto.phoneNumber !== undefined) updateData.phoneNumber = dto.phoneNumber;
-    if (dto.newPassword && dto.newPassword.trim().length >= 6) {
-      updateData.passwordHash = hashPassword(dto.newPassword.trim());
-    }
 
     const updated = await this.prisma.adminStaff.update({
       where: { id },
@@ -317,7 +261,9 @@ export class AdminStaffService implements OnModuleInit {
 
     return {
       success: true,
-      message: 'Staff profile and permissions updated.',
+      message:
+        'Staff directory updated. Administrator access is managed through admin-users.',
+      accessManagedSeparately: true,
       staff: {
         id: updated.id,
         staffId: updated.staffId,
@@ -336,53 +282,10 @@ export class AdminStaffService implements OnModuleInit {
   /**
    * Reset staff password and generate new one
    */
-  async resetStaffPassword(id: string) {
-    const staff = await this.prisma.adminStaff.findUnique({ where: { id } });
-    if (!staff) {
-      throw new NotFoundException('Staff member not found.');
-    }
-
-    const plainPassword = generateSecurePassword();
-    const passwordHash = hashPassword(plainPassword);
-
-    await this.prisma.adminStaff.update({
-      where: { id },
-      data: { passwordHash, sessionRevokedAt: new Date(), isOnline: false },
-    });
-
-    await this.logActivity({
-      staffId: 'MASTER_ADMIN',
-      staffName: 'Master Admin',
-      email: 'hello@stayq.space',
-      module: 'staff',
-      action: 'RESET_PASSWORD',
-      description: `Reset password for staff member ${staff.staffId} (${staff.fullName})`,
-      targetId: staff.id,
-    });
-
-    // Dispatch update mail
-    try {
-      await this.emailService.sendStaffCredentialsEmail({
-        staffName: staff.fullName,
-        staffId: staff.staffId,
-        email: staff.email,
-        initialPassword: plainPassword,
-        department: staff.department,
-        allowedModules: staff.allowedModules,
-      });
-    } catch (err) {
-      console.warn('[StaffService] Email dispatch warning:', err);
-    }
-
-    return {
-      success: true,
-      message: 'Password reset successfully.',
-      credentials: {
-        staffId: staff.staffId,
-        email: staff.email,
-        plainPassword,
-      },
-    };
+  resetStaffPassword(_id: string) {
+    throw new ServiceUnavailableException(
+      'Use the Firebase password-reset flow; the backend does not issue staff passwords',
+    );
   }
 
   /**
@@ -407,77 +310,24 @@ export class AdminStaffService implements OnModuleInit {
     await this.prisma.adminStaff.delete({ where: { id } });
     return {
       success: true,
-      message: `Staff member ${staff.staffId} (${staff.fullName}) access has been permanently revoked.`,
+      message:
+        'Staff directory entry deleted. Administrator access is managed through admin-users.',
+      accessManagedSeparately: true,
     };
   }
 
   /**
    * Staff login authentication with presence and audit tracking
    */
-  async staffLogin(identifier: string, password: string, ipAddress?: string, userAgent?: string) {
-    const cleanId = identifier.trim().toLowerCase();
-    const staff = await this.prisma.adminStaff.findFirst({
-      where: {
-        OR: [
-          { email: cleanId },
-          { staffId: identifier.trim().toUpperCase() },
-        ],
-      },
-    });
-
-    if (!staff) {
-      throw new UnauthorizedException('Invalid Staff ID / Email or Password.');
-    }
-
-    if (staff.status !== 'ACTIVE') {
-      throw new UnauthorizedException('This staff account is currently inactive or suspended. Contact Master Admin.');
-    }
-
-    const isValid = verifyPassword(password, staff.passwordHash);
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid Staff ID / Email or Password.');
-    }
-
-    const now = new Date();
-
-    // Mark online and update timestamps
-    await this.prisma.adminStaff.update({
-      where: { id: staff.id },
-      data: {
-        lastLoginAt: now,
-        lastActiveAt: now,
-        isOnline: true,
-        currentSessionIp: ipAddress || 'Direct Gateway',
-      },
-    });
-
-    // Record login activity in audit log
-    await this.logActivity({
-      staffId: staff.staffId,
-      staffName: staff.fullName,
-      email: staff.email,
-      module: 'auth',
-      action: 'STAFF_LOGIN',
-      description: `Staff ${staff.staffId} logged in to Command Center from ${ipAddress || 'Web Gateway'}`,
-      targetId: staff.id,
-      ipAddress,
-      userAgent,
-    });
-
-    return {
-      success: true,
-      message: 'Authentication successful.',
-      user: {
-        id: staff.id,
-        staffId: staff.staffId,
-        fullName: staff.fullName,
-        email: staff.email,
-        department: staff.department,
-        role: staff.role,
-        allowedModules: staff.allowedModules,
-        lastLoginAt: now,
-      },
-    };
+  async staffLogin(
+    identifier: string,
+    password: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    throw new UnauthorizedException(
+      'Use Firebase authentication with an explicitly assigned administrator role; legacy password-only staff login is disabled',
+    );
   }
 
   /**
@@ -494,12 +344,17 @@ export class AdminStaffService implements OnModuleInit {
 
     // Check if session was revoked by Master Admin
     if (staff.sessionRevokedAt && staff.lastLoginAt) {
-      if (new Date(staff.sessionRevokedAt).getTime() > new Date(staff.lastLoginAt).getTime()) {
+      if (
+        new Date(staff.sessionRevokedAt).getTime() >
+        new Date(staff.lastLoginAt).getTime()
+      ) {
         await this.prisma.adminStaff.update({
           where: { id: staff.id },
           data: { isOnline: false },
         });
-        throw new UnauthorizedException('Your session was revoked by Master Admin. Please sign in again.');
+        throw new UnauthorizedException(
+          'Your session was revoked by Master Admin. Please sign in again.',
+        );
       }
     }
 
@@ -521,7 +376,9 @@ export class AdminStaffService implements OnModuleInit {
   async staffLogout(staffId: string, ipAddress?: string) {
     const cleanId = staffId.trim().toUpperCase();
     const staff = await this.prisma.adminStaff.findFirst({
-      where: { OR: [{ staffId: cleanId }, { email: staffId.trim().toLowerCase() }] },
+      where: {
+        OR: [{ staffId: cleanId }, { email: staffId.trim().toLowerCase() }],
+      },
     });
 
     if (staff) {
@@ -553,36 +410,10 @@ export class AdminStaffService implements OnModuleInit {
   /**
    * Master Admin Force Logout — instantly kicks staff off the system
    */
-  async forceLogoutStaff(id: string, adminStaffId?: string, adminStaffName?: string) {
-    const staff = await this.prisma.adminStaff.findUnique({ where: { id } });
-    if (!staff) {
-      throw new NotFoundException('Staff member not found.');
-    }
-
-    const now = new Date();
-    await this.prisma.adminStaff.update({
-      where: { id },
-      data: {
-        isOnline: false,
-        sessionRevokedAt: now,
-        lastLogoutAt: now,
-      },
-    });
-
-    await this.logActivity({
-      staffId: adminStaffId || 'MASTER_ADMIN',
-      staffName: adminStaffName || 'Master Admin',
-      email: 'hello@stayq.space',
-      module: 'staff',
-      action: 'FORCE_LOGOUT',
-      description: `Force terminated active session for staff member ${staff.staffId} (${staff.fullName})`,
-      targetId: staff.id,
-    });
-
-    return {
-      success: true,
-      message: `Active session for ${staff.staffId} (${staff.fullName}) has been terminated.`,
-    };
+  forceLogoutStaff(_id: string, _actorId?: string, _actorName?: string) {
+    throw new ServiceUnavailableException(
+      'Use Firebase session revocation; changing directory presence does not revoke identity tokens',
+    );
   }
 
   /**
@@ -628,8 +459,11 @@ export class AdminStaffService implements OnModuleInit {
     limit?: number;
     skip?: number;
   }) {
-    const limit = Math.min(Number(query.limit || 50), 100);
-    const skip = Number(query.skip || 0);
+    const limit = Math.min(
+      100,
+      Math.max(1, Math.floor(Number(query.limit) || 50)),
+    );
+    const skip = Math.max(0, Math.floor(Number(query.skip) || 0));
 
     const where: any = {};
     if (query.staffId && query.staffId !== 'ALL') {

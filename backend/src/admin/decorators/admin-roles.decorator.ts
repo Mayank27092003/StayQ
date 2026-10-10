@@ -11,4 +11,5 @@ export const ADMIN_ROLES_KEY = 'adminRoles';
  *
  * Usage: `@AdminRoles(AdminRole.FINANCE, AdminRole.OPERATIONS)`
  */
-export const AdminRoles = (...roles: AdminRole[]) => SetMetadata(ADMIN_ROLES_KEY, roles);
+export const AdminRoles = (...roles: AdminRole[]) =>
+  SetMetadata(ADMIN_ROLES_KEY, roles);

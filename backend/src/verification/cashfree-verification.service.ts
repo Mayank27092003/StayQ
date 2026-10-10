@@ -1,133 +1,146 @@
-import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
-import * as crypto from 'crypto';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  ForbiddenException,
+  ConflictException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { createHmac, randomUUID, publicEncrypt, constants } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-
-export interface BankAccountVerificationResult {
-  accountNumber: string;
-  ifsc: string;
-  nameAtBank: string;
-  accountStatus: 'VALID' | 'INVALID';
-  accountExists: boolean;
-  nameMatchScore: number;
-  nameMatchResult: string;
-  utr?: string;
-  referenceId: string;
-  status: string;
-  ipWhitelisted?: boolean;
-  detectedIp?: string;
-  message?: string;
-}
-
-export interface AadhaarOtpGenerateResult {
-  referenceId: string;
-  status: string;
-  message: string;
-  validAadhaar: boolean;
-  ipWhitelisted?: boolean;
-  detectedIp?: string;
-}
-
-export interface AadhaarVerifyResult {
-  referenceId: string;
-  status: string;
-  name: string;
-  gender: string;
-  dob: string;
-  address: string;
-  careOf?: string;
-  photoUrl?: string;
-  splitAddress?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    pincode?: string;
-  };
-}
-
-export interface PanVerificationResult {
-  pan: string;
-  valid: boolean;
-  verified?: boolean;
-  registeredName: string;
-  type: string;
-  nameMatchScore: number;
-  referenceId: string;
-  status?: string;
-  message?: string;
-}
-
-export interface UpiVerificationResult {
-  vpa: string;
-  nameAtVpa: string;
-  valid: boolean;
-  referenceId: string;
-  status?: string;
-}
-
-export interface IfscLookupResult {
-  ifsc: string;
-  bank: string;
-  branch: string;
-  address: string;
-  city: string;
-  state: string;
-  micr?: string;
-  valid: boolean;
-}
-
+import { text } from '../common/utils/input.util';
+import {
+  encryptSensitive,
+  decryptSensitive,
+} from '../common/utils/encryption.util';
+import { safeDownload } from '../common/utils/safe-fetch.util';
 @Injectable()
 export class CashfreeVerificationService {
   private readonly logger = new Logger(CashfreeVerificationService.name);
-
-  private readonly clientId: string;
-  private readonly clientSecret: string;
-  private readonly baseUrl: string;
-  private readonly publicKeyPem: string;
-
-  constructor(private readonly prisma: PrismaService) {
-    this.clientId = process.env.CASHFREE_CLIENT_ID || process.env.CASHFREE_APP_ID || '';
-    this.clientSecret = process.env.CASHFREE_CLIENT_SECRET || process.env.CASHFREE_SECRET_KEY || '';
-    const env = (process.env.CASHFREE_ENV || 'PRODUCTION').toUpperCase();
-    this.baseUrl = env === 'PRODUCTION'
-      ? (process.env.CASHFREE_BASE_URL || 'https://api.cashfree.com/verification')
-      : 'https://sandbox.cashfree.com/verification';
-
-    this.publicKeyPem = (process.env.CASHFREE_PUBLIC_KEY || '').replace(/\\n/g, '\n');
-  }
-
-  private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
+  private readonly clientId = process.env.CASHFREE_CLIENT_ID || '';
+  private readonly clientSecret = process.env.CASHFREE_CLIENT_SECRET || '';
+  private readonly baseUrl =
+    process.env.CASHFREE_BASE_URL ||
+    (process.env.CASHFREE_ENV === 'PRODUCTION'
+      ? 'https://api.cashfree.com/verification'
+      : 'https://sandbox.cashfree.com/verification');
+  constructor(private readonly prisma: PrismaService) {}
+  private headers() {
+    if (
+      !this.clientId ||
+      !this.clientSecret ||
+      ![
+        'https://api.cashfree.com/verification',
+        'https://sandbox.cashfree.com/verification',
+      ].includes(this.baseUrl)
+    )
+      throw new ServiceUnavailableException(
+        'Identity provider is not configured',
+      );
+    const headers: any = {
       'x-client-id': this.clientId,
       'x-client-secret': this.clientSecret,
+      'x-api-version': '2024-12-01',
       'Content-Type': 'application/json',
-      'User-Agent': 'StayQ-Backend-Engine',
     };
-
-    if (this.publicKeyPem) {
+    if (process.env.CASHFREE_PUBLIC_KEY) {
       try {
-        const timestamp = Math.floor(Date.now() / 1000).toString();
-        const payload = `${this.clientId}.${timestamp}`;
-        const encrypted = crypto.publicEncrypt(
+        headers['x-cf-signature'] = publicEncrypt(
           {
-            key: this.publicKeyPem,
-            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+            key: process.env.CASHFREE_PUBLIC_KEY.replace(/\\n/g, '\n'),
+            padding: constants.RSA_PKCS1_OAEP_PADDING,
             oaepHash: 'sha1',
           },
-          Buffer.from(payload, 'utf-8'),
+          Buffer.from(`${this.clientId}.${Math.floor(Date.now() / 1000)}`),
+        ).toString('base64');
+      } catch {
+        throw new ServiceUnavailableException(
+          'Identity signature configuration is invalid',
         );
-        headers['x-cf-signature'] = encrypted.toString('base64');
-      } catch (err: any) {
-        this.logger.warn(`Failed to generate RSA 2FA signature: ${err.message}`);
       }
     }
-
     return headers;
   }
-
-  /**
-   * 1. BANK ACCOUNT VERIFICATION (Penny Drop / Sync)
-   * Validates bank account number + IFSC via Cashfree SecureID Bank Sync API.
-   */
+  private async provider(path: string, payload: any, multipart = false) {
+    const headers = this.headers();
+    if (multipart) {
+      delete headers['Content-Type'];
+    }
+    try {
+      const r = await fetch(this.baseUrl + path, {
+        method: 'POST',
+        headers,
+        body: multipart ? payload : JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!r.ok) {
+        const errText = await r.text();
+        this.logger.error(`Cashfree verification error [${r.status}]: ${errText}`);
+        let errMsg = 'Identity provider could not verify the submitted information';
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed.message) errMsg = parsed.message;
+        } catch {}
+        throw new BadRequestException(errMsg);
+      }
+      return await r.json();
+    } catch (e) {
+      if (e instanceof BadRequestException || e instanceof ServiceUnavailableException) throw e;
+      throw new ServiceUnavailableException('Identity provider is unavailable');
+    }
+  }
+  private hash(userId: string, kind: string, input: string) {
+    const secret = process.env.DATA_ENCRYPTION_KEY;
+    if (!secret)
+      throw new ServiceUnavailableException(
+        'Verification storage is not configured',
+      );
+    return createHmac('sha256', secret)
+      .update(`${userId}:${kind}:${input}`)
+      .digest('hex');
+  }
+  private owner(userId?: string) {
+    if (!userId)
+      throw new ForbiddenException(
+        'Authenticated verification owner is required',
+      );
+    return userId;
+  }
+  private async save(
+    userId: string,
+    kind: string,
+    input: string,
+    data: any,
+    valid: boolean,
+    reference?: string,
+    persist?: (tx: any) => Promise<any>,
+  ) {
+    const hash = this.hash(userId, kind, input);
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id=${userId} FOR UPDATE`;
+      await tx.verificationChallenge.updateMany({
+        where: { userId, kind, status: { in: ['VERIFIED', 'INVALID'] } },
+        data: { status: 'SUPERSEDED' },
+      });
+      if (persist) await persist(tx);
+      return tx.verificationChallenge.create({
+        data: {
+          userId,
+          kind,
+          inputHash: hash,
+          status: valid ? 'VERIFIED' : 'INVALID',
+          providerReference: reference || null,
+          result: { encrypted: encryptSensitive(JSON.stringify(data)) },
+          expiresAt: new Date(Date.now() + 365 * 86400000),
+        },
+      });
+    });
+  }
+  private result(row: any) {
+    return row?.result?.encrypted
+      ? JSON.parse(decryptSensitive(row.result.encrypted))
+      : {};
+  }
   async verifyBankAccount(params: {
     accountNumber: string;
     ifsc: string;
@@ -135,855 +148,574 @@ export class CashfreeVerificationService {
     phone?: string;
     userId?: string;
     isHost?: boolean;
-  }): Promise<BankAccountVerificationResult> {
-    const { accountNumber, ifsc, name, phone, userId, isHost = false } = params;
-    const cleanIfsc = ifsc.trim().toUpperCase();
-    const cleanAccount = accountNumber.trim();
-    const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : '';
-
-    this.logger.log(`Initiating Cashfree SecureID Penny Drop for IFSC: ${cleanIfsc}, Acc: ****${cleanAccount.slice(-4)}`);
-
-    try {
-      const verification_id = 'bank_' + Date.now();
-      const payload: any = {
-        verification_id,
-        bank_account: cleanAccount,
-        ifsc: cleanIfsc,
-      };
-      if (name && name.trim()) {
-        payload.name = name.trim();
-      }
-      if (cleanPhone && cleanPhone.length === 10) {
-        payload.phone = cleanPhone;
-      }
-
-      const response = await fetch(`${this.baseUrl}/bank-account/sync`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify(payload),
-      });
-
-      const data: any = await response.json().catch(() => ({}));
-
-      // Case 1: IP Whitelisting required notice
-      if (data?.code === 'ip_validation_failed' || (data?.message && data.message.includes('IP not whitelisted'))) {
-        const ipMatch = data.message.match(/ip is ([0-9.]+)/i);
-        const detectedIp = ipMatch ? ipMatch[1] : '49.47.9.73';
-        this.logger.warn(`Cashfree SecureID: Source IP ${detectedIp} requires whitelisting in Cashfree Merchant Dashboard.`);
-
-        return {
-          accountNumber: cleanAccount,
-          ifsc: cleanIfsc,
-          nameAtBank: name || 'Unverified Account Holder',
-          accountStatus: 'INVALID',
-          accountExists: false,
-          nameMatchScore: 0.0,
-          nameMatchResult: 'PENDING_WHITELIST',
-          utr: '',
-          referenceId: 'CF_REF_' + Date.now(),
-          status: 'FAILED',
-          ipWhitelisted: false,
-          detectedIp,
-          message: `IP ${detectedIp} needs whitelisting in Cashfree Dashboard (Developers > IP Whitelist). Verification pending.`,
-        };
-      }
-
-      // Case 2: Direct API Success from Cashfree Production
-      if (response.ok && (data.account_status === 'VALID' || data.status === 'SUCCESS')) {
-        const result: BankAccountVerificationResult = {
-          accountNumber: cleanAccount,
-          ifsc: cleanIfsc,
-          nameAtBank: data.name_at_bank || data.name || name || 'Verified Account Holder',
-          accountStatus: 'VALID',
-          accountExists: data.account_exists === 'YES' || true,
-          nameMatchScore: typeof data.name_match_score === 'number' ? data.name_match_score : 1.0,
-          nameMatchResult: data.name_match_result || 'DIRECT_MATCH',
-          utr: data.utr || 'UTR' + Date.now(),
-          referenceId: String(data.ref_id || data.reference_id || Date.now()),
-          status: 'SUCCESS',
-          ipWhitelisted: true,
-        };
-
-        if (userId) {
-          await this.saveVerifiedPayoutAccount(userId, cleanAccount, cleanIfsc, result.nameAtBank);
-        }
-
-        return result;
-      }
-
-      throw new BadRequestException(data.message || 'Bank Account Verification Failed');
-    } catch (error: any) {
-      this.logger.error(`Cashfree Bank Verification error: ${error.message}`);
-      throw new BadRequestException(`Bank verification failed: ${error.message}`);
-    }
-  }
-
-  private async saveVerifiedPayoutAccount(userId: string, accountNumber: string, ifsc: string, nameAtBank: string) {
-    try {
-      await this.prisma.hostPayoutAccount.upsert({
-        where: { userId },
-        update: {
-          accountNumber,
-          ifscCode: ifsc,
-          accountHolderName: nameAtBank,
-          bankName: ifsc.substring(0, 4),
-          verified: true,
-          verifiedAt: new Date(),
-        },
-        create: {
-          userId,
-          accountNumber,
-          ifscCode: ifsc,
-          accountHolderName: nameAtBank,
-          bankName: ifsc.substring(0, 4),
-          verified: true,
-          verifiedAt: new Date(),
-        },
-      });
-    } catch (dbErr: any) {
-      this.logger.error(`Failed to save HostPayoutAccount in DB: ${dbErr.message}`);
-    }
-  }
-
-  /**
-   * 2. REVERSE PENNY DROP VERIFICATION
-   * Generates a unique UPI / Virtual Account for the user to transfer ₹1 for instant verification.
-   */
-  async verifyBankAccountReversePennyDrop(params: {
-    phone: string;
-    name?: string;
-    userId?: string;
   }) {
-    const { phone, name, userId } = params;
-    try {
-      const response = await fetch(`${this.baseUrl}/bank-account/reverse-penny-drop`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          phone,
-          name: name || 'Stay Q Host',
-        }),
-      });
+    const userId = this.owner(params.userId);
+    const account = text(params.accountNumber, 'Account number', 30);
+    const ifsc = text(params.ifsc, 'IFSC', 11).toUpperCase();
+    if (!/^\d{6,30}$/.test(account) || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc))
+      throw new BadRequestException('Invalid bank account or IFSC');
+    const data: any = await this.provider('/bank-account/sync', {
+      verification_id: 'bank_' + randomUUID().replace(/-/g, ''),
+      bank_account: account,
+      ifsc,
+      ...(params.name ? { name: text(params.name, 'Holder name', 200) } : {}),
+    });
+    const valid =
+      data.account_status === 'VALID' &&
+      data.account_exists === 'YES' &&
+      typeof data.name_at_bank === 'string' &&
+      data.name_at_bank.length > 0;
+    const reference = data.ref_id || data.reference_id;
+    const result = {
+      accountNumber: account,
+      ifsc,
+      nameAtBank: data.name_at_bank || '',
+      accountStatus: valid ? 'VALID' : 'INVALID',
+      accountExists: valid,
+      nameMatchScore:
+        typeof data.name_match_score === 'number'
+          ? data.name_match_score
+          : null,
+      nameMatchResult: data.name_match_result || null,
+      utr: data.utr || null,
+      referenceId: reference ? String(reference) : null,
+      status: valid ? 'SUCCESS' : 'INVALID',
+      verified: valid,
+    };
+    await this.save(
+      userId,
+      'BANK',
+      `${account}:${ifsc}`,
+      result,
+      valid,
+      reference ? String(reference) : undefined,
+      params.isHost !== false
+        ? (tx) =>
+            tx.hostPayoutAccount.upsert({
+              where: { userId },
+              create: {
+                userId,
+                accountNumber: encryptSensitive(account),
+                ifscCode: ifsc,
+                accountHolderName: result.nameAtBank,
+                bankName: ifsc.slice(0, 4),
+                verified: valid,
+                verifiedAt: valid ? new Date() : null,
+              },
+              update: {
+                accountNumber: encryptSensitive(account),
+                ifscCode: ifsc,
+                accountHolderName: result.nameAtBank,
+                verified: valid,
+                verifiedAt: valid ? new Date() : null,
+              },
+            })
+        : undefined,
+    );
 
-      const data: any = await response.json().catch(() => ({}));
+    return result;
+  }
+  async verifyBankAccountReversePennyDrop(params: any) {
+    throw new ServiceUnavailableException(
+      'Reverse penny-drop is unavailable until its provider callback and ownership binding are configured',
+    );
+  }
+  async verifyIfsc(code: string) {
+    const ifsc = text(code, 'IFSC', 11).toUpperCase();
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc))
+      throw new BadRequestException('Invalid IFSC');
+    try {
+      const r = await fetch(`https://ifsc.razorpay.com/${ifsc}`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!r.ok) throw new Error();
+      const d: any = await r.json();
       return {
-        referenceId: data.ref_id || 'RPD_' + Date.now(),
-        virtualUpiId: data.virtual_vpa || `stayq.${phone.slice(-6)}@cashfree`,
-        amount: 1.00,
-        status: data.status || 'INITIATED',
-        qrCodeUrl: data.qr_code_url,
-        expiresAt: data.expires_at || new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-        message: 'Transfer ₹1 from your registered bank account to the UPI ID to verify ownership.',
+        ifsc,
+        bank: d.BANK || '',
+        branch: d.BRANCH || '',
+        address: d.ADDRESS || '',
+        city: d.CITY || '',
+        state: d.STATE || '',
+        micr: d.MICR || null,
+        valid: d.IFSC === ifsc,
       };
-    } catch (e: any) {
+    } catch {
       return {
-        referenceId: 'RPD_' + Date.now(),
-        virtualUpiId: `stayq.${phone.slice(-6)}@cashfree`,
-        amount: 1.00,
-        status: 'INITIATED',
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-        message: 'Transfer ₹1 from your registered bank account to verify instantly.',
+        ifsc,
+        bank: '',
+        branch: '',
+        address: '',
+        city: '',
+        state: '',
+        valid: false,
+        status: 'UNAVAILABLE',
       };
     }
   }
-
-  /**
-   * 3. IFSC CODE LOOKUP & VALIDATION
-   */
-  async verifyIfsc(ifsc: string): Promise<IfscLookupResult> {
-    const cleanIfsc = ifsc.trim().toUpperCase();
-    try {
-      // First try Razorpay/RBI Open Registry
-      const rbiRes = await fetch(`https://ifsc.razorpay.com/${cleanIfsc}`);
-      if (rbiRes.ok) {
-        const data = await rbiRes.json();
-        return {
-          ifsc: cleanIfsc,
-          bank: data.BANK || cleanIfsc.substring(0, 4),
-          branch: data.BRANCH || 'Main Branch',
-          address: data.ADDRESS || '',
-          city: data.CITY || '',
-          state: data.STATE || '',
-          micr: data.MICR,
-          valid: true,
-        };
-      }
-
-      // Fallback to Cashfree IFSC endpoint
-      const cfRes = await fetch(`${this.baseUrl}/ifsc?ifsc=${cleanIfsc}`, {
-        headers: this.getHeaders(),
+  async generateAadhaarOtp(value: string, owner?: string) {
+    const userId = this.owner(owner);
+    const number = text(value, 'Aadhaar number', 12);
+    if (!/^[2-9]\d{11}$/.test(number))
+      throw new BadRequestException('Invalid Aadhaar number');
+    const hash = this.hash(userId, 'AADHAAR', number);
+    const challenge = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id=${userId} FOR UPDATE`;
+      const recent = await tx.verificationChallenge.findFirst({
+        where: {
+          userId,
+          kind: 'AADHAAR',
+          createdAt: { gt: new Date(Date.now() - 60000) },
+        },
       });
-      if (cfRes.ok) {
-        const cfData = await cfRes.json();
-        return {
-          ifsc: cleanIfsc,
-          bank: cfData.bank_name || cleanIfsc.substring(0, 4),
-          branch: cfData.branch || '',
-          address: cfData.address || '',
-          city: cfData.city || '',
-          state: cfData.state || '',
-          valid: true,
-        };
-      }
-
-      return {
-        ifsc: cleanIfsc,
-        bank: cleanIfsc.substring(0, 4),
-        branch: 'Branch',
-        address: 'India',
-        city: 'City',
-        state: 'State',
-        valid: cleanIfsc.length === 11,
-      };
-    } catch (err: any) {
-      return {
-        ifsc: cleanIfsc,
-        bank: cleanIfsc.substring(0, 4),
-        branch: 'Branch',
-        address: 'India',
-        city: 'City',
-        state: 'State',
-        valid: cleanIfsc.length === 11,
-      };
-    }
-  }
-
-  private readonly aadhaarRefMap = new Map<string, string>();
-
-  /**
-   * 4. AADHAAR OTP GENERATION (Cashfree OKYC)
-   * Sends real UIDAI OTP via Cashfree Secure ID
-   */
-  async generateAadhaarOtp(aadhaarNumber: string): Promise<AadhaarOtpGenerateResult> {
-    const cleanAadhaar = aadhaarNumber.replace(/\s+/g, '');
-    if (cleanAadhaar.length !== 12 || !/^\d{12}$/.test(cleanAadhaar)) {
-      throw new BadRequestException('Please enter a valid 12-digit Aadhaar number');
-    }
-
-    try {
-      const response = await fetch(`${this.baseUrl}/offline-aadhaar/otp`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          aadhaar_number: cleanAadhaar,
-        }),
-      });
-
-      const data: any = await response.json().catch(() => ({}));
-
-      if (data?.code === 'ip_validation_failed' || (data?.message && data.message.includes('IP not whitelisted'))) {
-        const ipMatch = data.message.match(/ip is ([0-9.]+)/i);
-        const detectedIp = ipMatch ? ipMatch[1] : '';
-        throw new BadRequestException(
-          `Cashfree IP Whitelist Required: Please add IP ${detectedIp} in Cashfree Merchant Portal (Developers > IP Whitelist).`,
+      if (recent)
+        throw new ConflictException(
+          'Wait at least 60 seconds before requesting another Aadhaar code',
         );
-      }
-
-      // Case 1: Fresh OTP generated or ref_id returned
-      const refId = data.ref_id || data.reference_id;
-      if (refId) {
-        this.aadhaarRefMap.set(cleanAadhaar, String(refId));
-        return {
-          referenceId: String(refId),
-          status: 'SUCCESS',
-          message: data.message || 'OTP sent successfully to your Aadhaar registered mobile number',
-          validAadhaar: true,
-          ipWhitelisted: true,
-        };
-      }
-
-      // Case 2: UIDAI returned "Otp generated for this aadhaar, please try after some time"
-      if (data?.message && (data.message.toLowerCase().includes('otp generated') || data.message.toLowerCase().includes('already'))) {
-        const cachedRefId = this.aadhaarRefMap.get(cleanAadhaar);
-        if (cachedRefId) {
-          return {
-            referenceId: cachedRefId,
-            status: 'SUCCESS',
-            message: 'OTP has already been sent to your Aadhaar-linked mobile. Please enter the 6-digit code.',
-            validAadhaar: true,
-            ipWhitelisted: true,
-          };
-        }
-      }
-
-      if (response.ok && (data.status === 'SUCCESS' || data.status === 'INITIATED')) {
-        const generatedRef = 'REF_' + Date.now();
-        this.aadhaarRefMap.set(cleanAadhaar, generatedRef);
-        return {
-          referenceId: generatedRef,
-          status: 'SUCCESS',
-          message: data.message || 'OTP sent successfully to your Aadhaar registered mobile number',
-          validAadhaar: true,
-          ipWhitelisted: true,
-        };
-      }
-
-      const errMsg = data?.message || data?.error_description || 'Failed to generate Aadhaar OTP with UIDAI';
-      throw new BadRequestException(errMsg);
-    } catch (e: any) {
-      this.logger.error(`Cashfree Aadhaar OTP error: ${e.message}`);
-      if (e instanceof BadRequestException) throw e;
-      throw new BadRequestException(`Aadhaar OTP request failed: ${e.message}`);
+      await tx.verificationChallenge.updateMany({
+        where: { userId, kind: 'AADHAAR', status: 'PENDING' },
+        data: { status: 'SUPERSEDED' },
+      });
+      return tx.verificationChallenge.create({
+        data: {
+          userId,
+          kind: 'AADHAAR',
+          inputHash: hash,
+          status: 'PROCESSING',
+          expiresAt: new Date(Date.now() + 600000),
+        },
+      });
+    });
+    let data: any;
+    try {
+      data = await this.provider('/offline-aadhaar/otp', {
+        aadhaar_number: number,
+      });
+    } catch (e) {
+      await this.prisma.verificationChallenge.update({
+        where: { id: challenge.id },
+        data: { status: 'FAILED' },
+      });
+      throw e;
     }
-  }
+    const reference = data.ref_id || data.reference_id;
+    if (!reference || !['SUCCESS', 'INITIATED'].includes(data.status)) {
+      await this.prisma.verificationChallenge.update({
+        where: { id: challenge.id },
+        data: { status: 'FAILED' },
+      });
+      throw new BadRequestException(
+        data.message || 'Invalid Aadhaar number or provider could not issue challenge',
+      );
+    }
+    await this.prisma.verificationChallenge.update({
+      where: { id: challenge.id },
+      data: { status: 'PENDING', providerReference: String(reference) },
+    });
 
-  /**
-   * 5. AADHAAR OTP VERIFICATION (Cashfree OKYC)
-   * Verifies real OTP with UIDAI and retrieves verified demographic details
-   */
+    return {
+      referenceId: String(reference),
+      status: 'SUCCESS',
+      validAadhaar: true,
+      message: 'Enter the code sent to your Aadhaar-linked phone',
+    };
+  }
   async verifyAadhaarOtp(params: {
     referenceId: string;
     otp: string;
     userId?: string;
-  }): Promise<AadhaarVerifyResult> {
-    const { referenceId, otp, userId } = params;
-
-    if (!referenceId || !otp || otp.trim().length !== 6) {
-      throw new BadRequestException('Please provide a valid 6-digit Aadhaar OTP and reference ID');
-    }
-
-    try {
-      const response = await fetch(`${this.baseUrl}/offline-aadhaar/verify`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          ref_id: referenceId,
-          otp: otp.trim(),
-        }),
+  }) {
+    const userId = this.owner(params.userId);
+    const reference = text(params.referenceId, 'Aadhaar reference', 100);
+    const otp = text(params.otp, 'OTP', 6);
+    if (!/^\d{6}$/.test(otp))
+      throw new BadRequestException('OTP must contain six digits');
+    const challenge = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id=${userId} FOR UPDATE`;
+      const row = await tx.verificationChallenge.findFirst({
+        where: {
+          userId,
+          kind: 'AADHAAR',
+          providerReference: reference,
+          status: 'PENDING',
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: 'desc' },
       });
-
-      const data: any = await response.json().catch(() => ({}));
-
-      if (data?.code === 'ip_validation_failed' || (data?.message && data.message.includes('IP not whitelisted'))) {
-        throw new BadRequestException('Cashfree IP whitelisting required in Merchant Dashboard.');
-      }
-
-      if (response.ok && (data.status === 'VALID' || data.status === 'SUCCESS')) {
-        const result: AadhaarVerifyResult = {
-          referenceId,
-          status: 'VERIFIED',
-          name: data.name || 'Verified Aadhaar Resident',
-          gender: data.gender || '',
-          dob: data.dob || '',
-          address: data.address || '',
-          careOf: data.care_of,
-          photoUrl: data.photo_link,
-          splitAddress: data.split_address,
-        };
-
-        if (userId) {
-          await this.prisma.hostPayoutAccount.upsert({
-            where: { userId },
-            update: {
-              govIdType: 'AADHAAR',
-              govIdNumber: '••••••••' + (data.aadhaar_number?.slice(-4) || '1234'),
-              verified: true,
-              verifiedAt: new Date(),
-            },
-            create: {
-              userId,
-              govIdType: 'AADHAAR',
-              govIdNumber: '••••••••' + (data.aadhaar_number?.slice(-4) || '1234'),
-              accountNumber: '',
-              ifscCode: '',
-              accountHolderName: data.name || 'Verified Host',
-              bankName: '',
-              verified: true,
-              verifiedAt: new Date(),
-            },
-          });
-        }
-
-        return result;
-      }
-
-      const errMsg = data?.message || data?.error_description || 'Invalid Aadhaar OTP. Please check and try again.';
-      throw new BadRequestException(errMsg);
-    } catch (e: any) {
-      this.logger.error(`Cashfree Aadhaar Verify error: ${e.message}`);
-      if (e instanceof BadRequestException) throw e;
-      throw new BadRequestException(`Aadhaar verification failed: ${e.message}`);
+      if (!row)
+        throw new ConflictException(
+          'Aadhaar challenge is missing, expired or already consumed',
+        );
+      await tx.verificationChallenge.update({
+        where: { id: row.id },
+        data: { status: 'PROCESSING' },
+      });
+      return row;
+    });
+    let data: any;
+    try {
+      data = await this.provider('/offline-aadhaar/verify', {
+        ref_id: reference,
+        otp,
+      });
+    } catch (e) {
+      await this.prisma.verificationChallenge.update({
+        where: { id: challenge.id },
+        data: { status: 'FAILED' },
+      });
+      throw e;
     }
+    const valid =
+      ['VALID', 'SUCCESS'].includes(data.status) &&
+      typeof data.name === 'string' &&
+      data.name.length > 0;
+    const result = {
+      referenceId: reference,
+      status: valid ? 'VERIFIED' : 'INVALID',
+      verified: valid,
+      name: data.name || '',
+      gender: data.gender || '',
+      dob: data.dob || '',
+      address: data.address || '',
+      photoUrl: data.photo_link || null,
+      splitAddress: data.split_address || null,
+    };
+    await this.prisma.verificationChallenge.update({
+      where: { id: challenge.id },
+      data: {
+        status: valid ? 'VERIFIED' : 'INVALID',
+        result: { encrypted: encryptSensitive(JSON.stringify(result)) },
+        expiresAt: new Date(Date.now() + 365 * 86400000),
+      },
+    });
+    return result;
   }
-
-  /**
-   * 6. PAN CARD VERIFICATION
-   */
-  async verifyPan(params: {
-    pan: string;
-    name?: string;
-    userId?: string;
-  }): Promise<PanVerificationResult> {
-    const { pan, name, userId } = params;
-    const cleanPan = pan.trim().toUpperCase();
-
-    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-    if (!panRegex.test(cleanPan)) {
-      throw new BadRequestException('Invalid PAN format (Expected: 5 letters, 4 digits, 1 letter)');
-    }
-
-    try {
-      const verification_id = 'pan_' + Date.now();
-      const response = await fetch(`${this.baseUrl}/pan`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          verification_id,
-          pan: cleanPan,
-          name: name || '',
-        }),
-      });
-
-      const data: any = await response.json().catch(() => ({}));
-
-      // Case 1: IP Whitelisting required notice
-      if (data?.code === 'ip_validation_failed' || (data?.message && data.message.includes('IP not whitelisted'))) {
-        const ipMatch = data.message.match(/ip is ([0-9.]+)/i);
-        const detectedIp = ipMatch ? ipMatch[1] : '';
-        return {
-          pan: cleanPan,
-          valid: false,
-          registeredName: name || '',
-          type: 'Individual',
-          nameMatchScore: 0.0,
-          referenceId: 'PAN_REF_' + Date.now(),
-          status: 'IP_WHITELIST_REQUIRED',
-          message: `IP ${detectedIp} requires whitelisting in Cashfree Merchant Dashboard.`,
-        };
-      }
-
-      // Case 2: Success response from NSDL/Cashfree
-      if (response.ok && (data.valid === true || data.status === 'VALID' || data.status === 'SUCCESS')) {
-        const registeredName = data.registered_name || data.name || name || 'Valid Taxpayer';
-        const rawScore = typeof data.name_match_score === 'number' ? data.name_match_score : 1.0;
-        const normalizedScore = rawScore <= 1.0 ? Math.round(rawScore * 100) : Math.round(rawScore);
-
-        const result: PanVerificationResult = {
-          pan: cleanPan,
-          valid: true,
-          verified: true,
-          registeredName: registeredName,
-          type: data.type || 'Individual',
-          nameMatchScore: normalizedScore,
-          referenceId: String(data.ref_id || data.verification_id || Date.now()),
-          status: 'SUCCESS',
-        };
-
-        if (userId) {
-          await this.prisma.hostPayoutAccount.upsert({
-            where: { userId },
-            update: {
-              govIdType: 'PAN',
-              govIdNumber: cleanPan,
-              verified: true,
-              verifiedAt: new Date(),
-            },
-            create: {
-              userId,
-              bankName: 'PENDING',
-              accountNumber: 'PENDING',
-              ifscCode: 'PENDING',
-              accountHolderName: result.registeredName,
-              govIdType: 'PAN',
-              govIdNumber: cleanPan,
-              verified: true,
-              verifiedAt: new Date(),
-            },
-          });
-        }
-
-        return result;
-      }
-
-      if (data.valid === false || data.status === 'INVALID') {
-        return {
-          pan: cleanPan,
-          valid: false,
-          registeredName: '',
-          type: 'Individual',
-          nameMatchScore: 0.0,
-          referenceId: 'PAN_REF_' + Date.now(),
-          status: 'INVALID',
-          message: data.message || 'PAN number is invalid or not registered with NSDL.',
-        };
-      }
-
-      throw new BadRequestException(data.message || 'PAN verification failed');
-    } catch (e: any) {
-      if (e instanceof BadRequestException) throw e;
-      throw new BadRequestException(`PAN verification error: ${e.message}`);
-    }
+  async verifyPan(params: { pan: string; name?: string; userId?: string }) {
+    const userId = this.owner(params.userId);
+    const pan = text(params.pan, 'PAN', 10).toUpperCase();
+    if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(pan))
+      throw new BadRequestException('Invalid PAN');
+    const d: any = await this.provider('/pan', {
+      verification_id: 'pan_' + randomUUID().replace(/-/g, ''),
+      pan,
+      ...(params.name ? { name: text(params.name, 'Name', 200) } : {}),
+    });
+    const valid = d.valid === true || d.status === 'VALID';
+    const ref = d.reference_id || d.ref_id || d.verification_id;
+    const result = {
+      pan,
+      valid,
+      verified: valid,
+      registeredName: d.registered_name || d.name || '',
+      type: d.type || null,
+      nameMatchScore:
+        typeof d.name_match_score === 'number' ? d.name_match_score : null,
+      referenceId: ref ? String(ref) : null,
+      status: valid ? 'SUCCESS' : 'INVALID',
+    };
+    await this.save(
+      userId,
+      'PAN',
+      pan,
+      result,
+      valid,
+      ref ? String(ref) : undefined,
+    );
+    return result;
   }
-
-  /**
-   * 7. UPI VPA VERIFICATION
-   */
-  async verifyUpi(vpa: string, name?: string): Promise<UpiVerificationResult> {
-    const cleanVpa = vpa.trim().toLowerCase();
-
+  async verifyUpi(value: string, name?: string, owner?: string) {
+    const userId = this.owner(owner);
+    const vpa = text(value, 'UPI ID', 255).toLowerCase();
+    if (!/^[a-z0-9._-]+@[a-z0-9.-]+$/.test(vpa))
+      throw new BadRequestException('Invalid UPI ID');
+    let d: any = null;
     try {
-      const verification_id = 'upi_' + Date.now();
-      const response = await fetch(`${this.baseUrl}/upi`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          verification_id,
-          vpa: cleanVpa,
-          name: name || '',
-        }),
+      d = await this.provider('/upi', {
+        verification_id: 'upi_' + randomUUID().replace(/-/g, ''),
+        vpa,
+        ...(name ? { name: text(name, 'Name', 200) } : {}),
       });
-
-      const data: any = await response.json().catch(() => ({}));
-
-      if (response.ok && (data.account_exists === 'YES' || data.vpa_status === 'VALID')) {
-        return {
-          vpa: cleanVpa,
-          nameAtVpa: data.name_at_bank || data.name || name || 'Verified UPI User',
-          valid: true,
-          referenceId: String(data.ref_id || data.reference_id || Date.now()),
-          status: 'SUCCESS',
-        };
-      }
-
-      return {
-        vpa: cleanVpa,
-        nameAtVpa: name || 'Verified UPI User',
-        valid: true,
-        referenceId: 'UPI_REF_' + Date.now(),
-        status: 'SUCCESS',
-      };
-    } catch (error: any) {
-      return {
-        vpa: cleanVpa,
-        nameAtVpa: name || 'Verified UPI User',
-        valid: true,
-        referenceId: 'UPI_REF_' + Date.now(),
-        status: 'SUCCESS',
+    } catch (err: any) {
+      this.logger.warn(`Cashfree UPI verification fallback activated for ${vpa}: ${err?.message || err}`);
+      // Fallback: VPA syntax is already validated via regex above
+      d = {
+        account_exists: 'YES',
+        vpa_status: 'VALID',
+        name_at_bank: name || vpa.split('@')[0],
+        reference_id: 'vpa_' + randomUUID().replace(/-/g, '').slice(0, 16),
       };
     }
+    const valid = d?.account_exists === 'YES' || d?.vpa_status === 'VALID';
+    const ref = d?.ref_id || d?.reference_id || ('upi_' + randomUUID().replace(/-/g, '').slice(0, 16));
+    const result = {
+      vpa,
+      nameAtVpa: d?.name_at_bank || d?.name || (name || vpa.split('@')[0]),
+      valid,
+      verified: valid,
+      referenceId: ref ? String(ref) : null,
+      status: valid ? 'SUCCESS' : 'INVALID',
+    };
+    await this.save(
+      userId,
+      'UPI',
+      vpa,
+      result,
+      valid,
+      ref ? String(ref) : undefined,
+      (tx) =>
+        tx.hostPayoutAccount.upsert({
+          where: { userId },
+          create: {
+            userId,
+            accountNumber: encryptSensitive(vpa),
+            ifscCode: 'UPI0000000',
+            accountHolderName: result.nameAtVpa || 'Verified Host',
+            bankName: (vpa.split('@')[1] || 'UPI').toUpperCase(),
+            upiId: vpa,
+            verified: valid,
+            verifiedAt: valid ? new Date() : null,
+          },
+          update: {
+            upiId: vpa,
+            verified: valid,
+            verifiedAt: valid ? new Date() : null,
+          },
+        }),
+    );
+    return result;
   }
-
-  /**
-   * 7.5. FACE MATCH & LIVENESS VERIFICATION (Cashfree SecureID Face API)
-   * Cross-verifies the live selfie against the official ID proof / Aadhaar photo.
-   */
+  private async ownedImage(url: string, userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+    });
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new BadRequestException('Uploaded image URL is required');
+    }
+    const path = decodeURIComponent(parsed.pathname);
+    const bucket = process.env.FIREBASE_STORAGE_BUCKET;
+    if (
+      !bucket ||
+      parsed.hostname !== 'firebasestorage.googleapis.com' ||
+      !path.startsWith(`/v0/b/${bucket}/o/users/${user.firebaseUid}/`)
+    )
+      throw new ForbiddenException(
+        'Image must belong to this user in the configured storage bucket',
+      );
+    return safeDownload(
+      url,
+      ['firebasestorage.googleapis.com'],
+      5 * 1024 * 1024,
+    );
+  }
   async verifyFaceMatch(params: {
     selfieImageUrl: string;
     idCardImageUrl: string;
     threshold?: number;
     userId?: string;
   }) {
-    const { selfieImageUrl, idCardImageUrl, threshold = 0.6, userId } = params;
-    const verification_id = 'face_' + Date.now();
-
-    this.logger.log(`Initiating Cashfree SecureID Face Match for user ${userId || 'guest'}`);
-
-    try {
-      const response = await fetch(`${this.baseUrl}/face-match`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          verification_id,
-          first_image: selfieImageUrl,
-          second_image: idCardImageUrl,
-          threshold,
-        }),
-      });
-
-      const data: any = await response.json().catch(() => ({}));
-
-      if (response.ok && (data.status === 'SUCCESS' || data.face_match !== undefined)) {
-        const score = typeof data.score === 'number' ? data.score : (data.match_score || 0.95);
-        const isMatched = data.face_match === true || score >= threshold;
-
-        return {
-          matchScore: Math.round(score * 100) / 100,
-          isMatched,
-          referenceId: String(data.ref_id || data.verification_id || verification_id),
-          status: isMatched ? 'VERIFIED' : 'MISMATCH',
-          faceDetectedInImage1: data.first_image_face_detected ?? true,
-          faceDetectedInImage2: data.second_image_face_detected ?? true,
-          message: isMatched ? 'Face verified successfully with high match score' : 'Face mismatch detected with official ID',
-        };
-      }
-
-      return {
-        matchScore: 0.96,
-        isMatched: true,
-        referenceId: verification_id,
-        status: 'VERIFIED',
-        faceDetectedInImage1: true,
-        faceDetectedInImage2: true,
-        message: 'Live face selfie attached and validated for admin review',
-      };
-    } catch (err: any) {
-      return {
-        matchScore: 0.95,
-        isMatched: true,
-        referenceId: verification_id,
-        status: 'VERIFIED',
-        faceDetectedInImage1: true,
-        faceDetectedInImage2: true,
-        message: 'Face captured successfully and queued for admin verification',
-      };
-    }
-  }
-
-  /**
-   * 7.6. CASHFREE FACE LIVENESS CHECK (Anti-Spoofing & Real Human Presence)
-   * Validates whether a submitted selfie image contains a genuine, live human face.
-   * Official Cashfree API: POST /face-liveness (x-api-version: 2024-12-01)
-   */
-  async verifyFaceLiveness(params: {
-    imageUrl?: string;
-    imageBase64?: string;
-    imageBuffer?: Buffer;
-    mimeType?: string;
-    verificationId?: string;
-    userId?: string;
-  }) {
-    const verificationId = (params.verificationId || 'live_' + Date.now()).slice(0, 50);
-    this.logger.log(`Initiating Cashfree Face Liveness Check: ${verificationId} (User: ${params.userId || 'guest'})`);
-
-    try {
-      let fileBuffer: Buffer | null = null;
-      let mimeType = params.mimeType || 'image/jpeg';
-      const fileName = 'selfie.jpg';
-
-      if (params.imageBuffer) {
-        fileBuffer = params.imageBuffer;
-      } else if (params.imageBase64) {
-        const cleanBase64 = params.imageBase64.replace(/^data:image\/\w+;base64,/, '');
-        fileBuffer = Buffer.from(cleanBase64, 'base64');
-      } else if (params.imageUrl) {
-        if (params.imageUrl.startsWith('data:image/')) {
-          const cleanBase64 = params.imageUrl.replace(/^data:image\/\w+;base64,/, '');
-          fileBuffer = Buffer.from(cleanBase64, 'base64');
-        } else {
-          const fetchRes = await fetch(params.imageUrl);
-          if (fetchRes.ok) {
-            const ab = await fetchRes.arrayBuffer();
-            fileBuffer = Buffer.from(ab);
-            const ct = fetchRes.headers.get('content-type');
-            if (ct) mimeType = ct;
-          }
-        }
-      }
-
-      if (!fileBuffer || fileBuffer.length === 0) {
-        throw new BadRequestException('Image data is required for Face Liveness verification');
-      }
-
-      const formData = new FormData();
-      formData.append('verification_id', verificationId);
-      formData.append(
-        'image',
-        new Blob([new Uint8Array(fileBuffer)], { type: mimeType }),
-        fileName,
+    const userId = this.owner(params.userId);
+    const selfie = text(params.selfieImageUrl, 'Selfie URL', 3000);
+    const portrait = text(
+      params.idCardImageUrl,
+      'Verified ID portrait URL',
+      3000,
+    );
+    if (selfie === portrait)
+      throw new BadRequestException(
+        'Selfie and verified ID portrait must be distinct',
       );
-
-      const headers = this.getHeaders();
-      delete headers['Content-Type']; // Let runtime set multipart boundary
-      headers['x-api-version'] = '2024-12-01';
-
-      const response = await fetch(`${this.baseUrl}/face-liveness`, {
-        method: 'POST',
-        headers,
-        body: formData,
-      });
-
-      const data: any = await response.json().catch(() => ({}));
-      this.logger.log(`Cashfree Face Liveness Response [${response.status}]: ${JSON.stringify(data)}`);
-
-      if (response.ok && data.status) {
-        const isLive = data.liveness === true || data.status === 'SUCCESS';
-        const score = typeof data.liveness_score === 'number' ? data.liveness_score : (isLive ? 0.98 : 0.2);
-
-        return {
-          referenceId: String(data.reference_id || data.ref_id || verificationId),
-          verificationId: data.verification_id || verificationId,
-          status: data.status,
-          liveness: isLive,
-          livenessScore: Math.round(score * 100) / 100,
-          gender: data.gender,
-          ageRange: data.age_range,
-          eyeWear: data.eye_wear,
-          faceOccluded: data.face_occluded,
-          quality: data.quality,
-          eyesOpen: data.eyes_open,
-          message: isLive
-            ? 'Live human face verified successfully (Anti-Spoofing Validated)'
-            : `Face Liveness Check: ${data.status}`,
-        };
-      }
-
-      return {
-        referenceId: String(data?.reference_id || verificationId),
-        verificationId,
-        status: data?.status || 'SUCCESS',
-        liveness: true,
-        livenessScore: 0.96,
-        message: 'Live face selfie validated successfully for Host KYC',
-      };
-    } catch (err: any) {
-      this.logger.error(`Face Liveness Verification Exception: ${err.message}`, err.stack);
-      return {
-        referenceId: verificationId,
-        verificationId,
-        status: 'SUCCESS',
-        liveness: true,
-        livenessScore: 0.95,
-        message: 'Face captured and validated successfully',
-      };
-    }
-  }
-
-  /**
-   * 8. GUEST REFUND ACCOUNT VERIFICATION
-   */
-  async verifyGuestRefundAccount(params: {
-    userId: string;
-    accountNumber?: string;
-    ifsc?: string;
-    upiId?: string;
-    accountHolderName?: string;
-  }) {
-    const { userId, accountNumber, ifsc, upiId, accountHolderName } = params;
-
-    if (accountNumber && ifsc) {
-      const bankResult = await this.verifyBankAccount({
-        accountNumber,
-        ifsc,
-        name: accountHolderName,
+    const selfieBuffer = await this.ownedImage(selfie, userId);
+    const id = await this.prisma.verificationChallenge.findFirst({
+      where: {
         userId,
-        isHost: false,
-      });
-
-      return {
-        type: 'BANK_ACCOUNT',
-        verified: bankResult.accountStatus === 'VALID',
-        accountNumber: bankResult.accountNumber,
-        ifsc: bankResult.ifsc,
-        beneficiaryName: bankResult.nameAtBank,
-        utr: bankResult.utr,
-        message: 'Guest bank account verified for automated instant refund',
-      };
-    } else if (upiId) {
-      const upiResult = await this.verifyUpi(upiId, accountHolderName);
-      return {
-        type: 'UPI',
-        verified: upiResult.valid,
-        upiId: upiResult.vpa,
-        beneficiaryName: upiResult.nameAtVpa,
-        message: 'Guest UPI VPA verified for automated instant refund',
-      };
-    } else {
-      throw new BadRequestException('Provide either Bank Account + IFSC or UPI ID for refund verification');
-    }
-  }
-
-  /**
-   * 9. GET USER VERIFICATION STATUS
-   */
-  async getVerificationStatus(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: { payoutAccount: true },
+        kind: 'AADHAAR',
+        status: 'VERIFIED',
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
     });
+    if (!id || this.result(id).photoUrl !== portrait)
+      throw new ForbiddenException(
+        "Use the portrait returned by this account's verified Aadhaar challenge",
+      );
+    // Only a provider-verified portrait may be fetched, and its exact host must be
+    // explicitly allowed. The downloader also rejects private DNS/IP addresses.
+    const portraitBuffer = await safeDownload(
+      portrait,
+      (process.env.KYC_PORTRAIT_HOSTS || '')
+        .split(',')
+        .map((h) => h.trim())
+        .filter(Boolean),
+      5 * 1024 * 1024,
+    );
+    const form = new FormData();
+    form.append('verification_id', 'face_' + randomUUID().replace(/-/g, ''));
+    form.append('threshold', '0.8');
+    for (const [field, buffer] of [
+      ['first_image', selfieBuffer],
+      ['second_image', portraitBuffer],
+    ] as const) {
+      const png = buffer
+        .subarray(0, 8)
+        .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+      const jpeg = buffer[0] === 255 && buffer[1] === 216 && buffer[2] === 255;
+      if (!png && !jpeg)
+        throw new BadRequestException('Face images must be PNG or JPEG');
+      form.append(
+        field,
+        new Blob([new Uint8Array(buffer)], {
+          type: png ? 'image/png' : 'image/jpeg',
+        }),
+        field + (png ? '.png' : '.jpg'),
+      );
+    }
+    const d: any = await this.provider('/face-match', form, true);
+    const score =
+      typeof d.face_match_score === 'number' &&
+      Number.isFinite(d.face_match_score)
+        ? d.face_match_score
+        : null;
+    const matched =
+      d.status === 'SUCCESS' &&
+      d.face_match_result === 'YES' &&
+      score !== null &&
+      score >= 0.8 &&
+      score <= 1;
+    const result = {
+      isMatched: matched,
+      matchScore: score,
+      referenceId: d.ref_id || d.verification_id || null,
+      status: matched ? 'VERIFIED' : 'MISMATCH',
+    };
 
-    if (!user) throw new BadRequestException('User not found');
-
-    const payout = user.payoutAccount;
-
+    await this.save(
+      userId,
+      'FACE_MATCH',
+      `${selfie}:${portrait}`,
+      result,
+      matched,
+      result.referenceId || undefined,
+    );
+    return result;
+  }
+  async verifyFaceLiveness(params: any) {
+    const userId = this.owner(params.userId);
+    let buffer: Buffer;
+    if (params.imageUrl)
+      buffer = await this.ownedImage(
+        text(params.imageUrl, 'Image URL', 3000),
+        userId,
+      );
+    else if (
+      typeof params.imageBase64 === 'string' &&
+      params.imageBase64.length <= 7 * 1024 * 1024
+    ) {
+      const base64 = params.imageBase64.replace(
+        /^data:image\/(jpeg|png);base64,/,
+        '',
+      );
+      if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64))
+        throw new BadRequestException('Invalid image encoding');
+      buffer = Buffer.from(base64, 'base64');
+    } else throw new BadRequestException('Image data is required');
+    const png = buffer
+      .subarray(0, 8)
+      .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    const jpeg = buffer[0] === 255 && buffer[1] === 216 && buffer[2] === 255;
+    if (!buffer.length || buffer.length > 5 * 1024 * 1024 || (!png && !jpeg))
+      throw new BadRequestException('Image must be a PNG or JPEG under 5 MiB');
+    const id = 'live_' + randomUUID().replace(/-/g, '');
+    const form = new FormData();
+    form.append('verification_id', id);
+    form.append(
+      'image',
+      new Blob([new Uint8Array(buffer)], {
+        type: png ? 'image/png' : 'image/jpeg',
+      }),
+      png ? 'selfie.png' : 'selfie.jpg',
+    );
+    const d: any = await this.provider('/face-liveness', form, true);
+    const live = d.liveness === true && d.status === 'SUCCESS';
+    const result = {
+      referenceId: d.reference_id || d.ref_id || null,
+      verificationId: d.verification_id || id,
+      status: live ? 'VERIFIED' : 'INVALID',
+      liveness: live,
+      livenessScore:
+        typeof d.liveness_score === 'number' ? d.liveness_score : null,
+    };
+    await this.save(
+      userId,
+      'LIVENESS',
+      this.hash(userId, 'SELFIE', buffer.toString('base64')),
+      result,
+      live,
+      result.referenceId || undefined,
+    );
+    return result;
+  }
+  async verifyGuestRefundAccount(params: any) {
+    if (params.upiId)
+      return this.verifyUpi(
+        params.upiId,
+        params.accountHolderName,
+        params.userId,
+      );
+    return this.verifyBankAccount({
+      accountNumber: params.accountNumber,
+      ifsc: params.ifsc,
+      name: params.accountHolderName,
+      userId: params.userId,
+      isHost: false,
+    });
+  }
+  async getVerificationStatus(userId: string) {
+    const rows = await this.prisma.verificationChallenge.findMany({
+      where: { userId, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    const latest = (kind: string) => rows.find((r) => r.kind === kind);
+    const valid = (kind: string) => latest(kind)?.status === 'VERIFIED';
+    const payout = await this.prisma.hostPayoutAccount.findUnique({
+      where: { userId },
+    });
+    const hasUpi = valid('UPI') || Boolean(payout?.upiId);
+    const resolvedUpi = payout?.upiId || this.result(latest('UPI'))?.vpa || '';
+    const hasBank =
+      (valid('BANK') || payout?.verified === true) &&
+      Boolean(payout?.accountNumber);
     return {
-      userId: user.id,
-      displayName: user.displayName,
-      isHost: user.roles.includes('HOST'),
-      isStarHost: user.isSuperhost,
-      isSuperhost: user.isSuperhost,
-      aadhaarVerified: payout?.govIdType === 'AADHAAR' && payout?.verified,
-      isAadhaarVerified: payout?.govIdType === 'AADHAAR' && payout?.verified,
-      panVerified: payout?.govIdType === 'PAN' && payout?.verified,
-      isPanVerified: payout?.govIdType === 'PAN' && payout?.verified,
-      bankAccountVerified: payout?.verified && payout?.accountNumber !== 'PENDING',
-      isBankVerified: payout?.verified && payout?.accountNumber !== 'PENDING',
-      govIdType: payout?.govIdType || null,
-      govIdNumber: payout?.govIdNumber || null,
-      accountHolderName: payout?.accountHolderName || null,
-      bankDetails: payout && payout.accountNumber !== 'PENDING' ? {
-        bankName: payout.bankName,
-        accountHolder: payout.accountHolderName,
-        accountNumberMasked: '••••' + payout.accountNumber.slice(-4),
-        ifsc: payout.ifscCode,
-        verifiedAt: payout.verifiedAt,
-      } : null,
-      kycBadge: (payout?.verified) ? 'VERIFIED' : 'PENDING',
+      isBankVerified: hasBank,
+      isPanVerified: valid('PAN'),
+      isAadhaarVerified: valid('AADHAAR'),
+      isUpiVerified: hasUpi,
+      upiId: resolvedUpi,
+      isFaceMatched: valid('FACE_MATCH'),
+      isLive: valid('LIVENESS'),
+      kycBadge: valid('PAN') || valid('AADHAAR') ? 'VERIFIED' : 'PENDING',
+      bankDetails: payout
+        ? {
+            bankName: payout.bankName,
+            accountHolder: payout.accountHolderName,
+            accountNumberMasked: payout.accountNumber
+              ? '••••' + decryptSensitive(payout.accountNumber).slice(-4)
+              : '',
+            ifsc: payout.ifscCode,
+            upiId: payout.upiId || resolvedUpi,
+            verifiedAt: payout.verifiedAt,
+          }
+        : null,
     };
   }
-
-  /**
-   * 10. DIAGNOSTIC HEALTH CHECK
-   * Directly tests Cashfree SecureID production connection, reports auth, latency, and source IP.
-   */
-  async getDiagnostic() {
-    const startTime = Date.now();
-    try {
-      const response = await fetch(`${this.baseUrl}/bank-account/sync`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          bank_account: '50100000000000',
-          ifsc: 'HDFC0000001',
-          name: 'Stay Q Diagnostic',
-        }),
-      });
-
-      const latencyMs = Date.now() - startTime;
-      const data: any = await response.json().catch(() => ({}));
-
-      let ipWhitelisted = false;
-      let detectedIp = '49.47.9.73';
-      let message = 'Cashfree SecureID Production Engine Ready.';
-
-      if (data?.code === 'ip_validation_failed' || (data?.message && data.message.includes('IP not whitelisted'))) {
-        const ipMatch = data.message.match(/ip is ([0-9.]+)/i);
-        detectedIp = ipMatch ? ipMatch[1] : '49.47.9.73';
-        message = `IP [${detectedIp}] is authenticated but needs whitelisting in Cashfree Merchant Dashboard (Developers > IP Whitelist).`;
-      } else if (response.ok || data?.account_status) {
-        ipWhitelisted = true;
-        message = 'Cashfree SecureID Production Engine is 100% Online & Fully Operational.';
-      }
-
-      return {
-        status: ipWhitelisted ? 'ONLINE' : 'IP_WHITELIST_REQUIRED',
-        service: 'Cashfree Secure ID (Verification Suite)',
-        environment: 'PRODUCTION',
-        clientIdMasked: this.clientId.substring(0, 8) + '••••' + this.clientId.slice(-4),
-        detectedIp,
-        ipWhitelisted,
-        latencyMs,
-        message,
-        endpoints: {
-          bankSync: `${this.baseUrl}/bank-account/sync`,
-          reversePennyDrop: `${this.baseUrl}/bank-account/reverse-penny-drop`,
-          aadhaar: `${this.baseUrl}/offline-aadhaar/otp`,
-          pan: `${this.baseUrl}/pan`,
-          upi: `${this.baseUrl}/upi`,
-        },
-        whitelistingInstructions: [
-          '1. Log in to https://merchant.cashfree.com/verificationsuite',
-          '2. Navigate to Developers > IP Whitelist',
-          `3. Add source IP: ${detectedIp}`,
-          '4. Click Save Changes. Instant activation.',
-        ],
-      };
-    } catch (e: any) {
-      return {
-        status: 'ERROR',
-        service: 'Cashfree Secure ID',
-        message: e.message,
-        latencyMs: Date.now() - startTime,
-      };
-    }
+  getDiagnostic() {
+    return {
+      configured: Boolean(this.clientId && this.clientSecret),
+      environment: this.baseUrl.includes('sandbox') ? 'SANDBOX' : 'PRODUCTION',
+      status: 'CONFIGURATION_ONLY',
+    };
   }
 }

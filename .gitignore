@@ -1,38 +1,35 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-
-# Flutter / Dart
+# Flutter and local IDE/build output
 .dart_tool/
+.packages
 .flutter-plugins
 .flutter-plugins-dependencies
-.pub-cache/
-.pub/
-# pubspec.lock  <-- We want to track this for reproducible CI builds
-/build/
-/coverage/
+build/
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+android/local.properties
+android/.gradle/
+android/.kotlin/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
 
-# Node / Next.js / Web
+# Private signing material
+android/key.properties
+*.jks
+*.keystore
+
+# Node / Subprojects build & secrets
 node_modules/
 **/node_modules/
 .next/
 **/.next/
 dist/
 **/dist/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Secrets & Environment
 .env
 .env*
 *.env
@@ -40,28 +37,19 @@ yarn-error.log*
 .firebase/
 *firebase-adminsdk*.json
 *service-account*.json
-
-# Android / iOS build artifacts
 *.apk
 *.aab
 *.ipa
-/android/app/debug/
-/android/app/profile/
-/android/app/release/
-/ios/Pods/
-/ios/.symlinks/
-/ios/Flutter/Flutter.framework
-/ios/Flutter/Flutter.podspec
-/ios/Flutter/Generated.xcconfig
-/ios/Flutter/app.flx
-/ios/Flutter/app.zip
-/ios/Flutter/flutter_assets/
-/ios/ServiceDefinitions.json
-/ios/Runner/GeneratedPluginRegistrant.*
+*.zip
+*.log
 
-# IDEs
-.idea/
-.vscode/
-*.iml
-*.ipr
-*.iws
+# Local temporary screenshots & debug backups in root
+/*.png
+backend_old_backup/
+__pycache__/
+*.bak
+/rename_brand.js
+/test_conv.js
+/tools/
+
+

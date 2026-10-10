@@ -33,7 +33,9 @@ export class AdminUsersController {
   constructor(private readonly adminUsers: AdminUsersService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List admin accounts, or non-admin accounts when isAdmin=false' })
+  @ApiOperation({
+    summary: 'List admin accounts, or non-admin accounts when isAdmin=false',
+  })
   list(@Query() query: AdminUserQueryDto) {
     return this.adminUsers.list(query);
   }
@@ -58,7 +60,9 @@ export class AdminUsersController {
 
   @Post(':id/access')
   @AdminRoles(AdminRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Grant admin access to an account (SUPER_ADMIN only)' })
+  @ApiOperation({
+    summary: 'Grant admin access to an account (SUPER_ADMIN only)',
+  })
   grant(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: GrantAdminAccessDto,

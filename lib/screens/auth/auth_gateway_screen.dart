@@ -47,7 +47,7 @@ class AuthGatewayScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 40),
                   const Text(
-                    'Welcome to Stay Q',
+                    'Welcome to StayQ',
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                     textAlign: TextAlign.center,
                   ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.5),
@@ -123,12 +123,16 @@ class AuthGatewayScreen extends StatelessWidget {
                       children: [
                         Icon(Icons.home_work_outlined, size: 18, color: AppColors.primary),
                         SizedBox(width: 6),
-                        Text(
-                          'List your property on Stay Q (Host Login)',
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
+                        Flexible(
+                          child: Text(
+                            'List your property on StayQ (Host Login)',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],

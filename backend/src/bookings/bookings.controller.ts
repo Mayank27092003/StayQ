@@ -1,4 +1,17 @@
-import { Controller, Post, Body, Param, Patch, Get, Query, UseGuards } from '@nestjs/common';
+import { isOperationsAdmin } from '../common/authorization.util';
+import {
+  Controller,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Get,
+  Query,
+  UseGuards,
+  Headers,
+  Put,
+  Delete,
+} from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -13,24 +26,56 @@ export class BookingsController {
     return this.bookingsService.getQuote(quoteDto);
   }
 
+  @Post('validate-coupon')
+  validateCoupon(
+    @CurrentUser() user: any,
+    @Body() body: { code: string; propertyId: string; subtotal: number },
+  ) {
+    return this.bookingsService.validateCoupon(
+      body.code,
+      body.propertyId,
+      Number(body.subtotal),
+      user?.id,
+    );
+  }
+
   @Post()
-  createBooking(@CurrentUser() user: any, @Body() createBookingDto: any) {
-    createBookingDto.guestId = user.id;
-    return this.bookingsService.createBooking(createBookingDto);
+  createBooking(
+    @CurrentUser() user: any,
+    @Body() dto: any,
+    @Headers('idempotency-key') key?: string,
+  ) {
+    return this.bookingsService.createBooking({
+      ...dto,
+      guestId: user.id,
+      idempotencyKey: key || dto.idempotencyKey,
+    });
   }
 
   @Patch(':id/cancel')
-  cancelBooking(@CurrentUser() user: any, @Param('id') id: string, @Body('reason') reason: string) {
+  cancelBooking(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+  ) {
     return this.bookingsService.cancelBooking(id, reason, user);
   }
 
   @Patch(':id/host-respond')
-  hostRespond(@CurrentUser() user: any, @Param('id') id: string, @Body('accept') accept: boolean) {
+  hostRespond(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body('accept') accept: boolean,
+  ) {
     return this.bookingsService.hostRespond(id, accept, user);
   }
 
   @Patch(':id/status')
-  updateStatus(@CurrentUser() user: any, @Param('id') id: string, @Body('status') status: string) {
+  updateStatus(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
     return this.bookingsService.updateStatus(id, status, user);
   }
 
@@ -49,8 +94,44 @@ export class BookingsController {
   }
 
   @Post(':id/cancel')
-  postCancelBooking(@CurrentUser() user: any, @Param('id') id: string, @Body('reason') reason: string) {
-    return this.bookingsService.cancelBooking(id, reason || 'Guest requested cancellation', user);
+  postCancelBooking(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+  ) {
+    return this.bookingsService.cancelBooking(
+      id,
+      reason || 'Guest requested cancellation',
+      user,
+    );
+  }
+
+  @Get('my-bookings')
+  myBookings(@CurrentUser() user: any) {
+    return this.bookingsService.findByGuestId(user.id);
+  }
+
+  @Get('host-bookings')
+  hostBookings(@CurrentUser() user: any) {
+    return this.bookingsService.findByHostId(user.id);
+  }
+
+  @Put(':id/status')
+  putStatus(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
+    return this.bookingsService.updateStatus(id, status, user);
+  }
+
+  @Delete(':id')
+  deleteBooking(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.bookingsService.cancelBooking(
+      id,
+      'Guest requested cancellation',
+      user,
+    );
   }
 
   @Get(':id')
@@ -59,9 +140,13 @@ export class BookingsController {
   }
 
   @Get()
-  findAll(@CurrentUser() user: any, @Query('adminView') adminView?: string, @Query('guestId') guestId?: string) {
+  findAll(
+    @CurrentUser() user: any,
+    @Query('adminView') adminView?: string,
+    @Query('guestId') guestId?: string,
+  ) {
     // If not admin, strictly scope queries to the authenticated user's own bookings
-    if (!user?.isAdmin) {
+    if (!isOperationsAdmin(user)) {
       return this.bookingsService.findByGuestId(user.id);
     }
     if (guestId) {

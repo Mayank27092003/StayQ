@@ -34,7 +34,8 @@ export class CreatePromotionDto {
   @IsString()
   @MaxLength(40)
   @Matches(/^[A-Z0-9][A-Z0-9_-]*$/, {
-    message: 'code must contain only uppercase letters, digits, hyphens, and underscores',
+    message:
+      'code must contain only uppercase letters, digits, hyphens, and underscores',
   })
   code!: string;
 

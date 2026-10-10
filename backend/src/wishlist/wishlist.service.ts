@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { publicProperty } from '../properties/property-view.util';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -6,51 +7,37 @@ export class WishlistService {
   constructor(private readonly prisma: PrismaService) {}
 
   async add(userId: string, propertyId: string) {
-    const existing = await this.prisma.wishlist.findUnique({
-      where: {
-        userId_propertyId: {
-          userId,
-          propertyId,
-        }
-      }
+    const p = await this.prisma.property.findUnique({
+      where: { id: propertyId },
+      select: { status: true },
     });
-
-    if (existing) {
-      throw new ConflictException('Property already in wishlist');
-    }
-
-    return this.prisma.wishlist.create({
-      data: {
-        userId,
-        propertyId,
-      },
+    if (!p || p.status !== 'ACTIVE')
+      throw new NotFoundException('Published property not found');
+    return this.prisma.wishlist.upsert({
+      where: { userId_propertyId: { userId, propertyId } },
+      create: { userId, propertyId },
+      update: {},
     });
   }
 
   async remove(userId: string, propertyId: string) {
-    try {
-      return await this.prisma.wishlist.delete({
-        where: {
-          userId_propertyId: {
-            userId,
-            propertyId,
-          }
-        }
-      });
-    } catch (e) {
-      throw new NotFoundException('Wishlist item not found');
-    }
+    await this.prisma.wishlist.deleteMany({ where: { userId, propertyId } });
+    return { success: true };
   }
 
   async findAll(userId: string) {
-    return this.prisma.wishlist.findMany({
-      where: { userId },
-      include: {
+    const rows = await this.prisma.wishlist.findMany({
+      where: {
+        userId,
         property: {
-          include: { images: { take: 1, orderBy: { order: 'asc' } } }
-        }
+          status: 'ACTIVE',
+          host: { deletedAt: null, hostStatus: { not: 'SUSPENDED' } },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      include: { property: { include: { images: true, host: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
     });
+    return rows.map((r) => ({ ...r, property: publicProperty(r.property) }));
   }
 }

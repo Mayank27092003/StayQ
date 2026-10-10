@@ -1,7 +1,9 @@
+import '../../services/api/api_client.dart';
+import '../../models/json_values.dart';
 import 'dart:convert';
+import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../config/app_config.dart';
@@ -20,13 +22,12 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  static const String _apiBaseUrl = 'https://stayq-api-608570851336.asia-south1.run.app/api/v1';
 
   // Chat State
   final List<Map<String, dynamic>> _messages = [
     {
       'sender': 'ai',
-      'text': '👋 Hi! I\'m Qube, your Stay Q 24/7 AI Concierge & Support Specialist.\n\nI can instantly resolve cancellations, refund questions, keybox access, zero-broker leases, or connect you directly with a Senior Support Executive.',
+      'text': '👋 Hi! I\'m Qube, your StayQ 24/7 AI Concierge & Support Specialist.\n\nI can instantly resolve cancellations, refund questions, keybox access, zero-broker leases, or connect you directly with a Senior Support Executive.',
       'time': 'Just now',
     },
   ];
@@ -42,7 +43,10 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
   final TextEditingController _issueController = TextEditingController();
   String _urgency = 'HIGH';
   bool _isSubmittingTicket = false;
+  String? _ticketSelection;
+  String? _ticketRequestKey;
   Map<String, dynamic>? _createdTicket;
+  int _userMessageCount = 0;
 
   // Active Tickets State
   List<dynamic> _myTickets = [];
@@ -82,7 +86,7 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
       'prompts': [
         'My host has not responded for more than 1 hour',
         'I have reached the property location but host is unreachable',
-        'Need emergency dispatch from Stay Q team',
+        'Need emergency dispatch from StayQ team',
       ],
     },
     {
@@ -174,9 +178,10 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
     _chatController.clear();
     _scrollToBottom();
 
-    // Check if user requested human agent
+    _userMessageCount++;
+    // Check if user requested human agent (only permitted after 3+ exchanges with AI)
     final lower = text.toLowerCase();
-    if (lower.contains('agent') || lower.contains('human') || lower.contains('executive') || lower.contains('call me')) {
+    if ((lower.contains('agent') || lower.contains('human') || lower.contains('executive') || lower.contains('call me')) && _userMessageCount >= 3) {
       if (_issueController.text.isEmpty) {
         _issueController.text = text;
       }
@@ -186,7 +191,7 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
           _isAiTyping = false;
           _messages.add({
             'sender': 'ai',
-            'text': '🤝 Absolutely! I will connect you with a Senior Support Executive right away.\n\nOpening Priority Ticket dispatch with your chat transcript attached...',
+            'text': 'Connecting you with our senior support desk. Please review your issue details in the escalation form.',
             'time': 'Just now',
           });
         });
@@ -197,21 +202,13 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
     }
 
     try {
-      final response = await http.post(
-        Uri.parse('$_apiBaseUrl/support/ai-triage'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'message': text,
-          'topic': _selectedTopic,
-          'chatHistory': _messages
-              .where((m) => m['sender'] == 'user' || m['sender'] == 'ai')
-              .map((m) => {'role': m['sender'] == 'user' ? 'user' : 'assistant', 'content': m['text']})
-              .toList(),
-        }),
-      );
+      final data = await ApiClient.instance.post('/support/ai-triage', body: {
+        'message': text, 'topic': _selectedTopic,
+        'chatHistory': _messages.where((m) => m['sender'] == 'user' || m['sender'] == 'ai')
+          .map((m) => {'role': m['sender'] == 'user' ? 'user' : 'assistant', 'content': m['text']}).toList(),
+      });
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      if (data is Map && data['reply'] is String) {
         if (mounted) {
           setState(() {
             _messages.add({
@@ -229,7 +226,7 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
         setState(() {
           _messages.add({
             'sender': 'ai',
-            'text': '✨ Thank you! If you need urgent assistance, tap "Transfer to Agent" above and our operations team will call or WhatsApp you directly.',
+            'text': 'Support chat is temporarily unavailable. Tap "Transfer to Agent" to submit a support request.',
             'time': 'Just now',
           });
         });
@@ -255,115 +252,48 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
   }
 
   // Create Support Ticket in Database
-  Future<void> _createSupportTicket() async {
-    final name = _nameController.text.trim();
-    final email = _emailController.text.trim();
-    final phone = _phoneController.text.trim();
-
-    if (name.isEmpty || email.isEmpty || phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your name, email, and phone number.')),
-      );
-      return;
+  Future<bool> _createSupportTicket() async {
+    if (_isSubmittingTicket) return false;
+    final name = _nameController.text.trim(); final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim(); final issue = _issueController.text.trim();
+    if (name.isEmpty || !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email) || phone.isEmpty || issue.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter your name, email, phone, and issue.'))); return false;
     }
-
-    setState(() => _isSubmittingTicket = true);
-
+    final selection = jsonEncode([name, email, phone, issue, _selectedTopic, _urgency]);
+    if (_ticketSelection != selection) {
+      _ticketSelection = selection;
+      _ticketRequestKey = 'ticket:${DateTime.now().microsecondsSinceEpoch}:${Random.secure().nextInt(1 << 32)}';
+    }
+    setState(() { _isSubmittingTicket = true; _createdTicket = null; });
     try {
-      final provider = Provider.of<AppProvider>(context, listen: false);
-      String? token;
-      try {
-        token = await FirebaseAuth.instance.currentUser?.getIdToken();
-      } catch (_) {}
-
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-      };
-
-      final response = await http.post(
-        Uri.parse('$_apiBaseUrl/support/tickets'),
-        headers: headers,
-        body: jsonEncode({
-          'name': name,
-          'email': email,
-          'phone': phone,
-          'userId': provider.userId,
-          'subject': _issueController.text.isNotEmpty ? _issueController.text : '${_selectedTopic ?? "General"} Support Request',
-          'message': _issueController.text.isNotEmpty ? _issueController.text : 'Customer escalated to human agent via Stay Q App.',
-          'category': _selectedTopic ?? 'General Support',
-          'priority': _urgency,
-          'chatTranscript': _messages.map((m) => {'sender': m['sender'], 'text': m['text']}).toList(),
-        }),
-      );
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (mounted) {
-          setState(() {
-            _createdTicket = data;
-          });
-          _fetchTickets();
-        }
-      } else {
-        // Fallback optimistic reference
-        final ref = 'SQ-TICKET-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-        if (mounted) {
-          setState(() {
-            _createdTicket = {
-              'ticketRef': ref,
-              'name': name,
-              'phone': phone,
-              'status': 'OPEN',
-            };
-          });
-        }
-      }
-    } catch (_) {
-      final ref = 'SQ-TICKET-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-      if (mounted) {
-        setState(() {
-          _createdTicket = {
-            'ticketRef': ref,
-            'name': name,
-            'phone': phone,
-            'status': 'OPEN',
-          };
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSubmittingTicket = false);
-      }
-    }
+      final response = jsonMap(await ApiClient.instance.post('/support/tickets', idempotencyKey: _ticketRequestKey, body: {
+        'name': name, 'email': email, 'phone': phone, 'subject': issue, 'message': issue,
+        'category': _selectedTopic ?? 'General Support', 'priority': _urgency,
+        'chatTranscript': _messages.map((m) => {'sender': m['sender'], 'text': m['text']}).toList(),
+      }));
+      final ticket = response['ticket'] is Map ? jsonMap(response['ticket']) : response;
+      if (ticket['ticketRef']?.toString().isNotEmpty != true) throw const FormatException('The server did not return a ticket reference.');
+      if (!mounted) return false;
+      setState(() => _createdTicket = ticket);
+      _ticketSelection = null; _ticketRequestKey = null;
+      await _fetchTickets(); return true;
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ticket was not confirmed: $e'))); return false; }
+    finally { if (mounted) setState(() => _isSubmittingTicket = false); }
   }
 
   // Fetch Active Tickets
   Future<void> _fetchTickets() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) return;
-
+    if (!context.read<AppProvider>().isLoggedIn) return;
     setState(() => _isLoadingTickets = true);
-
     try {
-      final response = await http.get(Uri.parse('$_apiBaseUrl/support/tickets?email=${Uri.encodeComponent(email)}'));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (mounted) {
-          setState(() {
-            _myTickets = data is List ? data : [];
-          });
-        }
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _myTickets = []);
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoadingTickets = false);
-      }
-    }
+      // The authenticated server must derive ticket ownership from the token.
+      final data = await ApiClient.instance.get('/support/tickets');
+      if (!mounted) return;
+      final tickets = data is List ? data : jsonMap(data)['tickets'];
+      if (tickets is! List) throw const FormatException('Invalid tickets response.');
+      setState(() => _myTickets = tickets);
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+    finally { if (mounted) setState(() => _isLoadingTickets = false); }
   }
 
   @override
@@ -523,22 +453,23 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
             ),
           ),
 
-        // Handover Quick Strip
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: Colors.white,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Issue not resolved by AI?', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-              TextButton.icon(
-                onPressed: _showEscalationSheet,
-                icon: const Icon(Icons.headset_mic_rounded, size: 16),
-                label: const Text('Escalate to Senior Agent', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-              ),
-            ],
+        // Handover Quick Strip - only available after 3+ interactions with AI
+        if (_userMessageCount >= 3)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.white,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Still need human assistance?', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                TextButton.icon(
+                  onPressed: _showEscalationSheet,
+                  icon: const Icon(Icons.headset_mic_rounded, size: 16),
+                  label: const Text('Escalate to Senior Agent', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
           ),
-        ),
 
         // Message Input
         Container(
@@ -779,7 +710,8 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                                   : () async {
                                       final messenger = ScaffoldMessenger.of(context);
                                       setModalState(() {});
-                                      await _createSupportTicket();
+                                      final accepted = await _createSupportTicket();
+                                      if (!accepted) return;
                                       if (modalContext.mounted) {
                                         Navigator.pop(modalContext);
                                       }
@@ -870,7 +802,7 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.white,
-                    hintText: 'Enter email to track tickets...',
+                    hintText: 'Tickets belong to your signed-in account',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   ),

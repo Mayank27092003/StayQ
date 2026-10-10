@@ -1,4 +1,15 @@
-import { Controller, Post, Get, Body, Headers, Param, UseGuards, Req } from '@nestjs/common';
+import { Public } from '../common/decorators/public.decorator';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Headers,
+  Param,
+  UseGuards,
+  Req,
+  BadRequestException,
+} from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
 import { AdminGuard } from '../admin/guards/admin.guard';
@@ -14,63 +25,68 @@ export class PaymentsController {
    * Returns orderId + paymentSessionId for web and mobile checkout.
    */
   @Post('create-order')
+  @UseGuards(FirebaseAuthGuard)
   async createOrder(
-    @Body() body: {
+    @CurrentUser() user: User,
+    @Body()
+    body: {
       bookingId?: string;
-      amount: number;
+      amount?: number;
       returnUrl?: string;
       customerName?: string;
       customerEmail?: string;
       customerPhone?: string;
-      customerId?: string;
     },
-    @Headers('x-idempotency-key') idempotencyKey: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
+    let validatedAmount: number | undefined;
+    if (body.amount !== undefined) {
+      const parsed = Number(body.amount);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new BadRequestException(
+          'Payment amount must be a positive number',
+        );
+      }
+      validatedAmount = parsed;
+    }
+
     return this.paymentsService.createCashfreeOrder({
       bookingId: body.bookingId,
-      amount: body.amount,
+      amount: validatedAmount ?? 0,
       idempotencyKey,
-      customerId: body.customerId,
-      customerName: body.customerName,
-      customerEmail: body.customerEmail,
-      customerPhone: body.customerPhone,
+      authenticatedUser: user,
+      customerId: user.id,
+      customerName: body.customerName || user.displayName || undefined,
+      customerEmail: body.customerEmail || user.email || undefined,
+      customerPhone: body.customerPhone || user.phone || undefined,
       returnUrl: body.returnUrl,
     });
   }
 
   /**
-   * Test Order Creation (Direct / Admin)
+   * Test Order Creation (Strictly Admin Protected)
    */
   @Post('test-order')
-  async createTestOrder(
-    @Body() body: {
-      amount: number;
-      bookingId?: string;
-      customerName?: string;
-      customerPhone?: string;
-      customerEmail?: string;
-    },
-  ) {
-    return this.paymentsService.createCashfreeOrder({
-      bookingId: body.bookingId || `test_booking_${Date.now()}`,
-      amount: body.amount || 1.00,
-      customerName: body.customerName,
-      customerPhone: body.customerPhone,
-      customerEmail: body.customerEmail,
-    });
+  @UseGuards(FirebaseAuthGuard, AdminGuard)
+  async createTestOrder() {
+    throw new BadRequestException(
+      'Use a real sandbox booking to test checkout',
+    );
   }
 
   /**
    * 2. VERIFY PAYMENT STATUS
    */
   @Get('verify/:orderId')
-  async verifyPayment(@Param('orderId') orderId: string) {
-    return this.paymentsService.verifyPayment(orderId);
+  @UseGuards(FirebaseAuthGuard)
+  verifyPayment(@Param('orderId') orderId: string, @CurrentUser() user: any) {
+    return this.paymentsService.verifyPayment(orderId, user);
   }
 
   /**
    * 3. CASHFREE WEBHOOK LISTENER
    */
+  @Public()
   @Post('webhook/cashfree')
   async handleCashfreeWebhook(
     @Req() req: any,
@@ -79,7 +95,12 @@ export class PaymentsController {
   ) {
     const rawBody = req.rawBody;
     const event = req.body;
-    return this.paymentsService.handleCashfreeWebhook(event, rawBody, signature, timestamp);
+    return this.paymentsService.handleCashfreeWebhook(
+      event,
+      rawBody,
+      signature,
+      timestamp,
+    );
   }
 
   /**
@@ -88,7 +109,9 @@ export class PaymentsController {
   @Post('refund')
   @UseGuards(FirebaseAuthGuard, AdminGuard)
   async initiateRefund(
-    @Body() body: {
+    @CurrentUser('id') actorId: string,
+    @Body()
+    body: {
       orderId: string;
       refundAmount: number;
       refundReason?: string;
@@ -98,12 +121,14 @@ export class PaymentsController {
       orderId: body.orderId,
       refundAmount: body.refundAmount,
       refundNote: body.refundReason,
+      actorId,
     });
   }
 
   /**
    * 5. LEGACY WEBHOOK COMPATIBILITY
    */
+  @Public()
   @Post('webhook')
   async handleWebhook(
     @Req() req: any,

@@ -12,7 +12,11 @@ import {
   PaginatedResult,
   toSkipTake,
 } from '../dto/pagination.dto';
-import { decimalToNumber, roundCurrency, sumDecimals } from '../common/serialization';
+import {
+  decimalToNumber,
+  roundCurrency,
+  sumDecimals,
+} from '../common/serialization';
 import {
   CreatePromotionDto,
   PromotionQueryDto,
@@ -67,12 +71,14 @@ export class AdminPromotionsService {
    * allowance are both terminal and take precedence over the `active` flag.
    */
   private resolveStatus(coupon: Coupon, now = new Date()): PromotionStatus {
-    if (coupon.validUntil.getTime() < now.getTime()) return PromotionStatus.EXPIRED;
+    if (coupon.validUntil.getTime() < now.getTime())
+      return PromotionStatus.EXPIRED;
     if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
       return PromotionStatus.EXHAUSTED;
     }
     if (!coupon.active) return PromotionStatus.PAUSED;
-    if (coupon.validFrom.getTime() > now.getTime()) return PromotionStatus.SCHEDULED;
+    if (coupon.validFrom.getTime() > now.getTime())
+      return PromotionStatus.SCHEDULED;
     return PromotionStatus.ACTIVE;
   }
 
@@ -80,13 +86,18 @@ export class AdminPromotionsService {
    * Reads redemption figures from bookings rather than trusting `usedCount`
    * alone, so reported discount and booking value reflect real transactions.
    */
-  private async loadRedemptionStats(codes: string[]): Promise<Map<string, PromotionRedemptionStats>> {
+  private async loadRedemptionStats(
+    codes: string[],
+  ): Promise<Map<string, PromotionRedemptionStats>> {
     const stats = new Map<string, PromotionRedemptionStats>();
     if (codes.length === 0) return stats;
 
     const grouped = await this.prisma.booking.groupBy({
       by: ['couponCode'],
-      where: { couponCode: { in: codes }, status: { in: REDEEMED_BOOKING_STATUSES } },
+      where: {
+        couponCode: { in: codes },
+        status: { in: REDEEMED_BOOKING_STATUSES },
+      },
       _count: { _all: true },
       _sum: { couponDiscount: true, totalAmount: true },
     });
@@ -95,15 +106,22 @@ export class AdminPromotionsService {
       if (!row.couponCode) continue;
       stats.set(row.couponCode, {
         bookings: row._count._all,
-        discountGiven: roundCurrency(decimalToNumber(row._sum.couponDiscount) ?? 0),
-        grossBookingValue: roundCurrency(decimalToNumber(row._sum.totalAmount) ?? 0),
+        discountGiven: roundCurrency(
+          decimalToNumber(row._sum.couponDiscount) ?? 0,
+        ),
+        grossBookingValue: roundCurrency(
+          decimalToNumber(row._sum.totalAmount) ?? 0,
+        ),
       });
     }
 
     return stats;
   }
 
-  private toResponse(coupon: Coupon, stats?: PromotionRedemptionStats): PromotionResponse {
+  private toResponse(
+    coupon: Coupon,
+    stats?: PromotionRedemptionStats,
+  ): PromotionResponse {
     return {
       id: coupon.id,
       code: coupon.code,
@@ -115,7 +133,9 @@ export class AdminPromotionsService {
       usedCount: coupon.usedCount,
       perUserLimit: coupon.perUserLimit,
       remainingRedemptions:
-        coupon.usageLimit === null ? null : Math.max(0, coupon.usageLimit - coupon.usedCount),
+        coupon.usageLimit === null
+          ? null
+          : Math.max(0, coupon.usageLimit - coupon.usedCount),
       validFrom: coupon.validFrom,
       validUntil: coupon.validUntil,
       active: coupon.active,
@@ -124,7 +144,11 @@ export class AdminPromotionsService {
       applicableCities: coupon.applicableCities,
       createdAt: coupon.createdAt,
       updatedAt: coupon.updatedAt,
-      redemptions: stats ?? { bookings: 0, discountGiven: 0, grossBookingValue: 0 },
+      redemptions: stats ?? {
+        bookings: 0,
+        discountGiven: 0,
+        grossBookingValue: 0,
+      },
     };
   }
 
@@ -140,8 +164,17 @@ export class AdminPromotionsService {
     validFrom: Date;
     validUntil: Date;
   }): void {
+    if (
+      !Number.isFinite(input.value) ||
+      input.value <= 0 ||
+      !Number.isFinite(input.validFrom.getTime()) ||
+      !Number.isFinite(input.validUntil.getTime())
+    )
+      throw new BadRequestException('Invalid promotion economics or dates');
     if (input.type === CouponType.PERCENTAGE && input.value > 100) {
-      throw new BadRequestException('A percentage promotion cannot exceed 100.');
+      throw new BadRequestException(
+        'A percentage promotion cannot exceed 100.',
+      );
     }
     if (input.type === CouponType.FLAT && input.maxDiscount != null) {
       throw new BadRequestException(
@@ -153,7 +186,9 @@ export class AdminPromotionsService {
     }
   }
 
-  async list(query: PromotionQueryDto): Promise<PaginatedResult<PromotionResponse>> {
+  async list(
+    query: PromotionQueryDto,
+  ): Promise<PaginatedResult<PromotionResponse>> {
     const { skip, take } = toSkipTake(query);
     const now = new Date();
 
@@ -197,7 +232,8 @@ export class AdminPromotionsService {
         orderBy: { createdAt: 'desc' },
       });
       const exhausted = limited.filter(
-        (coupon) => coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit,
+        (coupon) =>
+          coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit,
       );
       const paged = exhausted.slice(skip, skip + take);
       const stats = await this.loadRedemptionStats(paged.map((c) => c.code));
@@ -210,7 +246,12 @@ export class AdminPromotionsService {
     }
 
     const [coupons, total] = await Promise.all([
-      this.prisma.coupon.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      this.prisma.coupon.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
       this.prisma.coupon.count({ where }),
     ]);
 
@@ -231,7 +272,10 @@ export class AdminPromotionsService {
     return this.toResponse(coupon, stats.get(coupon.code));
   }
 
-  async create(dto: CreatePromotionDto, adminId: string): Promise<PromotionResponse> {
+  async create(
+    dto: CreatePromotionDto,
+    adminId: string,
+  ): Promise<PromotionResponse> {
     const code = dto.code.trim().toUpperCase();
     const validFrom = new Date(dto.validFrom);
     const validUntil = new Date(dto.validUntil);
@@ -257,8 +301,13 @@ export class AdminPromotionsService {
             type: dto.type,
             value: new Prisma.Decimal(dto.value),
             minBookingAmount:
-              dto.minBookingAmount != null ? new Prisma.Decimal(dto.minBookingAmount) : null,
-            maxDiscount: dto.maxDiscount != null ? new Prisma.Decimal(dto.maxDiscount) : null,
+              dto.minBookingAmount != null
+                ? new Prisma.Decimal(dto.minBookingAmount)
+                : null,
+            maxDiscount:
+              dto.maxDiscount != null
+                ? new Prisma.Decimal(dto.maxDiscount)
+                : null,
             usageLimit: dto.usageLimit ?? null,
             perUserLimit: dto.perUserLimit ?? 1,
             validFrom,
@@ -273,23 +322,37 @@ export class AdminPromotionsService {
         action: 'CREATE_PROMOTION',
         targetType: 'PROMOTION',
         targetId: coupon.id,
-        details: { code: coupon.code, type: coupon.type, value: coupon.value.toString() },
+        details: {
+          code: coupon.code,
+          type: coupon.type,
+          value: coupon.value.toString(),
+        },
       }),
     );
 
     return this.toResponse(created);
   }
 
-  async update(id: string, dto: UpdatePromotionDto, adminId: string): Promise<PromotionResponse> {
+  async update(
+    id: string,
+    dto: UpdatePromotionDto,
+    adminId: string,
+  ): Promise<PromotionResponse> {
     const existing = await this.prisma.coupon.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Promotion not found.');
 
     const nextType = dto.type ?? existing.type;
     const nextValue = dto.value ?? decimalToNumber(existing.value) ?? 0;
     const nextMaxDiscount =
-      dto.maxDiscount !== undefined ? dto.maxDiscount : decimalToNumber(existing.maxDiscount);
-    const nextValidFrom = dto.validFrom ? new Date(dto.validFrom) : existing.validFrom;
-    const nextValidUntil = dto.validUntil ? new Date(dto.validUntil) : existing.validUntil;
+      dto.maxDiscount !== undefined
+        ? dto.maxDiscount
+        : decimalToNumber(existing.maxDiscount);
+    const nextValidFrom = dto.validFrom
+      ? new Date(dto.validFrom)
+      : existing.validFrom;
+    const nextValidUntil = dto.validUntil
+      ? new Date(dto.validUntil)
+      : existing.validUntil;
 
     this.assertConsistent({
       type: nextType,
@@ -301,21 +364,34 @@ export class AdminPromotionsService {
 
     // A redeemed promotion cannot have its economics rewritten: bookings
     // already priced against the old terms would no longer be explainable.
-    if (existing.usedCount > 0) {
+    const actualRedemptions = await this.prisma.booking.count({
+      where: {
+        couponCode: existing.code,
+        status: { in: REDEEMED_BOOKING_STATUSES },
+      },
+    });
+    const effectiveUsedCount = Math.max(existing.usedCount, actualRedemptions);
+
+    if (effectiveUsedCount > 0) {
       const economicsChanged =
         (dto.type !== undefined && dto.type !== existing.type) ||
-        (dto.value !== undefined && dto.value !== decimalToNumber(existing.value));
+        (dto.value !== undefined &&
+          dto.value !== decimalToNumber(existing.value)) ||
+        (dto.maxDiscount !== undefined &&
+          dto.maxDiscount !== decimalToNumber(existing.maxDiscount)) ||
+        (dto.minBookingAmount !== undefined &&
+          dto.minBookingAmount !== decimalToNumber(existing.minBookingAmount));
 
       if (economicsChanged) {
         throw new ConflictException(
-          `This promotion has ${existing.usedCount} redemption(s); its type and value can no longer be changed. Pause it and create a replacement code instead.`,
+          `This promotion has ${effectiveUsedCount} redemption(s); its economic terms (type, value, limits) can no longer be changed. Pause it and create a replacement code instead.`,
         );
       }
     }
 
-    if (dto.usageLimit != null && dto.usageLimit < existing.usedCount) {
+    if (dto.usageLimit != null && dto.usageLimit < effectiveUsedCount) {
       throw new BadRequestException(
-        `usageLimit cannot be lower than the ${existing.usedCount} redemption(s) already recorded.`,
+        `usageLimit cannot be lower than the ${effectiveUsedCount} redemption(s) already recorded.`,
       );
     }
 
@@ -324,18 +400,23 @@ export class AdminPromotionsService {
     if (dto.value !== undefined) data.value = new Prisma.Decimal(dto.value);
     if (dto.minBookingAmount !== undefined) {
       data.minBookingAmount =
-        dto.minBookingAmount === null ? null : new Prisma.Decimal(dto.minBookingAmount);
+        dto.minBookingAmount === null
+          ? null
+          : new Prisma.Decimal(dto.minBookingAmount);
     }
     if (dto.maxDiscount !== undefined) {
-      data.maxDiscount = dto.maxDiscount === null ? null : new Prisma.Decimal(dto.maxDiscount);
+      data.maxDiscount =
+        dto.maxDiscount === null ? null : new Prisma.Decimal(dto.maxDiscount);
     }
     if (dto.usageLimit !== undefined) data.usageLimit = dto.usageLimit;
     if (dto.perUserLimit !== undefined) data.perUserLimit = dto.perUserLimit;
     if (dto.validFrom !== undefined) data.validFrom = nextValidFrom;
     if (dto.validUntil !== undefined) data.validUntil = nextValidUntil;
     if (dto.active !== undefined) data.active = dto.active;
-    if (dto.applicableCategories !== undefined) data.applicableCategories = dto.applicableCategories;
-    if (dto.applicableCities !== undefined) data.applicableCities = dto.applicableCities;
+    if (dto.applicableCategories !== undefined)
+      data.applicableCategories = dto.applicableCategories;
+    if (dto.applicableCities !== undefined)
+      data.applicableCities = dto.applicableCities;
 
     if (Object.keys(data).length === 0) {
       throw new BadRequestException('No changes were supplied.');
@@ -356,7 +437,11 @@ export class AdminPromotionsService {
     return this.toResponse(updated, stats.get(updated.code));
   }
 
-  async setActive(id: string, active: boolean, adminId: string): Promise<PromotionResponse> {
+  async setActive(
+    id: string,
+    active: boolean,
+    adminId: string,
+  ): Promise<PromotionResponse> {
     const existing = await this.prisma.coupon.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Promotion not found.');
 
@@ -380,7 +465,10 @@ export class AdminPromotionsService {
    * `Booking.couponCode` references the code and the discount must stay
    * auditable. Pausing is the correct action for a live code.
    */
-  async remove(id: string, adminId: string): Promise<{ id: string; deleted: true }> {
+  async remove(
+    id: string,
+    adminId: string,
+  ): Promise<{ id: string; deleted: true }> {
     const existing = await this.prisma.coupon.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Promotion not found.');
 
@@ -420,47 +508,74 @@ export class AdminPromotionsService {
     const [total, activeCount, coupons, redeemedBookings] = await Promise.all([
       this.prisma.coupon.count(),
       this.prisma.coupon.count({
-        where: { active: true, validFrom: { lte: now }, validUntil: { gte: now } },
+        where: {
+          active: true,
+          validFrom: { lte: now },
+          validUntil: { gte: now },
+        },
       }),
-      this.prisma.coupon.findMany({ select: { code: true, usedCount: true, usageLimit: true } }),
+      this.prisma.coupon.findMany({
+        select: { code: true, usedCount: true, usageLimit: true },
+      }),
       this.prisma.booking.findMany({
         where: {
           couponCode: { not: null },
           status: { in: REDEEMED_BOOKING_STATUSES },
           createdAt: { gte: since },
         },
-        select: { couponCode: true, couponDiscount: true, totalAmount: true, createdAt: true },
+        select: {
+          couponCode: true,
+          couponDiscount: true,
+          totalAmount: true,
+          createdAt: true,
+        },
       }),
     ]);
 
-    const discountGiven = roundCurrency(sumDecimals(redeemedBookings.map((b) => b.couponDiscount)));
+    const discountGiven = roundCurrency(
+      sumDecimals(redeemedBookings.map((b) => b.couponDiscount)),
+    );
     const grossBookingValue = roundCurrency(
       sumDecimals(redeemedBookings.map((b) => b.totalAmount)),
     );
 
     // Redemptions per code within the window, ranked by discount value.
-    const perCode = new Map<string, { code: string; bookings: number; discountGiven: number }>();
+    const perCode = new Map<
+      string,
+      { code: string; bookings: number; discountGiven: number }
+    >();
     for (const booking of redeemedBookings) {
       if (!booking.couponCode) continue;
-      const entry =
-        perCode.get(booking.couponCode) ??
-        { code: booking.couponCode, bookings: 0, discountGiven: 0 };
+      const entry = perCode.get(booking.couponCode) ?? {
+        code: booking.couponCode,
+        bookings: 0,
+        discountGiven: 0,
+      };
       entry.bookings += 1;
       entry.discountGiven += decimalToNumber(booking.couponDiscount) ?? 0;
       perCode.set(booking.couponCode, entry);
     }
 
     const topPromotions = [...perCode.values()]
-      .map((entry) => ({ ...entry, discountGiven: roundCurrency(entry.discountGiven) }))
+      .map((entry) => ({
+        ...entry,
+        discountGiven: roundCurrency(entry.discountGiven),
+      }))
       .sort((a, b) => b.discountGiven - a.discountGiven)
       .slice(0, 5);
 
     // Daily redemption series across the window, including zero-activity days
     // so the client renders a continuous axis without inventing points.
-    const dailyMap = new Map<string, { bookings: number; discountGiven: number }>();
+    const dailyMap = new Map<
+      string,
+      { bookings: number; discountGiven: number }
+    >();
     for (let offset = 0; offset < days; offset += 1) {
       const day = new Date(since.getTime() + offset * 24 * 60 * 60 * 1000);
-      dailyMap.set(day.toISOString().slice(0, 10), { bookings: 0, discountGiven: 0 });
+      dailyMap.set(day.toISOString().slice(0, 10), {
+        bookings: 0,
+        discountGiven: 0,
+      });
     }
     for (const booking of redeemedBookings) {
       const key = booking.createdAt.toISOString().slice(0, 10);

@@ -1,5 +1,11 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaymentsService } from '../payments/payments.service';
 
 export interface HostPlan {
   id: string;
@@ -16,34 +22,23 @@ export const HOST_PLANS: HostPlan[] = [
   {
     id: 'HOST_PRO_MONTHLY',
     name: 'StayQ Host Pro (Monthly)',
-    tagline: 'AI Market Intelligence & Automated Dynamic Pricing',
+    tagline: 'Comparable listing details',
     price: 999,
     billingPeriod: 'MONTHLY',
-    badge: 'POPULAR',
     features: [
-      'Live Neighborhood Competitor Price Radar',
-      'Groq LLaMA-3.3 AI Smart Pricing Optimizer',
-      'High Demand & Seasonality Surge Alerts',
-      'Spotlight Priority Search Placement (2x Views)',
-      'Direct Landlord Zero-Brokerage Toolkit',
-      'Occupancy & Revenue Velocity Forecaster',
+      'Unmasked details of comparable active StayQ listings',
+      '30-day access to comparable listing details',
     ],
   },
   {
     id: 'HOST_PRO_ANNUAL',
     name: 'StayQ Host Pro (Annual)',
-    tagline: 'Year-Round Maximum Earnings & Dedicated Concierge',
+    tagline: 'Comparable listing details for one year',
     price: 7999,
     billingPeriod: 'ANNUAL',
-    savingsText: 'Save ₹3,989 (33% OFF)',
-    badge: 'BEST VALUE',
     features: [
-      'All Host Pro Monthly Features Included',
-      'Dedicated 24/7 VIP Host Growth Manager',
-      'Quarterly Professional Photography Credit',
-      'Featured Spotlight Ribbon on Search Cards',
-      'Advanced Multi-Calendar Sync (Airbnb + VRBO + StayQ)',
-      'Annual Tax & Revenue Statement Report',
+      'Unmasked details of comparable active StayQ listings',
+      '365-day access to comparable listing details',
     ],
   },
 ];
@@ -52,54 +47,156 @@ export const HOST_PLANS: HostPlan[] = [
 export class SubscriptionsService {
   private readonly logger = new Logger(SubscriptionsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly paymentsService: PaymentsService,
+  ) {}
 
-  getPlans() {
+  async getPlansList(): Promise<HostPlan[]> {
+    try {
+      const setting = await this.prisma.adminSetting.findUnique({
+        where: { key: 'subscriptions.host_plans' },
+      });
+      if (setting && setting.value) {
+        const parsed = JSON.parse(setting.value);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e: any) {
+      this.logger.warn('Failed to load custom subscription plans from settings, using defaults: ' + e?.message);
+    }
+    return HOST_PLANS;
+  }
+
+  async getPlans() {
+    const plans = await this.getPlansList();
     return {
       success: true,
-      plans: HOST_PLANS,
+      plans,
     };
   }
 
+  async updatePlans(plans: HostPlan[], adminId?: string) {
+    if (!Array.isArray(plans) || plans.length === 0) {
+      throw new BadRequestException('At least one subscription plan is required');
+    }
+    for (const p of plans) {
+      if (!p.id || !p.name || typeof p.price !== 'number' || p.price <= 0) {
+        throw new BadRequestException(`Invalid plan configuration for ${p.id || 'unnamed plan'}`);
+      }
+    }
+    await this.prisma.adminSetting.upsert({
+      where: { key: 'subscriptions.host_plans' },
+      create: {
+        key: 'subscriptions.host_plans',
+        value: JSON.stringify(plans),
+        group: 'subscriptions',
+        label: 'StayQ Host Pro Subscription Plans',
+        description: 'Pricing and tier configuration for host subscriptions',
+        updatedById: adminId || null,
+      },
+      update: {
+        value: JSON.stringify(plans),
+        updatedById: adminId || null,
+      },
+    });
+    return {
+      success: true,
+      message: 'Subscription plans updated successfully',
+      plans,
+    };
+  }
+
+  /**
+   * BL-059: Reject invalid plan IDs (no silent fallback to monthly)
+   */
   async createSubscriptionOrder(params: {
     planId: string;
     userId?: string;
     userEmail?: string;
     userPhone?: string;
     userName?: string;
+    idempotencyKey?: string;
   }) {
-    const plan = HOST_PLANS.find((p) => p.id === params.planId) || HOST_PLANS[0];
-    const orderId = `SUB_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-
-    this.logger.log(`Created Host Pro Subscription Order ${orderId} for Plan ${plan.id} (₹${plan.price})`);
-
-    return {
-      success: true,
-      orderId,
+    const plans = await this.getPlansList();
+    const plan = plans.find((p) => p.id === params.planId);
+    if (!plan) throw new BadRequestException('Invalid subscription plan');
+    const user = await this.prisma.user.findUnique({
+      where: { id: params.userId || '' },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    const order = await this.paymentsService.createCashfreeOrder({
       amount: plan.price,
-      currency: 'INR',
-      planId: plan.id,
-      planName: plan.name,
-      paymentSessionId: `session_${orderId}`,
-      message: 'Subscription order generated successfully',
-    };
+      authenticatedUser: user,
+      purpose: 'HOST_PRO',
+      referenceId: user.id,
+      sku: plan.id,
+      idempotencyKey: params.idempotencyKey,
+    });
+    return { ...order, planId: plan.id, planName: plan.name };
   }
 
+  /**
+   * BL-057, BL-058, BL-060: Verify subscription payment and persist entitlement
+   */
   async verifySubscription(params: {
     orderId: string;
     planId: string;
     userId?: string;
   }) {
-    this.logger.log(`Verified Subscription Order ${params.orderId} for user ${params.userId || 'guest'}`);
-
-    return {
-      success: true,
-      status: 'ACTIVE',
-      planId: params.planId,
-      isProSubscriber: true,
-      activatedAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      message: 'Host Pro Subscription is now active! Welcome to StayQ Market Intelligence.',
-    };
+    const plans = await this.getPlansList();
+    const plan = plans.find((p) => p.id === params.planId);
+    if (!plan) throw new BadRequestException('Invalid subscription plan');
+    const user = await this.prisma.user.findUnique({
+      where: { id: params.userId || '' },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return this.paymentsService.consumePaidOrder(
+      params.orderId,
+      user,
+      'HOST_PRO',
+      user.id,
+      plan.id,
+      async (tx, order) => {
+        await tx.$queryRaw`SELECT id FROM "User" WHERE id=${user.id} FOR UPDATE`;
+        const current = await tx.user.findUniqueOrThrow({
+          where: { id: user.id },
+        });
+        const now = new Date();
+        const base =
+          current.hostProExpiresAt && current.hostProExpiresAt > now
+            ? current.hostProExpiresAt
+            : now;
+        const expiresAt = new Date(
+          base.getTime() +
+            (plan.billingPeriod === 'ANNUAL' ? 365 : 30) * 86400000,
+        );
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            isHostPro: true,
+            hostProPlanId: plan.id,
+            hostProExpiresAt: expiresAt,
+          },
+        });
+        return {
+          success: true,
+          orderId: order.orderId,
+          isPaid: true,
+          isActive: true,
+          status: 'ACTIVE',
+          planId: plan.id,
+          isProSubscriber: true,
+          activatedAt: now.toISOString(),
+          expiresAt: expiresAt.toISOString(),
+          subscription: {
+            status: 'ACTIVE',
+            planId: plan.id,
+            expiresAt: expiresAt.toISOString(),
+          },
+        };
+      },
+    );
   }
 }

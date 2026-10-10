@@ -1,18 +1,24 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Query } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
 import { CashfreeVerificationService } from './cashfree-verification.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
+import { AdminGuard } from '../admin/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 
+@Throttle({ financial: { limit: 10, ttl: 60000 } })
 @Controller('verification')
 @UseGuards(FirebaseAuthGuard)
 export class VerificationController {
-  constructor(private readonly verificationService: CashfreeVerificationService) {}
+  constructor(
+    private readonly verificationService: CashfreeVerificationService,
+  ) {}
 
   /**
-   * 0. Diagnostic & Health status of Cashfree Secure ID Production Engine
+   * 0. Diagnostic & Health status of Cashfree Secure ID Production Engine (Admin Only)
    */
   @Get('diagnostic')
+  @UseGuards(AdminGuard)
   async getDiagnostic() {
     return this.verificationService.getDiagnostic();
   }
@@ -23,7 +29,14 @@ export class VerificationController {
   @Post('bank-account')
   async verifyBankAccount(
     @CurrentUser() user: User,
-    @Body() body: { accountNumber: string; ifsc: string; name?: string; phone?: string; isHost?: boolean },
+    @Body()
+    body: {
+      accountNumber: string;
+      ifsc: string;
+      name?: string;
+      phone?: string;
+      isHost?: boolean;
+    },
   ) {
     return this.verificationService.verifyBankAccount({
       accountNumber: body.accountNumber,
@@ -36,12 +49,19 @@ export class VerificationController {
   }
 
   /**
-   * Direct Test Bank Account Penny Drop (Host Onboarding / Diagnostics)
+   * Direct Test Bank Account Penny Drop (Admin Only)
    */
   @Post('test-bank')
+  @UseGuards(AdminGuard)
   async testBankAccount(
     @CurrentUser() user: User,
-    @Body() body: { accountNumber: string; ifsc: string; name?: string; phone?: string },
+    @Body()
+    body: {
+      accountNumber: string;
+      ifsc: string;
+      name?: string;
+      phone?: string;
+    },
   ) {
     return this.verificationService.verifyBankAccount({
       accountNumber: body.accountNumber,
@@ -57,11 +77,13 @@ export class VerificationController {
    */
   @Post('reverse-penny-drop')
   async reversePennyDrop(
+    @CurrentUser() user: User,
     @Body() body: { phone: string; name?: string },
   ) {
     return this.verificationService.verifyBankAccountReversePennyDrop({
       phone: body.phone,
       name: body.name,
+      userId: user.id,
     });
   }
 
@@ -78,9 +100,13 @@ export class VerificationController {
    */
   @Post('aadhaar/generate-otp')
   async generateAadhaarOtp(
+    @CurrentUser() user: User,
     @Body() body: { aadhaarNumber: string },
   ) {
-    return this.verificationService.generateAadhaarOtp(body.aadhaarNumber);
+    return this.verificationService.generateAadhaarOtp(
+      body.aadhaarNumber,
+      user?.id,
+    );
   }
 
   /**
@@ -117,6 +143,7 @@ export class VerificationController {
    * Direct Test PAN Verification (Admin / Diagnostics)
    */
   @Post('test-pan')
+  @UseGuards(AdminGuard)
   async testPan(
     @CurrentUser() user: User,
     @Body() body: { pan: string; name?: string },
@@ -133,9 +160,14 @@ export class VerificationController {
    */
   @Post('upi')
   async verifyUpi(
+    @CurrentUser() user: User,
     @Body() body: { vpa: string; name?: string },
   ) {
-    return this.verificationService.verifyUpi(body.vpa, body.name || undefined);
+    return this.verificationService.verifyUpi(
+      body.vpa,
+      body.name || undefined,
+      user.id,
+    );
   }
 
   /**
@@ -144,7 +176,12 @@ export class VerificationController {
   @Post('face-match')
   async verifyFaceMatch(
     @CurrentUser() user: User,
-    @Body() body: { selfieImageUrl: string; idCardImageUrl: string; threshold?: number },
+    @Body()
+    body: {
+      selfieImageUrl: string;
+      idCardImageUrl: string;
+      threshold?: number;
+    },
   ) {
     return this.verificationService.verifyFaceMatch({
       selfieImageUrl: body.selfieImageUrl,
@@ -160,7 +197,8 @@ export class VerificationController {
   @Post('face-liveness')
   async verifyFaceLiveness(
     @CurrentUser() user: User,
-    @Body() body: { imageUrl?: string; imageBase64?: string; verificationId?: string },
+    @Body()
+    body: { imageUrl?: string; imageBase64?: string; verificationId?: string },
   ) {
     return this.verificationService.verifyFaceLiveness({
       imageUrl: body.imageUrl,
@@ -176,14 +214,21 @@ export class VerificationController {
   @Post('guest-refund-account')
   async verifyGuestRefundAccount(
     @CurrentUser() user: User,
-    @Body() body: { accountNumber?: string; ifsc?: string; upiId?: string; accountHolderName?: string },
+    @Body()
+    body: {
+      accountNumber?: string;
+      ifsc?: string;
+      upiId?: string;
+      accountHolderName?: string;
+    },
   ) {
     return this.verificationService.verifyGuestRefundAccount({
       userId: user.id,
       accountNumber: body.accountNumber,
       ifsc: body.ifsc,
       upiId: body.upiId,
-      accountHolderName: body.accountHolderName || user.displayName || undefined,
+      accountHolderName:
+        body.accountHolderName || user.displayName || undefined,
     });
   }
 

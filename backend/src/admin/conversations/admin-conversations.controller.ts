@@ -12,10 +12,16 @@ import { AdminConversationsService } from './admin-conversations.service';
 @Controller('admin/conversations')
 @UseGuards(FirebaseAuthGuard, AdminGuard, AdminRolesGuard)
 export class AdminConversationsController {
-  constructor(private readonly conversationsService: AdminConversationsService) {}
+  constructor(
+    private readonly conversationsService: AdminConversationsService,
+  ) {}
 
   @Get()
-  @AdminRoles(AdminRole.SUPER_ADMIN, AdminRole.OPERATIONS, AdminRole.TRUST_SAFETY)
+  @AdminRoles(
+    AdminRole.SUPER_ADMIN,
+    AdminRole.OPERATIONS,
+    AdminRole.TRUST_SAFETY,
+  )
   listConversations(
     @Query('search') search?: string,
     @Query('page') page?: number,
@@ -25,7 +31,11 @@ export class AdminConversationsController {
   }
 
   @Get(':id')
-  @AdminRoles(AdminRole.SUPER_ADMIN, AdminRole.OPERATIONS, AdminRole.TRUST_SAFETY)
+  @AdminRoles(
+    AdminRole.SUPER_ADMIN,
+    AdminRole.OPERATIONS,
+    AdminRole.TRUST_SAFETY,
+  )
   getConversation(@Param('id') id: string) {
     return this.conversationsService.getConversation(id);
   }

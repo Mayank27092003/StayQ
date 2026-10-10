@@ -19,6 +19,9 @@ import '../../widgets/bouncing_widget.dart';
 import '../../widgets/home_bento_box.dart';
 import '../../widgets/moving_collage_banner.dart';
 import '../profile/notifications_screen.dart';
+import '../rewards/rewards_screen.dart';
+import '../experiences/experience_detail_screen.dart';
+import '../experiences/add_experience_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback onOpenMap;
@@ -81,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 12),
                 
                 const Text(
-                  'Beyond just stays, discover local culture, thrilling adventures, and curated activities around you. Stay Q can help you plan your entire itinerary!',
+                  'Beyond just stays, discover local culture, thrilling adventures, and curated activities around you. StayQ can help you plan your entire itinerary!',
                   style: TextStyle(
                     fontSize: 15,
                     color: AppColors.textSecondary,
@@ -154,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 end: Alignment.bottomRight,
                               ).createShader(bounds),
                               child: const Text(
-                                'Stay Q',
+                                'StayQ',
                                 style: TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.w900,
@@ -167,6 +170,57 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         Row(
                           children: [
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const RewardsScreen()),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: AppColors.borderLight),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.04),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(3),
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFFEF3C7),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.account_balance_wallet_rounded,
+                                        size: 14,
+                                        color: Color(0xFFD97706),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${provider.loyaltyAvailablePoints} pts',
+                                      style: const TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: -0.2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
                             Container(
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -374,7 +428,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                          .scaleXY(begin: 1.0, end: 1.1, duration: 1000.ms, curve: Curves.easeInOut)
                                          .moveY(begin: 0, end: -10, duration: 1000.ms, curve: Curves.easeInOut),
                                         const SizedBox(height: 24),
-                                        const Text('Stay Q is looking for stays...', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                                        const Text('StayQ is looking for stays...', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                                         const SizedBox(height: 8),
                                         const Text('No properties found for your search.', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
                                         const SizedBox(height: 100),
@@ -396,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                   CuratedStaysList(
                                     title: 'Guest Favorites',
-                                    subtitle: 'The most loved homes on Stay Q',
+                                    subtitle: 'The most loved homes on StayQ',
                                     stays: provider.filteredStays.where((s) => s.isGuestFavorite).toList(),
                                     onFavoriteTap: provider.toggleWishlist,
                                   ),
@@ -408,52 +462,274 @@ class _HomeScreenState extends State<HomeScreen> {
                         : Container(
                             key: const ValueKey(1),
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                  child: Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      'Discover Unique Experiences',
-                                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(
-                                  height: 110,
-                                  child: ListView(
-                                    scrollDirection: Axis.horizontal,
-                                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      _buildExperienceCategory(context, 'Trekking', 'assets/images/experiences/exp_trekking_1786510554588.jpg'),
-                                      const SizedBox(width: 12),
-                                      _buildExperienceCategory(context, 'Food & Drink', 'assets/images/experiences/exp_local_food_1786510665352.jpg'),
-                                      const SizedBox(width: 12),
-                                      _buildExperienceCategory(context, 'Scuba Diving', 'assets/images/experiences/exp_scuba_diving_1786510828235.jpg'),
-                                      const SizedBox(width: 12),
-                                      _buildExperienceCategory(context, 'Cultural Walk', 'assets/images/experiences/exp_cultural_walk_1786510844827.jpg'),
-                                      const SizedBox(width: 12),
-                                      _buildExperienceCategory(context, 'Yoga Retreat', 'assets/images/experiences/exp_yoga_retreat_1786510934894.jpg'),
-                                      const SizedBox(width: 12),
-                                      _buildExperienceCategory(context, 'Nature', 'assets/images/experiences/exp_nature_wildlife_1786510950052.jpg'),
-                                      const SizedBox(width: 12),
-                                      _buildExperienceCategory(context, 'Nightlife', 'assets/images/experiences/exp_nightlife_1786510964273.jpg'),
-                                      const SizedBox(width: 12),
-                                      _buildExperienceCategory(context, 'Workshops', 'assets/images/experiences/exp_workshops_1786510984781.jpg'),
-                                      const SizedBox(width: 12),
-                                      _buildExperienceCategory(context, 'Local Life', 'assets/images/experiences/exp_local_life_1786510999810.jpg'),
-                                      const SizedBox(width: 12),
-                                      _buildExperienceCategory(context, 'Sports', 'assets/images/experiences/exp_sports_1786511016655.jpg'),
+                                      const Text(
+                                        'Curated Local Experiences',
+                                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                      ),
+                                      TextButton.icon(
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(builder: (_) => const AddExperienceScreen()),
+                                          );
+                                        },
+                                        icon: const Icon(Icons.add_circle_outline_rounded, size: 16, color: AppColors.primary),
+                                        label: const Text('Host an Experience', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary)),
+                                      ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 20),
-                                CuratedStaysList(
-                                  title: 'Top Rated Experiences',
-                                  subtitle: 'Highly recommended by guests',
-                                  stays: provider.stays.where((s) => s.isGuestFavorite).toList()..shuffle(), 
-                                  onFavoriteTap: provider.toggleWishlist,
-                                ),
+                                if (provider.filteredExperiences.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            width: 80,
+                                            height: 80,
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primary.withValues(alpha: 0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Center(child: Text('✨', style: TextStyle(fontSize: 40))),
+                                          ),
+                                          const SizedBox(height: 18),
+                                          Text(
+                                            provider.searchDestination.isNotEmpty && provider.searchDestination != 'Where'
+                                                ? 'No experiences in "${provider.searchDestination}" yet'
+                                                : 'No experiences hosted yet',
+                                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          const Text(
+                                            'Be the first host to list an authentic StayQ experience in this destination!',
+                                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          const SizedBox(height: 20),
+                                          ElevatedButton.icon(
+                                            onPressed: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(builder: (_) => const AddExperienceScreen()),
+                                              );
+                                            },
+                                            icon: const Icon(Icons.add_rounded, size: 18),
+                                            label: const Text('Host an Experience'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: AppColors.primary,
+                                              foregroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                              elevation: 0,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 40),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  ListView.separated(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                    itemCount: provider.filteredExperiences.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 20),
+                                    itemBuilder: (context, index) {
+                                      final exp = provider.filteredExperiences[index];
+                                      return GestureDetector(
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ExperienceDetailScreen(experience: exp),
+                                            ),
+                                          );
+                                        },
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(20),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.05),
+                                                blurRadius: 14,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                            border: Border.all(color: AppColors.borderLight),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              ClipRRect(
+                                                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                                                child: Stack(
+                                                  children: [
+                                                    SizedBox(
+                                                      height: 190,
+                                                      width: double.infinity,
+                                                      child: Image(
+                                                        image: exp.firstImage.startsWith('http')
+                                                            ? NetworkImage(exp.firstImage) as ImageProvider
+                                                            : AssetImage(exp.firstImage),
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder: (_, __, ___) => Container(
+                                                          color: AppColors.surfaceLight,
+                                                          child: const Icon(Icons.broken_image, size: 40, color: AppColors.textMuted),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Positioned(
+                                                      top: 12,
+                                                      left: 12,
+                                                      child: Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.black.withValues(alpha: 0.7),
+                                                          borderRadius: BorderRadius.circular(12),
+                                                        ),
+                                                        child: Text(
+                                                          exp.category.replaceAll('_', ' '),
+                                                          style: const TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Positioned(
+                                                      top: 12,
+                                                      right: 12,
+                                                      child: Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(0xFF059669),
+                                                          borderRadius: BorderRadius.circular(12),
+                                                        ),
+                                                        child: Text(
+                                                          '${exp.remainingSlots} spots left',
+                                                          style: const TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Padding(
+                                                padding: const EdgeInsets.all(16),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        const Icon(Icons.star_rounded, size: 16, color: Color(0xFFF59E0B)),
+                                                        const SizedBox(width: 4),
+                                                        Text(
+                                                          exp.rating.toStringAsFixed(1),
+                                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                                        ),
+                                                        Text(
+                                                          ' • ${exp.city.isNotEmpty ? exp.city : exp.location}',
+                                                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                                                        ),
+                                                        const Spacer(),
+                                                        if (exp.pickupProvided)
+                                                          Container(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                            decoration: BoxDecoration(
+                                                              color: const Color(0xFFECFDF5),
+                                                              borderRadius: BorderRadius.circular(8),
+                                                            ),
+                                                            child: Row(
+                                                              children: const [
+                                                                Icon(Icons.directions_car_rounded, size: 12, color: Color(0xFF059669)),
+                                                                SizedBox(width: 4),
+                                                                Text(
+                                                                  'Pickup',
+                                                                  style: TextStyle(
+                                                                    fontSize: 11,
+                                                                    color: Color(0xFF059669),
+                                                                    fontWeight: FontWeight.bold,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    Text(
+                                                      exp.title,
+                                                      style: const TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: AppColors.textPrimary,
+                                                      ),
+                                                      maxLines: 2,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    Row(
+                                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                      children: [
+                                                        Row(
+                                                          children: [
+                                                            const Icon(Icons.schedule_rounded, size: 14, color: AppColors.textMuted),
+                                                            const SizedBox(width: 4),
+                                                            Text(
+                                                              exp.scheduleTime ?? exp.timeSlot ?? '12:00 PM - 03:00 PM',
+                                                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        RichText(
+                                                          text: TextSpan(
+                                                            text: '₹${exp.pricePerPerson.toInt()} ',
+                                                            style: const TextStyle(
+                                                              fontSize: 16,
+                                                              fontWeight: FontWeight.w900,
+                                                              color: AppColors.textPrimary,
+                                                            ),
+                                                            children: const [
+                                                              TextSpan(
+                                                                text: '/ person',
+                                                                style: TextStyle(
+                                                                  fontSize: 12,
+                                                                  fontWeight: FontWeight.normal,
+                                                                  color: AppColors.textSecondary,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 const SizedBox(height: 100),
                               ],
                             ),

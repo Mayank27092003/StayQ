@@ -1,11 +1,28 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/stay_model.dart';
+import '../models/json_values.dart';
+import '../services/api/api_client.dart';
+import '../services/api/bookings_api.dart';
 import '../models/booking_model.dart';
 
 class HostDashboardProvider extends ChangeNotifier {
+  String? _ownerId;
+  bool _disposed = false;
+  int _generation = 0;
+  HostDashboardProvider({String? userId}) : _ownerId = userId;
+  bool get _owned => !_disposed && _ownerId != null && FirebaseAuth.instance.currentUser?.uid == _ownerId;
+  void updateUserId(String? userId) {
+    if (_ownerId == userId) return;
+    _ownerId = userId;
+    if (userId != null) {
+      fetchDashboardData(userId);
+    }
+  }
+  @override
+  void notifyListeners() { if (!_disposed) super.notifyListeners(); }
+  @override
+  void dispose() { _disposed = true; super.dispose(); }
+
   bool _isLoading = false;
   String? _error;
 
@@ -38,7 +55,7 @@ class HostDashboardProvider extends ChangeNotifier {
   bool get isStarHost => _isStarHost;
   bool get isPayoutVerified => _isPayoutVerified;
   bool get isHostVerified => _isHostVerified;
-  bool get isApproved => _isApproved || _isHostVerified || _activeListings > 0;
+  bool get isApproved => _isApproved;
   String get hostStatus => _hostStatus;
   int get activeListings => _activeListings;
   int get totalListings => _totalListings;
@@ -73,94 +90,38 @@ class HostDashboardProvider extends ChangeNotifier {
   }
 
   Future<void> fetchDashboardData(String hostId) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
+    if (!_owned || hostId != _ownerId) return;
+    final request = ++_generation;
+    _isLoading = true; _error = null; notifyListeners();
     try {
-      const String apiUrl = 'https://stayq-api-608570851336.asia-south1.run.app';
-      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
-      final headers = token != null ? {'Authorization': 'Bearer $token'} : <String, String>{};
-
-      final response = await http.get(Uri.parse('$apiUrl/api/v1/host-dashboard/$hostId'), headers: headers);
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        
-        _hostName = data['hostName'] ?? '';
-        _hostAvatar = data['hostAvatar'] ?? '';
-        _isStarHost = data['isStarHost'] == true || data['isSuperhost'] == true;
-        _isPayoutVerified = data['isPayoutVerified'] == true;
-        _isApproved = data['isApproved'] == true;
-        _isHostVerified = data['isHostVerified'] == true;
-        _hostStatus = data['hostStatus'] ?? (_isApproved ? 'APPROVED' : 'PENDING');
-        _activeListings = (data['activeListings'] as num?)?.toInt() ?? 0;
-        _totalListings = (data['totalListings'] as num?)?.toInt() ?? 0;
-        _totalRooms = (data['totalRooms'] as num?)?.toInt() ?? 0;
-        _occupancyRate = (data['occupancyRate'] as num?)?.toDouble() ?? 0.0;
-        _rating = (data['rating'] as num?)?.toDouble() ?? 0.0;
-        _reviewCount = (data['reviewCount'] as num?)?.toInt() ?? 0;
-        _earningsThisMonth = (data['earningsThisMonth'] as num?)?.toDouble() ?? 0.0;
-        _totalEarningsAllTime = (data['totalEarningsAllTime'] as num?)?.toDouble() ?? _earningsThisMonth;
-        
-        if (data['upcomingGuests'] != null) {
-          _upcomingGuests = (data['upcomingGuests'] as List)
-              .map((json) => BookingModel.fromJson(json))
-              .toList();
+      final data = jsonMap(await ApiClient.instance.get('/host-dashboard/${Uri.encodeComponent(hostId)}'));
+      if (!_owned || request != _generation) return;
+      _hostName = data['hostName']?.toString() ?? ''; _hostAvatar = data['hostAvatar']?.toString() ?? '';
+      _isStarHost = data['isStarHost'] == true || data['isSuperhost'] == true;
+      _isPayoutVerified = data['isPayoutVerified'] == true; _isApproved = data['isApproved'] == true;
+      _isHostVerified = data['isHostVerified'] == true; _hostStatus = data['hostStatus']?.toString() ?? 'PENDING';
+      _activeListings = jsonInt(data['activeListings']); _totalListings = jsonInt(data['totalListings']);
+      _totalRooms = jsonInt(data['totalRooms']); _occupancyRate = jsonDouble(data['occupancyRate']);
+      _rating = jsonDouble(data['rating']); _reviewCount = jsonInt(data['reviewCount']);
+      _earningsThisMonth = jsonDouble(data['earningsThisMonth']); _totalEarningsAllTime = jsonDouble(data['totalEarningsAllTime']);
+      List<BookingModel> bookings(dynamic items) {
+        final values = <BookingModel>[];
+        for (final item in items is List ? items : []) {
+          try { values.add(BookingModel.fromJson(jsonMap(item))); } catch (e) { debugPrint('Invalid host booking: $e'); }
         }
-        
-        if (data['recentRequests'] != null) {
-          _recentRequests = (data['recentRequests'] as List)
-              .map((json) => BookingModel.fromJson(json))
-              .toList();
-        }
-        
-        if (data['chartData'] != null) {
-          final charts = data['chartData'];
-          if (charts['earnings'] != null) {
-            _earningsData = List<Map<String, dynamic>>.from(charts['earnings']);
-          }
-          if (charts['bookings'] != null) {
-            _bookingsData = List<Map<String, dynamic>>.from(charts['bookings']);
-          }
-          if (charts['views'] != null) {
-            _viewsData = List<Map<String, dynamic>>.from(charts['views']);
-          }
-        }
-      } else {
-        _error = 'Failed to load dashboard data. Status: ${response.statusCode}';
+        return values;
       }
-    } catch (e) {
-      _error = 'Failed to connect to the server. $e';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+      _upcomingGuests = bookings(data['upcomingGuests']); _recentRequests = bookings(data['recentRequests']);
+      final charts = jsonMap(data['chartData']);
+      List<Map<String, dynamic>> rows(dynamic items) => items is List ? items.map(jsonMap).toList() : [];
+      _earningsData = rows(charts['earnings']); _bookingsData = rows(charts['bookings']); _viewsData = rows(charts['views']);
+    } catch (e) { if (_owned && request == _generation) _error = e.toString(); }
+    finally { if (_owned && request == _generation) { _isLoading = false; notifyListeners(); } }
   }
 
   Future<void> updateBookingStatus(String bookingId, String newStatus) async {
-    // Optimistic UI update
-    final index = _recentRequests.indexWhere((b) => b.id == bookingId);
-    if (index != -1) {
-      BookingStatus mappedStatus = (newStatus == 'confirmed') ? BookingStatus.confirmed : BookingStatus.cancelled;
-      _recentRequests[index].status = mappedStatus;
-      notifyListeners();
-    }
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      final token = await user?.getIdToken();
-      final url = Uri.parse('https://stayq-api-608570851336.asia-south1.run.app/api/v1/bookings/$bookingId/status');
-      await http.patch(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({'status': newStatus.toUpperCase()}),
-      );
-    } catch (e) {
-      debugPrint('Error updating booking status on server: $e');
-    }
+    if (!_owned) throw ApiException(401, 'Sign in to manage bookings.');
+    await BookingsApi(ApiClient.instance).updateBookingStatus(bookingId, newStatus.toLowerCase());
+    if (_owned) await fetchDashboardData(_ownerId!);
   }
 }

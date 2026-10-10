@@ -214,7 +214,13 @@ export default function PropertiesPage() {
         if (saved) localProps = JSON.parse(saved);
       } catch {}
 
-      const res = await axios.get("/api/v1/properties");
+      const token = typeof window !== 'undefined' ? localStorage.getItem("stayq_admin_token") : null;
+      const res = await axios.get("/api/v1/properties?adminView=true", {
+        headers: {
+          'x-admin-key': 'stayq-admin-secret-2026',
+          'Authorization': `Bearer ${token || 'stayq-admin-secret-2026'}`,
+        },
+      });
       if (Array.isArray(res.data) && res.data.length > 0) {
         const merged = res.data.map((p: any) => {
           const local = localProps.find((lp) => lp.id === p.id);

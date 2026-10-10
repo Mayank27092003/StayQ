@@ -1,0 +1,33 @@
+{
+  "passed": 23,
+  "checks": [
+    "repair migration preserves financial history and resets untrusted legacy verification",
+    "private endpoints reject missing and expired tokens",
+    "public property hides documents, Wi-Fi, and exact address",
+    "booking derives guest identity and ignores client totals",
+    "booking replay returns one reservation and conflicting reuse fails",
+    "overlapping reservations and unpaid access are denied",
+    "other users and marketing admins cannot read private bookings",
+    "checkout binds ownership and authoritative amount",
+    "payment verifies actual provider success and confirms once",
+    "stay passes render locally and require captured payment",
+    "pending refund is not declared successful and retry does not duplicate",
+    "support ticket ownership and internal notes stay private",
+    "final super administrator cannot revoke itself",
+    "forged webhook and legacy checkout fail closed",
+    "public loyalty catalog needs no authentication",
+    "query false retains inactive catalog entries and malformed booleans fail",
+    "paid membership binds owner and purpose and activates exactly once",
+    "loyalty redemption cannot duplicate wallet credit or reuse a changed request",
+    "review moderation reverses and restores rewards without double awards",
+    "late payment cancels the expired hold and schedules its refund",
+    "manual blocked dates preserve calendar provenance and room amenities update",
+    "staff directory issues no fake credentials and unavailable identity routes are explicit",
+    "broadcast worker records actual notifications and respects promotion opt-out"
+  ],
+  "providerCalls": 19,
+  "limitations": [
+    "External providers are mocked",
+    "PGlite single connection; native PostgreSQL multi-worker contention is not verified"
+  ]
+}

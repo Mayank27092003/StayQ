@@ -34,7 +34,9 @@ export class AdminCatalogController {
   constructor(private readonly catalog: AdminCatalogService) {}
 
   @Get('categories')
-  @ApiOperation({ summary: 'List categories with presentation metadata and listing counts' })
+  @ApiOperation({
+    summary: 'List categories with presentation metadata and listing counts',
+  })
   listCategories(@Query() query: CatalogQueryDto) {
     return this.catalog.listCategories(query.activeOnly ?? false);
   }
@@ -42,7 +44,10 @@ export class AdminCatalogController {
   @Put('categories')
   @AdminRoles(AdminRole.OPERATIONS, AdminRole.MARKETING)
   @ApiOperation({ summary: 'Create or replace metadata for one category' })
-  upsertCategory(@Body() dto: UpsertCategoryDto, @CurrentUser('id') adminId: string) {
+  upsertCategory(
+    @Body() dto: UpsertCategoryDto,
+    @CurrentUser('id') adminId: string,
+  ) {
     return this.catalog.upsertCategory(dto, adminId);
   }
 
@@ -58,13 +63,17 @@ export class AdminCatalogController {
   }
 
   @Get('amenities')
-  @ApiOperation({ summary: 'List amenity definitions with real listing usage counts' })
+  @ApiOperation({
+    summary: 'List amenity definitions with real listing usage counts',
+  })
   listAmenities(@Query() query: CatalogQueryDto) {
     return this.catalog.listAmenities(query.activeOnly ?? false);
   }
 
   @Get('amenities/undefined-keys')
-  @ApiOperation({ summary: 'Amenity keys used by listings that have no definition row' })
+  @ApiOperation({
+    summary: 'Amenity keys used by listings that have no definition row',
+  })
   undefinedKeys() {
     return this.catalog.listUndefinedAmenityKeys();
   }
@@ -72,7 +81,10 @@ export class AdminCatalogController {
   @Put('amenities')
   @AdminRoles(AdminRole.OPERATIONS)
   @ApiOperation({ summary: 'Create an amenity definition' })
-  createAmenity(@Body() dto: CreateAmenityDto, @CurrentUser('id') adminId: string) {
+  createAmenity(
+    @Body() dto: CreateAmenityDto,
+    @CurrentUser('id') adminId: string,
+  ) {
     return this.catalog.createAmenity(dto, adminId);
   }
 
@@ -90,7 +102,10 @@ export class AdminCatalogController {
   @Delete('amenities/:id')
   @AdminRoles(AdminRole.OPERATIONS)
   @ApiOperation({ summary: 'Delete an unused amenity definition' })
-  deleteAmenity(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') adminId: string) {
+  deleteAmenity(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') adminId: string,
+  ) {
     return this.catalog.deleteAmenity(id, adminId);
   }
 }
