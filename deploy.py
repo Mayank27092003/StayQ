@@ -51,12 +51,17 @@ def load_env_vars():
                 k, v = line.split("=", 1)
                 env_map[k.strip()] = v.strip().strip('"\'')
     target_keys = [
-        "GROQ_API_KEY", "DATABASE_URL", "MSG91_AUTH_KEY", "MSG91_TEMPLATE_ID",
+        "DATABASE_URL",
+        "DATA_ENCRYPTION_KEY", "OTP_HMAC_SECRET",
+        "PUBLIC_API_URL", "PAYMENT_RETURN_URL",
+        "FIREBASE_PROJECT_ID", "FIREBASE_STORAGE_BUCKET", "FIREBASE_CLIENT_EMAIL",
         "CASHFREE_APP_ID", "CASHFREE_CLIENT_ID", "CASHFREE_SECRET_KEY",
         "CASHFREE_CLIENT_SECRET", "CASHFREE_ENV", "CASHFREE_BASE_URL",
         "CASHFREE_PUBLIC_KEY",
         "CASHFREE_PG_BASE_URL", "CASHFREE_PG_APP_ID", "CASHFREE_PG_SECRET_KEY",
-        "SMTP_HOST", "SMTP_PORT", "SMTP_SECURE", "SMTP_USER", "SMTP_PASS", "SMTP_FROM"
+        "SMTP_HOST", "SMTP_PORT", "SMTP_SECURE", "SMTP_USER", "SMTP_PASS", "SMTP_FROM",
+        "DEEPSEEK_API_KEY", "DEEPSEEK_BASE_URL", "DEEPSEEK_MODEL",
+        "JOBS_ENABLED", "CLOUD_TASKS_SECRET", "PAYOUT_MODE"
     ]
     parts = []
     for k in target_keys:
