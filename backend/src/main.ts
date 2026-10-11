@@ -5,22 +5,45 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 export function configureApp(app: INestApplication) {
   app.setGlobalPrefix(process.env.API_PREFIX || 'api/v1');
-  const origins = (process.env.CORS_ORIGINS || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  for (const o of origins) {
-    const u = new URL(o);
-    if (
-      u.origin !== o ||
-      !['http:', 'https:'].includes(u.protocol) ||
-      (process.env.NODE_ENV === 'production' && u.protocol !== 'https:')
-    )
-      throw new Error('CORS_ORIGINS must contain exact allowed origins');
-  }
+  const allowedOrigins = [
+    'https://admin.stayq.space',
+    'https://stayq.space',
+    'https://www.stayq.space',
+    'https://stayq-admin.web.app',
+    'https://stayq-app.web.app',
+    'https://stayq-website.web.app',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:8080',
+    ...(process.env.CORS_ORIGINS || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  ];
+
   app.enableCors({
-    origin: (origin, cb) => cb(null, !origin || origins.includes(origin)),
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+    origin: (origin, cb) => {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.stayq.space') ||
+        origin.endsWith('.web.app') ||
+        origin.endsWith('.firebaseapp.com')
+      ) {
+        cb(null, true);
+      } else {
+        cb(null, false);
+      }
+    },
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'x-admin-key',
+      'x-requested-with',
+      'Accept',
+      'Origin',
+    ],
     credentials: true,
   });
   app.useGlobalPipes(
