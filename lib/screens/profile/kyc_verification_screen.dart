@@ -362,8 +362,8 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
           indicatorColor: AppColors.primary,
           indicatorWeight: 3,
           tabs: const [
-            Tab(icon: Icon(Icons.account_balance_rounded), text: 'Bank Penny Drop'),
-            Tab(icon: Icon(Icons.shield_outlined), text: 'Aadhaar OKYC'),
+            Tab(icon: Icon(Icons.account_balance_rounded), text: 'Bank (Optional)'),
+            Tab(icon: Icon(Icons.shield_outlined), text: 'Aadhaar (Required)'),
             Tab(icon: Icon(Icons.badge_outlined), text: 'PAN Card'),
             Tab(icon: Icon(Icons.flash_on_rounded), text: 'UPI Fast Refund'),
           ],
@@ -452,8 +452,8 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
             spacing: 8,
             runSpacing: 6,
             children: [
-              _buildStatusPill('Bank Account', isBankVerified),
-              _buildStatusPill('UIDAI Aadhaar', isAadhaarVerified),
+              _buildStatusPill('Bank (Optional for Refunds)', isBankVerified),
+              _buildStatusPill('UIDAI Aadhaar (Required to Book)', isAadhaarVerified),
               _buildStatusPill('NSDL PAN', isPanVerified),
             ],
           ),
@@ -655,12 +655,12 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
             const SizedBox(height: 8),
           ],
           const Text(
-            'Penny Drop Bank Verification',
+            'Penny Drop Bank Verification (Optional)',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
           const Text(
-            'SecureID performs an instant ₹1 penny drop to verify account authenticity, active status, and matching beneficiary name.',
+            'Bank verification is optional — only required if you request instant bank refunds. Aadhaar is sufficient for booking stays.',
             style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 20),

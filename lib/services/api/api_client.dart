@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../config/app_config.dart';
@@ -23,8 +24,13 @@ class ApiClient {
 
   Future<Map<String, String>> _headers({bool authenticated = true,
       String? idempotencyKey}) async {
+    final platform = kIsWeb
+        ? 'web'
+        : (defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android');
     final headers = <String, String>{
-      'Content-Type': 'application/json', 'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-Client-Platform': platform,
       if (idempotencyKey != null) 'Idempotency-Key': idempotencyKey,
     };
     if (authenticated) {

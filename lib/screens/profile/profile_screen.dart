@@ -288,7 +288,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     final provider = Provider.of<AppProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AppColors.darkBackground
+          : const Color(0xFFF8FAFC),
       body: Stack(
         children: [
           // ── 1. ULTRA-ANIMATED AURORA MESH IN BACKGROUND ──
@@ -363,6 +365,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 await Future.wait([
                   provider.fetchProfile(),
                   provider.fetchVerificationStatus(),
+                  provider.fetchLoyaltyProfile(),
                 ]);
               },
               child: CustomScrollView(
@@ -915,7 +918,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 if (provider.userDob.isNotEmpty)
                   _AnimatedPill(
                     icon: Icons.cake_rounded,
-                    text: provider.userDob,
+                    text: _formatDob(provider.userDob),
                     color: const Color(0xFFF43F5E),
                   ),
               ],
@@ -924,6 +927,25 @@ class _ProfileScreenState extends State<ProfileScreen>
         ],
       ),
     );
+  }
+
+  String _formatDob(String raw) {
+    if (raw.trim().isEmpty) return '';
+    final dt = DateTime.tryParse(raw.trim());
+    if (dt != null) {
+      final dd = dt.day.toString().padLeft(2, '0');
+      final mm = dt.month.toString().padLeft(2, '0');
+      final yyyy = dt.year.toString();
+      return '$dd | $mm | $yyyy';
+    }
+    final parts = raw.split(RegExp(r'[-/|T ]'));
+    if (parts.length >= 3) {
+      if (parts[0].length == 4) {
+        return '${parts[2].substring(0, math.min(2, parts[2].length)).padLeft(2, '0')} | ${parts[1].padLeft(2, '0')} | ${parts[0]}';
+      }
+      return '${parts[0].padLeft(2, '0')} | ${parts[1].padLeft(2, '0')} | ${parts[2]}';
+    }
+    return raw;
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -1311,12 +1333,15 @@ class _ProfileScreenState extends State<ProfileScreen>
   // 4. ANIMATED BENTO GRID (Trust Radar + Referral Cash)
   // ══════════════════════════════════════════════════════════════
   Widget _buildAnimatedBentoGrid(BuildContext context, AppProvider provider) {
+    final bool hasAadhaar = provider.isAadhaarVerified || provider.isGovIdVerified;
+    final bool hasContact = provider.isEmailVerified || provider.userPhone.isNotEmpty;
     final bool hasPayout = provider.isBankVerified || provider.isUpiVerified;
-    final bool hasGovId = provider.isGovIdVerified;
-    final bool hasEmail = provider.isEmailVerified;
-    final int totalSteps = (provider.isHostMode || hasPayout) ? 3 : 2;
-    final int verifiedCount =
-        (hasEmail ? 1 : 0) + (hasGovId ? 1 : 0) + (hasPayout ? 1 : 0);
+    final bool isHostVerified = provider.isHostVerified;
+
+    final int totalSteps = provider.isHostMode ? 4 : 2;
+    final int verifiedCount = provider.isHostMode
+        ? ((hasContact ? 1 : 0) + (hasAadhaar ? 1 : 0) + (hasPayout ? 1 : 0) + (isHostVerified ? 1 : 0))
+        : ((hasContact ? 1 : 0) + (hasAadhaar ? 1 : 0));
     final double trustProgress = (verifiedCount / totalSteps).clamp(0.0, 1.0);
 
     return Row(
@@ -1616,7 +1641,36 @@ class _ProfileScreenState extends State<ProfileScreen>
 
         const SizedBox(height: 24),
 
-        // ── Group 2: Notifications & Security ──
+        // ── Group 2: App Preferences ──
+        _buildSectionHeader('APP PREFERENCES'),
+        _AppleBentoContainer(
+          items: [
+            _AppleBentoItem(
+              icon: provider.isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+              iconColor: const Color(0xFF6366F1),
+              title: 'Dark Theme Mode',
+              subtitle: provider.isDarkMode
+                  ? 'OLED Deep Black Theme active'
+                  : 'Pure Minimalist Light Theme active',
+              trailing: CupertinoSwitch(
+                value: provider.isDarkMode,
+                activeColor: AppColors.primary,
+                onChanged: (_) {
+                  AppMotion.tapSelection();
+                  provider.toggleThemeMode();
+                },
+              ),
+              onTap: () {
+                AppMotion.tapSelection();
+                provider.toggleThemeMode();
+              },
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 24),
+
+        // ── Group 3: Notifications & Security ──
         _buildSectionHeader('NOTIFICATIONS & PRIVACY'),
         _AppleBentoContainer(
           items: [
@@ -1819,13 +1873,18 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  void _showReferralSheet(BuildContext context, AppProvider provider) {
+  void _showReferralSheet(BuildContext context, AppProvider provider) async {
     AppMotion.tapSelection();
-    final code = provider.userReferralCode;
+    var code = provider.userReferralCode;
+    if (code.isEmpty) {
+      await provider.fetchLoyaltyProfile();
+      code = provider.userReferralCode;
+    }
+    if (!context.mounted) return;
     if (code.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Your referral code could not be loaded. Please refresh.'),
+          content: Text('Your referral code is being generated. Pull down to refresh.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -2076,6 +2135,8 @@ class _AnimatedGlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
@@ -2083,15 +2144,19 @@ class _AnimatedGlassCard extends StatelessWidget {
         child: Container(
           padding: padding ?? const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.90),
+            color: isDark
+                ? const Color(0xFF141417).withValues(alpha: 0.92)
+                : Colors.white.withValues(alpha: 0.90),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : Colors.white.withValues(alpha: 0.8),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF64748B).withValues(alpha: 0.08),
+                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
                 blurRadius: 20,
                 offset: const Offset(0, 6),
               ),
@@ -2342,16 +2407,21 @@ class _AppleBentoContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(22),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? const Color(0xFF161618) : Colors.white,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFE2E8F0),
+            width: 1.2,
+          ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF64748B).withValues(alpha: 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -2397,60 +2467,65 @@ class _AppleBentoContainer extends StatelessWidget {
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: -0.3,
-                                  color: item.titleColor ?? const Color(0xFF0F172A),
+                                  color: item.titleColor ??
+                                      (isDark ? Colors.white : const Color(0xFF0F172A)),
                                 ),
                               ),
                               if (item.subtitle != null) ...[
                                 const SizedBox(height: 2),
                                 Text(
                                   item.subtitle!,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11.5,
-                                    color: Color(0xFF64748B),
+                                    color: isDark ? Colors.white70 : const Color(0xFF64748B),
                                   ),
                                 ),
                               ],
                             ],
                           ),
                         ),
-                        if (item.trailingText != null) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: (item.trailingColor ?? const Color(0xFF64748B))
-                                  .withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              item.trailingText!,
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w800,
-                                color: item.trailingColor ?? const Color(0xFF64748B),
+                        if (item.trailing != null)
+                          item.trailing!
+                        else ...[
+                          if (item.trailingText != null) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: (item.trailingColor ?? const Color(0xFF64748B))
+                                    .withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                item.trailingText!,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: item.trailingColor ?? const Color(0xFF64748B),
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 6),
+                          ],
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 18,
+                            color: isDark ? Colors.white38 : const Color(0xFFCBD5E1),
                           ),
-                          const SizedBox(width: 6),
                         ],
-                        const Icon(
-                          Icons.chevron_right_rounded,
-                          size: 18,
-                          color: Color(0xFFCBD5E1),
-                        ),
                       ],
                     ),
                   ),
                 ),
                 if (!isLast)
-                  const Divider(
+                  Divider(
                     height: 1,
                     thickness: 0.8,
                     indent: 58,
                     endIndent: 0,
-                    color: Color(0xFFF1F5F9),
+                    color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9),
                   ),
               ],
             );
@@ -2469,6 +2544,7 @@ class _AppleBentoItem {
   final Color? titleColor;
   final String? trailingText;
   final Color? trailingColor;
+  final Widget? trailing;
   final VoidCallback? onTap;
 
   _AppleBentoItem({
@@ -2479,6 +2555,7 @@ class _AppleBentoItem {
     this.titleColor,
     this.trailingText,
     this.trailingColor,
+    this.trailing,
     this.onTap,
   });
 }

@@ -47,4 +47,25 @@ class AppColors {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
+
+  // Dynamic context-aware theme helpers
+  static Color bg(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? darkBackground : background;
+
+  static Color card(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? const Color(0xFF121215) : cardBg;
+
+  static Color surface(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? const Color(0xFF18181C) : surfaceLight;
+
+  static Color text(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? Colors.white : textPrimary;
+
+  static Color textSub(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? const Color(0xFFA1A1AA) : textSecondary;
+
+  static Color border(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF27272A)
+          : borderLight;
 }

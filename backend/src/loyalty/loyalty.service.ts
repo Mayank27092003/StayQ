@@ -9,6 +9,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { LoyaltyTier, PointsTransactionType } from '@prisma/client';
 import { PaymentsService } from '../payments/payments.service';
+import * as crypto from 'crypto';
 import { integer, idempotencyKey } from '../common/utils/input.util';
 export interface TierBenefit {
   tier: LoyaltyTier;
@@ -64,6 +65,20 @@ export class LoyaltyService {
       where: { id: userId },
       select: { referralCode: true },
     });
+    let referralCode = user?.referralCode;
+    if (!referralCode && user) {
+      const generated = 'SQ-' + crypto.randomBytes(3).toString('hex').toUpperCase();
+      try {
+        const updated = await this.prisma.user.update({
+          where: { id: userId },
+          data: { referralCode: generated },
+          select: { referralCode: true },
+        });
+        referralCode = updated.referralCode;
+      } catch {
+        referralCode = user.referralCode || generated;
+      }
+    }
     const entries = await this.prisma.walletEntry.findMany({
       where: { userId },
     });
@@ -81,7 +96,7 @@ export class LoyaltyService {
       tierDetails: TIER_CONFIGS[tier],
       creditEquivalent: p.availablePoints * 0.5,
       allTiers: Object.values(TIER_CONFIGS),
-      referralCode: user?.referralCode || null,
+      referralCode: referralCode || null,
       referralBalance,
     };
   }

@@ -35,9 +35,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isSaving = false;
 
   String? _selectedGender;
+  String? _rawDobIso;
   List<String> _locationPredictions = [];
   bool _isSearchingLocation = false;
   Timer? _locationDebounce;
+
+  static String _formatDobDisplay(String raw) {
+    if (raw.trim().isEmpty) return '';
+    final dt = DateTime.tryParse(raw.trim());
+    if (dt != null) {
+      final dd = dt.day.toString().padLeft(2, '0');
+      final mm = dt.month.toString().padLeft(2, '0');
+      final yyyy = dt.year.toString();
+      return '$dd | $mm | $yyyy';
+    }
+    final parts = raw.split(RegExp(r'[-/|T ]'));
+    if (parts.length >= 3) {
+      if (parts[0].length == 4) {
+        return '${parts[2].substring(0, math.min(2, parts[2].length)).padLeft(2, '0')} | ${parts[1].padLeft(2, '0')} | ${parts[0]}';
+      }
+      return '${parts[0].padLeft(2, '0')} | ${parts[1].padLeft(2, '0')} | ${parts[2]}';
+    }
+    return raw;
+  }
 
   @override
   void initState() {
@@ -49,7 +69,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _bioController = TextEditingController(text: provider.userBio);
     _locationController = TextEditingController(text: provider.userLocation);
     _genderController = TextEditingController(text: provider.userGender);
-    _dobController = TextEditingController(text: provider.userDob);
+    _dobController = TextEditingController(text: _formatDobDisplay(provider.userDob));
+    if (provider.userDob.isNotEmpty) {
+      _rawDobIso = provider.userDob.split('T').first;
+    }
 
     const validGenders = ['Male', 'Female', 'Prefer not to say'];
     _selectedGender = validGenders.contains(provider.userGender) ? provider.userGender : null;
@@ -156,11 +179,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       },
     );
     if (picked != null) {
-      final formatted = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      final iso = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      final display = '${picked.day.toString().padLeft(2, '0')} | ${picked.month.toString().padLeft(2, '0')} | ${picked.year}';
       setState(() {
-        _dobController.text = formatted;
+        _rawDobIso = iso;
+        _dobController.text = display;
       });
     }
+  }
+
+  String _resolveDobToSave() {
+    if (_rawDobIso != null && _rawDobIso!.isNotEmpty) return _rawDobIso!;
+    final text = _dobController.text.trim();
+    if (text.isEmpty) return '';
+    final parts = text.split(RegExp(r'\s*\|\s*'));
+    if (parts.length == 3) {
+      final d = parts[0].padLeft(2, '0');
+      final m = parts[1].padLeft(2, '0');
+      final y = parts[2];
+      return '$y-$m-$d';
+    }
+    return text;
   }
 
   bool get _hasEmailChanged =>
@@ -233,7 +272,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       bio: _bioController.text.trim(),
       location: _locationController.text.trim(),
       gender: _genderController.text.trim(),
-      dob: _dobController.text.trim(),
+      dob: _resolveDobToSave(),
       profileImage: _imageFile,
       isEmailVerified: _isEmailVerified,
     );
@@ -663,7 +702,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               readOnly: true,
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
               decoration: InputDecoration(
-                hintText: 'YYYY-MM-DD',
+                hintText: 'DD | MM | YYYY',
                 hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
                 prefixIcon: const Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 20),
                 filled: true,

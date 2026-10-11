@@ -64,6 +64,14 @@ export class AdminController {
     return this.adminService.getAllUsers();
   }
 
+  @Get('users/registered')
+  getRegisteredUsers(
+    @Query('search') search?: string,
+    @Query('limit') limit?: number,
+  ) {
+    return this.adminService.getRegisteredUsers({ search, limit });
+  }
+
   @Put('users/:id/roles')
   updateUserRole(
     @CurrentUser('id') actor: string,

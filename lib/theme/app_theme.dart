@@ -135,12 +135,54 @@ class AppTheme {
         ),
       ),
       cardTheme: CardThemeData(
-        color: AppColors.darkCardBg,
+        color: const Color(0xFF121215),
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: Colors.white.withOpacity(0.1), width: 1.5),
+          side: const BorderSide(color: Color(0xFF27272A), width: 1.2),
+        ),
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColors.darkBackground,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: GoogleFonts.urbanist(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.4,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          minimumSize: const Size(64, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: GoogleFonts.urbanist(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          side: const BorderSide(color: Color(0xFF27272A), width: 1.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: GoogleFonts.urbanist(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.2,
+          ),
         ),
       ),
     );

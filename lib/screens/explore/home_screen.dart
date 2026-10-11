@@ -37,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasSeenExperiencePopup = false;
 
   void _showExperiencePopup() {
+    final isDark = AppColors.isDark(context);
     showDialog(
       context: context,
       barrierColor: Colors.black.withOpacity(0.6),
@@ -47,8 +48,9 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.card(context),
               borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: AppColors.border(context)),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.primary.withOpacity(0.2),
@@ -83,11 +85,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.5),
                 const SizedBox(height: 12),
                 
-                const Text(
+                Text(
                   'Beyond just stays, discover local culture, thrilling adventures, and curated activities around you. StayQ can help you plan your entire itinerary!',
                   style: TextStyle(
                     fontSize: 15,
-                    color: AppColors.textSecondary,
+                    color: AppColors.textSub(context),
                     height: 1.5,
                   ),
                   textAlign: TextAlign.center,
@@ -127,119 +129,130 @@ class _HomeScreenState extends State<HomeScreen> {
     final provider = Provider.of<AppProvider>(context);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bg(context),
       body: SafeArea(
         child: Stack(
           children: [
-            CustomScrollView(
-              slivers: [
-                // Top Header Bar
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Ultra Premium Logo without background
-                        Row(
-                          children: [
-                            Image.asset(
-                              'assets/images/logo_sq.png',
-                              height: 36,
-                              fit: BoxFit.contain,
-                              color: AppColors.primary,
-                            ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
-                            const SizedBox(width: 8),
-                            ShaderMask(
-                              shaderCallback: (bounds) => const LinearGradient(
-                                colors: [AppColors.primary, AppColors.accent],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ).createShader(bounds),
-                              child: const Text(
-                                'StayQ',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white, // Required for ShaderMask
-                                  letterSpacing: -1,
-                                ),
-                              ),
-                            ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.1),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const RewardsScreen()),
-                                );
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: AppColors.borderLight),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.04),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(3),
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFFEF3C7),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.account_balance_wallet_rounded,
-                                        size: 14,
-                                        color: Color(0xFFD97706),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      '${provider.loyaltyAvailablePoints} pts',
-                                      style: const TextStyle(
-                                        color: AppColors.textPrimary,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: -0.2,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.borderLight),
-                              ),
-                              child: Stack(
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.notifications_none_rounded, size: 22),
-                                    color: AppColors.textPrimary,
-                                    tooltip: 'Notifications',
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-                                      );
-                                    },
+            RefreshIndicator.adaptive(
+              color: AppColors.primary,
+              backgroundColor: AppColors.card(context),
+              onRefresh: () async {
+                await Future.wait([
+                  provider.fetchProperties(),
+                  provider.fetchLoyaltyProfile(),
+                  provider.fetchExperiences(),
+                ]);
+              },
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                slivers: [
+                  // Top Header Bar
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Ultra Premium Logo without background
+                          Row(
+                            children: [
+                              Image.asset(
+                                'assets/images/logo_sq.png',
+                                height: 36,
+                                fit: BoxFit.contain,
+                                color: AppColors.primary,
+                              ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
+                              const SizedBox(width: 8),
+                              ShaderMask(
+                                shaderCallback: (bounds) => const LinearGradient(
+                                  colors: [AppColors.primary, AppColors.accent],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ).createShader(bounds),
+                                child: const Text(
+                                  'StayQ',
+                                  style: TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white, // Required for ShaderMask
+                                    letterSpacing: -1,
                                   ),
+                                ),
+                              ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.1),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const RewardsScreen()),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.card(context),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: AppColors.border(context)),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: AppColors.isDark(context) ? 0.3 : 0.04),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(3),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.isDark(context) ? const Color(0xFF78350F) : const Color(0xFFFEF3C7),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.account_balance_wallet_rounded,
+                                          size: 14,
+                                          color: Color(0xFFF59E0B),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '${provider.loyaltyAvailablePoints} pts',
+                                        style: TextStyle(
+                                          color: AppColors.text(context),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: -0.2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.card(context),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: AppColors.border(context)),
+                                ),
+                                child: Stack(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.notifications_none_rounded, size: 22),
+                                      color: AppColors.text(context),
+                                      tooltip: 'Notifications',
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                                        );
+                                      },
+                                    ),
                                   Positioned(
                                     top: 10,
                                     right: 10,
@@ -422,15 +435,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                         Container(
                                           width: 120,
                                           height: 120,
-                                          decoration: const BoxDecoration(color: AppColors.surfaceLight, shape: BoxShape.circle),
+                                          decoration: BoxDecoration(color: AppColors.card(context), shape: BoxShape.circle),
                                           child: const Center(child: Text('🧊', style: TextStyle(fontSize: 60))),
                                         ).animate(onPlay: (controller) => controller.repeat(reverse: true))
                                          .scaleXY(begin: 1.0, end: 1.1, duration: 1000.ms, curve: Curves.easeInOut)
                                          .moveY(begin: 0, end: -10, duration: 1000.ms, curve: Curves.easeInOut),
                                         const SizedBox(height: 24),
-                                        const Text('StayQ is looking for stays...', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                                        Text('StayQ is looking for stays...', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context))),
                                         const SizedBox(height: 8),
-                                        const Text('No properties found for your search.', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                                        Text('No properties found for your search.', style: TextStyle(fontSize: 14, color: AppColors.textSub(context))),
                                         const SizedBox(height: 100),
                                       ],
                                     ),
@@ -507,7 +520,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             provider.searchDestination.isNotEmpty && provider.searchDestination != 'Where'
                                                 ? 'No experiences in "${provider.searchDestination}" yet'
                                                 : 'No experiences hosted yet',
-                                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                                             textAlign: TextAlign.center,
                                           ),
                                           const SizedBox(height: 8),
@@ -738,6 +751,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
+          ),
 
             // Floating Map Pill Button
             Positioned(

@@ -16,6 +16,13 @@ class _MovingCollageBannerState extends State<MovingCollageBanner> {
   late final ScrollController _scrollController1;
   late final ScrollController _scrollController2;
   Timer? _timer;
+  bool _isPaused = false;
+
+  void _togglePause() {
+    setState(() {
+      _isPaused = !_isPaused;
+    });
+  }
 
   final List<Map<String, String>> _row1Items = [
     {
@@ -106,7 +113,7 @@ class _MovingCollageBannerState extends State<MovingCollageBanner> {
 
   void _startAutoScroll() {
     _timer = Timer.periodic(const Duration(milliseconds: 35), (timer) {
-      if (!mounted) return;
+      if (!mounted || _isPaused) return;
 
       // Row 1: Forward scroll
       if (_scrollController1.hasClients) {
@@ -183,21 +190,49 @@ class _MovingCollageBannerState extends State<MovingCollageBanner> {
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.motion_photos_on_rounded, size: 12, color: AppColors.textSecondary),
-                      SizedBox(width: 4),
-                      Text(
-                        'Auto Exploring',
-                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                GestureDetector(
+                  onTap: _togglePause,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _isPaused
+                          ? AppColors.primary.withValues(alpha: 0.15)
+                          : (Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white12
+                              : Colors.black.withOpacity(0.05)),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _isPaused ? AppColors.primary : Colors.transparent,
+                        width: 1,
                       ),
-                    ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                          size: 14,
+                          color: _isPaused
+                              ? AppColors.primary
+                              : (Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white70
+                                  : AppColors.textSecondary),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _isPaused ? 'Paused (Tap to Play)' : 'Tap to Pause',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: _isPaused
+                                ? AppColors.primary
+                                : (Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white70
+                                    : AppColors.textSecondary),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

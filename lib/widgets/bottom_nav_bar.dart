@@ -40,15 +40,20 @@ class _BottomNavBarState extends State<BottomNavBar> {
             _NavItem(label: 'Profile', activeIcon: Icons.person_rounded, inactiveIcon: Icons.person_outline_rounded),
           ];
 
+    final isDark = AppColors.isDark(context);
+
     return Container(
       margin: const EdgeInsets.only(left: 20, right: 20, bottom: 24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF121215) : Colors.white,
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: AppColors.borderLight, width: 1),
+        border: Border.all(
+          color: isDark ? const Color(0xFF27272A) : AppColors.borderLight,
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: isDark ? Colors.black.withOpacity(0.5) : Colors.black.withOpacity(0.08),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -87,7 +92,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: isSelected ? AppColors.primary : AppColors.textMuted,
+                        color: isSelected ? AppColors.primary : AppColors.textSub(context),
                         letterSpacing: 0.1,
                       ),
                       child: Text(item.label),
@@ -153,7 +158,7 @@ class _AnimatedIcon extends StatelessWidget {
         final double scale = 1.0 + (value * 0.15); // scales up slightly based on value
         
         final Color iconColor = Color.lerp(
-          AppColors.textMuted,
+          AppColors.textSub(context),
           AppColors.primary,
           value.clamp(0.0, 1.0),
         )!;

@@ -306,6 +306,12 @@ class AppProvider extends ChangeNotifier {
   Future<void> _initPrefs() async {
     final prefs = await SessionStore.preferences(null);
     _hasSeenWalkthrough = prefs.getBool('hasSeenWalkthrough') ?? false;
+    final savedTheme = prefs.getString('themeMode');
+    if (savedTheme == 'dark') {
+      _themeMode = ThemeMode.dark;
+    } else if (savedTheme == 'light') {
+      _themeMode = ThemeMode.light;
+    }
     if (prefs.getBool('isHostUser') == true) {
       _isHostVerified = true;
     }
@@ -698,9 +704,27 @@ class AppProvider extends ChangeNotifier {
   }
 
   // Actions
-  void toggleThemeMode() {
+  void toggleThemeMode() async {
     _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     notifyListeners();
+    try {
+      final prefs = await SessionStore.preferences(null);
+      await prefs.setString('themeMode', _themeMode == ThemeMode.dark ? 'dark' : 'light');
+    } catch (e) {
+      debugPrint('Error saving themeMode: $e');
+    }
+  }
+
+  void setThemeMode(ThemeMode mode) async {
+    if (_themeMode == mode) return;
+    _themeMode = mode;
+    notifyListeners();
+    try {
+      final prefs = await SessionStore.preferences(null);
+      await prefs.setString('themeMode', _themeMode == ThemeMode.dark ? 'dark' : 'light');
+    } catch (e) {
+      debugPrint('Error saving themeMode: $e');
+    }
   }
 
   void toggleHostMode() async {

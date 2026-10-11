@@ -80,10 +80,10 @@ class HomeBentoBox extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     Image.asset(
-                      'assets/images/campervan_wide_8k.jpg',
+                      'assets/images/campervan_himalaya.jpg',
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Image.asset(
-                        'assets/images/real_rv.jpg',
+                        'assets/images/campervan_wide_8k.jpg',
                         fit: BoxFit.cover,
                       ),
                     ),

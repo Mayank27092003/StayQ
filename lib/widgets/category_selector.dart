@@ -27,11 +27,12 @@ class CategorySelector extends StatelessWidget {
     CategoryItem(title: 'Beachfront', icon: Icons.beach_access_rounded),
     CategoryItem(title: 'Cabins', icon: Icons.cabin_rounded),
     CategoryItem(title: 'Trending', icon: Icons.local_fire_department_rounded),
-    CategoryItem(title: 'Design', icon: Icons.architecture_rounded),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SizedBox(
       height: 76,
       child: ListView.separated(
@@ -54,26 +55,28 @@ class CategorySelector extends StatelessWidget {
                 curve: Curves.easeOutCubic,
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? AppColors.primary.withOpacity(0.08)
-                      : Colors.white,
+                      ? AppColors.primary.withOpacity(0.12)
+                      : (isDark ? const Color(0xFF161618) : Colors.white),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isSelected
                         ? AppColors.primary
-                        : AppColors.borderLight.withOpacity(0.8),
+                        : (isDark
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : AppColors.borderLight.withOpacity(0.8)),
                     width: isSelected ? 1.5 : 1,
                   ),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.12),
+                            color: AppColors.primary.withOpacity(0.15),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
                         ]
                       : [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.02),
+                            color: Colors.black.withOpacity(isDark ? 0.2 : 0.02),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -87,7 +90,9 @@ class CategorySelector extends StatelessWidget {
                     Icon(
                       cat.icon,
                       size: 24,
-                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                      color: isSelected
+                          ? AppColors.primary
+                          : (isDark ? Colors.white70 : AppColors.textSecondary),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -98,7 +103,9 @@ class CategorySelector extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                        color: isSelected
+                            ? (isDark ? AppColors.primaryLight : AppColors.primary)
+                            : (isDark ? Colors.white : AppColors.textPrimary),
                         letterSpacing: -0.2,
                       ),
                     ),

@@ -60,7 +60,7 @@ export class AdminGuard implements CanActivate {
         : ['OPERATIONS', 'TRUST_SAFETY'];
     else if (/\/admin\/(me|dashboard|audit-logs)$/.test(path))
       roles = ['OPERATIONS', 'TRUST_SAFETY', 'FINANCE', 'MARKETING'];
-    else if (/\/users$/.test(path) && read)
+    else if (/\/users(\/.*)?$/.test(path) && read)
       roles = ['OPERATIONS', 'TRUST_SAFETY'];
     if (!roles.includes(user.adminRole))
       throw new ForbiddenException(

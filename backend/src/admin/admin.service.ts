@@ -91,6 +91,100 @@ export class AdminService {
     });
   }
 
+  async getRegisteredUsers(query: { search?: string; limit?: number } = {}) {
+    const where: Prisma.UserWhereInput = {};
+    if (query.search && query.search.trim()) {
+      const q = query.search.trim();
+      where.OR = [
+        { displayName: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { phone: { contains: q, mode: 'insensitive' } },
+        { referralCode: { contains: q, mode: 'insensitive' } },
+        { location: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const users = await this.prisma.user.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(200, Math.max(1, Number(query.limit) || 100)),
+      select: {
+        id: true,
+        displayName: true,
+        email: true,
+        phone: true,
+        location: true,
+        gender: true,
+        dob: true,
+        roles: true,
+        referralCode: true,
+        emailVerified: true,
+        phoneVerified: true,
+        isHostVerified: true,
+        createdAt: true,
+        deviceTokens: {
+          orderBy: { updatedAt: 'desc' },
+          take: 1,
+          select: {
+            platform: true,
+            updatedAt: true,
+          },
+        },
+        payoutAccount: {
+          select: {
+            verified: true,
+            govIdType: true,
+            bankName: true,
+          },
+        },
+        loyaltyProfile: {
+          select: {
+            availablePoints: true,
+            totalPoints: true,
+            tier: true,
+          },
+        },
+        _count: {
+          select: {
+            bookingsAsGuest: true,
+            properties: true,
+          },
+        },
+      },
+    });
+
+    return users.map((u) => {
+      const primaryDevice = u.deviceTokens[0];
+      const platform = primaryDevice?.platform || 'android';
+      return {
+        id: u.id,
+        displayName: u.displayName || 'Guest User',
+        email: u.email || '—',
+        phone: u.phone || '—',
+        location: u.location || 'India (Auto-detected)',
+        gender: u.gender || '—',
+        dob: u.dob ? u.dob.toISOString() : null,
+        roles: u.roles,
+        referralCode: u.referralCode || '—',
+        createdAt: u.createdAt,
+        platform: platform.toLowerCase(),
+        emailVerified: u.emailVerified,
+        phoneVerified: u.phoneVerified,
+        isHostVerified: u.isHostVerified,
+        kycStatus: u.payoutAccount?.verified
+          ? 'VERIFIED'
+          : u.payoutAccount
+            ? 'PENDING'
+            : 'NOT_SUBMITTED',
+        govIdType: u.payoutAccount?.govIdType || 'None',
+        loyaltyPoints: u.loyaltyProfile?.availablePoints ?? 0,
+        loyaltyTier: u.loyaltyProfile?.tier ?? 'Q_STARTER',
+        totalBookings: u._count.bookingsAsGuest,
+        totalListings: u._count.properties,
+      };
+    });
+  }
+
   async updateUserRole(userId: string, roles: UserRole[], adminId: string) {
     if (
       !Array.isArray(roles) ||

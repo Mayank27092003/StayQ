@@ -37,12 +37,13 @@ export default function Sidebar() {
   const showInventoryGroup = canSeeProperties || canSeeRvs || canSeeCamping || canSeeExperiences || canSeeRentals;
 
   const canSeeBookings = hasModuleAccess("bookings");
+  const canSeeUsers = hasModuleAccess("hosts") || hasModuleAccess("support") || hasModuleAccess("analytics") || isMasterAdmin;
   const canSeeHosts = hasModuleAccess("hosts");
   const canSeeApplications = hasModuleAccess("hosts");
   const canSeeLeads = hasModuleAccess("hosts");
   const canSeeSupport = hasModuleAccess("support");
   const canSeeReviews = hasModuleAccess("reviews");
-  const showOperationsGroup = canSeeBookings || canSeeHosts || canSeeApplications || canSeeLeads || canSeeSupport || canSeeReviews;
+  const showOperationsGroup = canSeeBookings || canSeeUsers || canSeeHosts || canSeeApplications || canSeeLeads || canSeeSupport || canSeeReviews;
 
   const canSeeRevenue = hasModuleAccess("revenue");
   const canSeeTaxes = hasModuleAccess("taxes") || hasModuleAccess("revenue");
@@ -135,6 +136,13 @@ export default function Sidebar() {
           {showOperationsGroup && (
             <div className="space-y-1">
               <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Operations</p>
+              {canSeeUsers && (
+                <Link className={getLinkClasses("/users")} href="/users">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/users") ? "'FILL' 1" : "normal" }}>badge</span>
+                  <span className="flex-1">Registered Users</span>
+                  <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200">Live</span>
+                </Link>
+              )}
               {canSeeBookings && (
                 <Link className={getLinkClasses("/bookings")} href="/bookings">
                   <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/bookings") ? "'FILL' 1" : "normal" }}>calendar_today</span>
