@@ -99,8 +99,8 @@ export const RewardsModal: React.FC = () => {
       borderColor: 'border-slate-700/50',
       perks: [
         'Earn 1 pt per ₹100 spent',
-        '500 pts = ₹250 Stay Q Credit',
-        'Standard guest concierge',
+        'Redeem points directly on future stays',
+        'Standard guest support via chat & email',
       ],
     },
     {
@@ -114,10 +114,11 @@ export const RewardsModal: React.FC = () => {
       popular: true,
       perks: [
         '⚡ 1.5x Points on all bookings',
-        '⏰ Early check-in & late checkout',
-        '🌟 Priority 24/7 VIP concierge',
-        '🏷️ 5% extra discount on select villas',
         '🎁 +50 Welcome Bonus Points',
+        '🤖 Unlimited Qube AI trip itineraries',
+        '⛺ 48h priority access to campsite drops',
+        '💬 Priority WhatsApp travel assistance',
+        '🏷️ Zero platform booking processing fee',
       ],
     },
     {
@@ -130,10 +131,12 @@ export const RewardsModal: React.FC = () => {
       borderColor: 'border-amber-500/50',
       perks: [
         '⚡⚡ 2.0x Double points on all bookings',
-        '👑 Free cancellation & room upgrades',
-        '🛎️ Dedicated personal trip designer',
-        '🚗 Airport / transfer discounts',
         '🎁 +100 Welcome Bonus Points',
+        '👑 Elite Member verified profile badge',
+        '🤖 Unlimited Qube overland route planner',
+        '🚐 Priority campervan fleet reservations',
+        '💬 Direct Priority WhatsApp hotline',
+        '🏷️ Zero platform booking processing fee',
       ],
     },
   ];

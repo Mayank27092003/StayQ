@@ -26,7 +26,11 @@ export const TIER_CONFIGS: Record<LoyaltyTier, TierBenefit> = {
     price: 0,
     multiplier: 1,
     badge: 'Starter',
-    perks: ['1 point per INR 100 spent', 'Redeem points for wallet credit'],
+    perks: [
+      '1 point per ₹100 spent on stays & campervans',
+      'Redeem points directly on future bookings',
+      'Standard customer support via in-app & email',
+    ],
   },
   Q_PLUS: {
     tier: LoyaltyTier.Q_PLUS,
@@ -34,15 +38,30 @@ export const TIER_CONFIGS: Record<LoyaltyTier, TierBenefit> = {
     price: 499,
     multiplier: 1.5,
     badge: 'Plus Member',
-    perks: ['1.5x booking points for one year'],
+    perks: [
+      '1.5x points on all bookings for 1 year',
+      '+50 Welcome Bonus points credited instantly',
+      'Unlimited Qube AI custom overland trip planner',
+      '48-hour priority access to secret campsite drops',
+      'Direct WhatsApp travel assistance (+91 9225270718)',
+      'Zero platform booking processing fee',
+    ],
   },
   Q_PREMIUM: {
     tier: LoyaltyTier.Q_PREMIUM,
     title: 'Q Premium',
     price: 999,
     multiplier: 2,
-    badge: 'Elite VIP',
-    perks: ['2x booking points for one year'],
+    badge: 'Elite Member',
+    perks: [
+      '2.0x Double points on all bookings for 1 year',
+      '+100 Welcome Bonus points credited instantly',
+      'Exclusive Q-Premium Elite verified badge',
+      'Unlimited Qube AI overland route designer',
+      'First-priority reservation on new campervan fleets',
+      'Direct Priority WhatsApp hotline',
+      'Zero platform booking processing fee',
+    ],
   },
 };
 @Injectable()

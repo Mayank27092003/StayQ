@@ -307,7 +307,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Upgrade your membership to $tierTitle for ₹$price/year and unlock exclusive VIP perks, point multipliers, and member discounts.',
+                'Upgrade your membership to $tierTitle for ₹$price/year and unlock enhanced point multipliers, unlimited Qube AI trip planning, campsite drops, and direct WhatsApp priority assistance.',
                 style: TextStyle(fontSize: 13, height: 1.5, color: isDark ? Colors.white70 : AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
@@ -431,7 +431,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
             _buildSectionHeader('Membership Tiers', isDark),
             const SizedBox(height: 4),
             Text(
-              'Unlock higher multipliers, late checkout, and VIP perks',
+              'Unlock point multipliers, Qube AI trip planning & secret campsite drops',
               style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary),
             ),
             const SizedBox(height: 14),
@@ -835,8 +835,8 @@ class _RewardsScreenState extends State<RewardsScreen> {
         'color': const Color(0xFF6B7280),
         'perks': [
           'Earn 1 pt per ₹100 spent',
-          'Redemption value is confirmed by the server',
-          'Standard guest concierge',
+          'Redeem points directly on future stays',
+          'Standard guest support via chat & email',
         ],
       },
       {
@@ -848,10 +848,11 @@ class _RewardsScreenState extends State<RewardsScreen> {
         'color': const Color(0xFF8B5CF6),
         'perks': [
           '⚡ 1.5x Points on all bookings',
-          '⏰ Early check-in & late checkout',
-          '🌟 Priority 24/7 VIP guest concierge',
-          '🏷️ 5% extra discount on select villas',
           '🎁 +50 Welcome Bonus Points',
+          '🤖 Unlimited Qube AI trip itineraries',
+          '⛺ 48h priority access to campsite drops',
+          '💬 Priority WhatsApp travel assistance',
+          '🏷️ Zero platform booking processing fee',
         ],
       },
       {
@@ -863,10 +864,12 @@ class _RewardsScreenState extends State<RewardsScreen> {
         'color': const Color(0xFFF59E0B),
         'perks': [
           '⚡⚡ 2.0x Double points on all bookings',
-          '👑 Free cancellation & room upgrades',
-          '🛎️ Dedicated personal trip designer',
-          '🚗 Airport / transfer discounts',
           '🎁 +100 Welcome Bonus Points',
+          '👑 Elite Member verified profile badge',
+          '🤖 Unlimited Qube overland route planner',
+          '🚐 Priority campervan fleet reservations',
+          '💬 Direct Priority WhatsApp hotline',
+          '🏷️ Zero platform booking processing fee',
         ],
       },
     ];
@@ -874,7 +877,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
     final currentTier = provider.loyaltyTier;
 
     return SizedBox(
-      height: 290,
+      height: 345,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: tiers.length,
@@ -884,7 +887,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
           final perks = t['perks'] as List<String>;
 
           return Container(
-            width: 260,
+            width: 270,
             margin: const EdgeInsets.only(right: 14),
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
