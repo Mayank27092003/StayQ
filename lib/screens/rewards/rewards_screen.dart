@@ -852,7 +852,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
           '🤖 Unlimited Qube AI trip itineraries',
           '⛺ 48h priority access to campsite drops',
           '💬 Priority WhatsApp travel assistance',
-          '🏷️ Zero platform booking processing fee',
+          '🏷️ 50% Off platform booking fee',
         ],
       },
       {

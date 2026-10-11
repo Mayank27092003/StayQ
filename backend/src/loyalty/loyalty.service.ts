@@ -44,7 +44,7 @@ export const TIER_CONFIGS: Record<LoyaltyTier, TierBenefit> = {
       'Unlimited Qube AI custom overland trip planner',
       '48-hour priority access to secret campsite drops',
       'Direct WhatsApp travel assistance (+91 9225270718)',
-      'Zero platform booking processing fee',
+      '50% Discount on platform booking processing fee',
     ],
   },
   Q_PREMIUM: {
