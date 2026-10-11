@@ -29,7 +29,7 @@ export const TIER_CONFIGS: Record<LoyaltyTier, TierBenefit> = {
     perks: [
       '1 point per ₹100 spent on stays & campervans',
       'Redeem points directly on future bookings',
-      '2 Free Qube AI trip itineraries / month',
+      '6 Free Qube AI trip itineraries / month (30 msgs/day)',
       'Standard customer support via in-app & email',
     ],
   },
@@ -42,7 +42,7 @@ export const TIER_CONFIGS: Record<LoyaltyTier, TierBenefit> = {
     perks: [
       '1.5x points on all bookings for 1 year',
       '+50 Welcome Bonus points credited instantly',
-      '20 Custom Qube AI overland trip plans / month',
+      '50 Custom Qube AI overland trip plans / month',
       '48-hour priority access to secret campsite drops',
       'Direct WhatsApp travel assistance (+91 9225270718)',
       '50% Discount on platform booking processing fee',
@@ -58,7 +58,7 @@ export const TIER_CONFIGS: Record<LoyaltyTier, TierBenefit> = {
       '2.0x Double points on all bookings for 1 year',
       '+100 Welcome Bonus points credited instantly',
       'Exclusive Q-Premium Elite verified badge',
-      '60 Qube AI overland expedition & trail plans / month',
+      '500 Qube AI overland expedition & trail plans / month',
       'First-priority reservation on new campervan fleets',
       'Direct Priority WhatsApp hotline',
       '50% Discount on platform fee + Additional 10% Member discount',

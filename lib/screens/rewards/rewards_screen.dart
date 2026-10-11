@@ -836,7 +836,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
         'perks': [
           'Earn 1 pt per ₹100 spent',
           'Redeem points directly on future stays',
-          '🤖 2 Free Qube AI trip plans / month',
+          '🤖 6 Free Qube AI trip plans / mo (30 msgs/day)',
           'Standard guest support via chat & email',
         ],
       },
@@ -850,7 +850,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
         'perks': [
           '⚡ 1.5x Points on all bookings',
           '🎁 +50 Welcome Bonus Points',
-          '🤖 20 Qube AI overland trip plans / mo',
+          '🤖 50 Qube AI overland trip plans / mo',
           '⛺ 48h priority access to campsite drops',
           '💬 Priority WhatsApp travel assistance',
           '🏷️ 50% Off platform booking fee',
@@ -867,7 +867,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
           '⚡⚡ 2.0x Double points on all bookings',
           '🎁 +100 Welcome Bonus Points',
           '👑 Elite Member verified profile badge',
-          '🤖 60 Qube AI expedition plans / month',
+          '🤖 500 Qube AI expedition plans / month',
           '🚐 Priority campervan fleet reservations',
           '💬 Direct Priority WhatsApp hotline',
           '🏷️ 50% Off platform fee + Extra 10% discount',
