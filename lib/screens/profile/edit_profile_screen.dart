@@ -9,6 +9,7 @@ import '../../services/email_verification_service.dart';
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../../config/app_config.dart';

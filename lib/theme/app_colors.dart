@@ -49,6 +49,9 @@ class AppColors {
   );
 
   // Dynamic context-aware theme helpers
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
   static Color bg(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkBackground : background;
 

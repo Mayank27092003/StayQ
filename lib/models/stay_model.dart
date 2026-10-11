@@ -65,6 +65,18 @@ class StayModel {
     return '⚡ FEATURED';
   }
 
+  bool get isCampervan =>
+      propertyType == 'RV' ||
+      category == 'RV' ||
+      category.toUpperCase().contains('CAMPERVAN') ||
+      tags.any((t) => t.toUpperCase().contains('CAMPERVAN') || t.toUpperCase().contains('RV'));
+
+  bool get isCamping =>
+      propertyType == 'CAMPING_SITE' ||
+      category == 'CAMPING' ||
+      category.toUpperCase().contains('CAMP') ||
+      tags.any((t) => t.toUpperCase().contains('CAMP'));
+
   StayModel({
     required this.id,
     this.hostId = '',

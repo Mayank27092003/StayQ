@@ -138,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
               backgroundColor: AppColors.card(context),
               onRefresh: () async {
                 await Future.wait([
-                  provider.fetchProperties(),
+                  provider.fetchStays(),
                   provider.fetchLoyaltyProfile(),
                   provider.fetchExperiences(),
                 ]);
