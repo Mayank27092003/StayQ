@@ -24,3 +24,14 @@
 -keepattributes *Annotation*
 -keepattributes SourceFile,LineNumberTable
 -keep public class * extends java.lang.Exception
+
+# Cashfree PG SDK
+-keep class com.cashfree.** { *; }
+-dontwarn com.cashfree.**
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-keep class com.cashfree.pg.** { *; }
+-keep class com.cashfree.pg.core.** { *; }
+-keep class com.cashfree.pg.ui.** { *; }
+

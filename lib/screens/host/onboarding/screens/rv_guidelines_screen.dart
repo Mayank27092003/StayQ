@@ -109,19 +109,19 @@ class _RvGuidelinesScreenState extends State<RvGuidelinesScreen> {
           ).animate().fadeIn(),
           const SizedBox(height: 8),
 
-          const Text(
+          Text(
             'Driving Rules & Safety Protocols',
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
               letterSpacing: -0.5,
             ),
           ).animate().fadeIn(delay: 50.ms).slideX(),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Define driver eligibility, speed regulations, and terrain rules for vehicle protection.',
-            style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary, height: 1.4),
+            style: TextStyle(fontSize: 13.5, color: isDark ? Colors.white70 : AppColors.textSecondary, height: 1.4),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 24),
 
@@ -142,9 +142,9 @@ class _RvGuidelinesScreenState extends State<RvGuidelinesScreen> {
                       child: const Icon(Icons.badge_rounded, color: AppColors.primary, size: 20),
                     ),
                     const SizedBox(width: 12),
-                    const Text(
+                    Text(
                       'Driver Eligibility Requirements',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
                     ),
                   ],
                 ),
@@ -154,7 +154,7 @@ class _RvGuidelinesScreenState extends State<RvGuidelinesScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Minimum Driver Age', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                    Text('Minimum Driver Age', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary)),
                     Row(
                       children: [
                         _buildStepperBtn(
@@ -186,13 +186,13 @@ class _RvGuidelinesScreenState extends State<RvGuidelinesScreen> {
                     ),
                   ],
                 ),
-                const Divider(height: 24),
+                Divider(height: 24, color: isDark ? Colors.white12 : null),
 
                 // Driving License Tenure
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Min License Tenure', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                    Text('Min License Tenure', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary)),
                     Row(
                       children: [
                         _buildStepperBtn(
@@ -230,9 +230,9 @@ class _RvGuidelinesScreenState extends State<RvGuidelinesScreen> {
           const SizedBox(height: 20),
 
           // 2. Terrain & Off-Road Policy
-          const Text(
+          Text(
             'Terrain & Road Policy *',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
           Column(
@@ -259,7 +259,7 @@ class _RvGuidelinesScreenState extends State<RvGuidelinesScreen> {
                     children: [
                       Icon(
                         isSel ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-                        color: isSel ? AppColors.primary : AppColors.textSecondary,
+                        color: isSel ? AppColors.primary : (isDark ? Colors.white60 : AppColors.textSecondary),
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -269,7 +269,7 @@ class _RvGuidelinesScreenState extends State<RvGuidelinesScreen> {
                           style: TextStyle(
                             fontSize: 13.5,
                             fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
-                            color: isSel ? AppColors.primary : AppColors.textPrimary,
+                            color: isSel ? AppColors.primary : (isDark ? Colors.white : AppColors.textPrimary),
                           ),
                         ),
                       ),
@@ -282,9 +282,9 @@ class _RvGuidelinesScreenState extends State<RvGuidelinesScreen> {
           const SizedBox(height: 20),
 
           // 3. Night Driving Policy
-          const Text(
+          Text(
             'Night Driving Policy *',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
           Column(
@@ -311,7 +311,7 @@ class _RvGuidelinesScreenState extends State<RvGuidelinesScreen> {
                     children: [
                       Icon(
                         isSel ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-                        color: isSel ? AppColors.primary : AppColors.textSecondary,
+                        color: isSel ? AppColors.primary : (isDark ? Colors.white60 : AppColors.textSecondary),
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -321,7 +321,7 @@ class _RvGuidelinesScreenState extends State<RvGuidelinesScreen> {
                           style: TextStyle(
                             fontSize: 13.5,
                             fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
-                            color: isSel ? AppColors.primary : AppColors.textPrimary,
+                            color: isSel ? AppColors.primary : (isDark ? Colors.white : AppColors.textPrimary),
                           ),
                         ),
                       ),
@@ -342,26 +342,29 @@ class _RvGuidelinesScreenState extends State<RvGuidelinesScreen> {
                   title: 'Speed Governor / 80 km/h Limiter',
                   subtitle: 'Mandatory RTO commercial speed limiter equipped',
                   value: _speedLimiterEquipped,
+                  isDark: isDark,
                   onChanged: (v) {
                     setState(() => _speedLimiterEquipped = v);
                     _sync();
                   },
                 ),
-                const Divider(height: 16),
+                Divider(height: 16, color: isDark ? Colors.white12 : null),
                 _buildSwitchTile(
                   title: 'Live GPS Telematics Tracker',
                   subtitle: 'Real-time rig tracking enabled for guest safety & breakdown assistance',
                   value: _gpsTrackerEquipped,
+                  isDark: isDark,
                   onChanged: (v) {
                     setState(() => _gpsTrackerEquipped = v);
                     _sync();
                   },
                 ),
-                const Divider(height: 16),
+                Divider(height: 16, color: isDark ? Colors.white12 : null),
                 _buildSwitchTile(
                   title: 'Full-to-Full Fuel Policy',
                   subtitle: 'Vehicle delivered with full tank, returned with full tank',
                   value: _fullToFullFuel,
+                  isDark: isDark,
                   onChanged: (v) {
                     setState(() => _fullToFullFuel = v);
                     _sync();
@@ -407,6 +410,7 @@ class _RvGuidelinesScreenState extends State<RvGuidelinesScreen> {
     required String title,
     required String subtitle,
     required bool value,
+    required bool isDark,
     required ValueChanged<bool> onChanged,
   }) {
     return Row(
@@ -416,15 +420,15 @@ class _RvGuidelinesScreenState extends State<RvGuidelinesScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+              Text(title, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary)),
               const SizedBox(height: 2),
-              Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              Text(subtitle, style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary)),
             ],
           ),
         ),
         Switch.adaptive(
           value: value,
-          activeColor: AppColors.primary,
+          activeThumbColor: AppColors.primary,
           onChanged: (v) {
             AppMotion.tapSelection();
             onChanged(v);

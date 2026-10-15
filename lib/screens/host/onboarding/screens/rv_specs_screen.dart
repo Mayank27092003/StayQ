@@ -4,10 +4,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../providers/host_onboarding_provider.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_motion.dart';
-import '../../../../widgets/bouncing_widget.dart';
 
 class RvSpecsScreen extends StatefulWidget {
-  const RvSpecsScreen({Key? key}) : super(key: key);
+  const RvSpecsScreen({super.key});
 
   @override
   State<RvSpecsScreen> createState() => _RvSpecsScreenState();
@@ -234,26 +233,26 @@ class _RvSpecsScreenState extends State<RvSpecsScreen> {
           ).animate().fadeIn(),
           const SizedBox(height: 8),
 
-          const Text(
+          Text(
             'Rig Identity & Vehicle Specs',
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
               letterSpacing: -0.5,
             ),
           ).animate().fadeIn(delay: 50.ms).slideX(),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Select your campervan specifications so travelers can find the right rig.',
-            style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary, height: 1.4),
+            style: TextStyle(fontSize: 13.5, color: isDark ? Colors.white70 : AppColors.textSecondary, height: 1.4),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 24),
 
           // 1. Vehicle Type Selector
-          const Text(
+          Text(
             'Vehicle Classification *',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -265,7 +264,7 @@ class _RvSpecsScreenState extends State<RvSpecsScreen> {
                 label: Text(
                   type,
                   style: TextStyle(
-                    color: isSel ? Colors.white : AppColors.textPrimary,
+                    color: isSel ? Colors.white : (isDark ? Colors.white70 : AppColors.textPrimary),
                     fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
                     fontSize: 12.5,
                   ),
@@ -274,7 +273,7 @@ class _RvSpecsScreenState extends State<RvSpecsScreen> {
                 selectedColor: AppColors.primary,
                 backgroundColor: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                side: BorderSide(color: isSel ? AppColors.primary : AppColors.borderLight),
+                side: BorderSide(color: isSel ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight)),
                 onSelected: (sel) {
                   if (sel) {
                     AppMotion.tapSelection();

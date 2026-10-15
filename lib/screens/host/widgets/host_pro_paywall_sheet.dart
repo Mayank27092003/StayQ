@@ -187,20 +187,24 @@ class _HostProPaywallSheetState extends State<HostProPaywallSheet> {
               ),
               const SizedBox(height: 12),
 
-              const Text(
+              Text(
                 'Unlock Neighborhood Market Intelligence',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
+                  color: isDark ? Colors.white : AppColors.textPrimary,
                   letterSpacing: -0.5,
                   height: 1.2,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Make informed pricing decisions with live competitor benchmarks, demand forecasts, and StayQ AI dynamic rate recommendations.',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? Colors.white70 : AppColors.textSecondary,
+                  height: 1.4,
+                ),
               ),
               const SizedBox(height: 20),
 
@@ -247,7 +251,11 @@ class _HostProPaywallSheetState extends State<HostProPaywallSheet> {
                               ),
                             Text(
                               plan['title'],
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.white : AppColors.textPrimary,
+                              ),
                             ),
                             const SizedBox(height: 6),
                             Row(
@@ -256,11 +264,18 @@ class _HostProPaywallSheetState extends State<HostProPaywallSheet> {
                               children: [
                                 Text(
                                   plan['price'],
-                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    color: isDark ? Colors.white : AppColors.textPrimary,
+                                  ),
                                 ),
                                 Text(
                                   plan['period'],
-                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark ? Colors.white60 : AppColors.textSecondary,
+                                  ),
                                 ),
                               ],
                             ),
@@ -281,9 +296,13 @@ class _HostProPaywallSheetState extends State<HostProPaywallSheet> {
               const SizedBox(height: 24),
 
               // Feature Highlights List
-              const Text(
+              Text(
                 'What is included in Host Pro:',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -307,12 +326,20 @@ class _HostProPaywallSheetState extends State<HostProPaywallSheet> {
                         children: [
                           Text(
                             f['title'],
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : AppColors.textPrimary,
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             f['desc'],
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? Colors.white60 : AppColors.textSecondary,
+                              height: 1.3,
+                            ),
                           ),
                         ],
                       ),

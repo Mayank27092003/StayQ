@@ -216,15 +216,18 @@ class StayCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.92),
+                        color: Theme.of(context).brightness == Brightness.dark 
+                            ? const Color(0xFF1E1E24).withValues(alpha: 0.92) 
+                            : Colors.white.withValues(alpha: 0.92),
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.border(context)),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Guest favorite',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: AppColors.text(context),
                         ),
                       ),
                     ),
@@ -321,9 +324,9 @@ class StayCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     stay.location,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.textSecondary,
+                      color: AppColors.textSub(context),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -345,11 +348,11 @@ class StayCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          const Text(
+                          Text(
                             'night',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.textSecondary,
+                              color: AppColors.textSub(context),
                             ),
                           ),
                         ],

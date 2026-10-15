@@ -25,6 +25,7 @@ import '../booking/camping_checkout_screen.dart';
 import '../inbox/chat_detail_screen.dart';
 import '../../providers/messaging_provider.dart';
 import '../profile/kyc_verification_screen.dart';
+import '../../navigation/app_router.dart';
 
 class ListingDetailScreen extends StatefulWidget {
 
@@ -301,7 +302,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                               end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -584,42 +585,42 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                           ),
                         ),
 
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20),
-                        child: Divider(color: AppColors.borderLight),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Divider(color: AppColors.border(context)),
                       ),
 
                       // About Description
-                      const Text(
+                      Text(
                         'About this space',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                       ),
                       const SizedBox(height: 10),
                       Text(
                         stay.description,
-                        style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textSecondary),
+                        style: TextStyle(fontSize: 14, height: 1.6, color: AppColors.textSub(context)),
                       ),
 
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20),
-                        child: Divider(color: AppColors.borderLight),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Divider(color: AppColors.border(context)),
                       ),
 
                       // Location & Neighborhood Privacy Protection
                       Row(
-                        children: const [
-                          Icon(Icons.location_on_rounded, color: AppColors.primary, size: 22),
-                          SizedBox(width: 6),
+                        children: [
+                          const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 22),
+                          const SizedBox(width: 6),
                           Text(
                             'Where you\'ll be',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 6),
                       Text(
                         stay.location,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text(context)),
                       ),
                       const SizedBox(height: 12),
 
@@ -717,15 +718,15 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                         ),
                       ),
 
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20),
-                        child: Divider(color: AppColors.borderLight),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Divider(color: AppColors.border(context)),
                       ),
 
                       // Availability Calendar
-                      const Text(
+                      Text(
                         'Select dates',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                       ),
                       const SizedBox(height: 14),
                       if (_isLoadingDates) 
@@ -735,9 +736,9 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                          Container(
                            padding: const EdgeInsets.all(16),
                            decoration: BoxDecoration(
-                             color: Colors.white,
+                             color: AppColors.card(context),
                              borderRadius: BorderRadius.circular(20),
-                             border: Border.all(color: AppColors.borderLight),
+                             border: Border.all(color: AppColors.border(context)),
                            ),
                            child: AnimatedCalendarPicker(
                              initialRange: _selectedDates,
@@ -748,15 +749,15 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                            ),
                          ),
 
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20),
-                        child: Divider(color: AppColors.borderLight),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Divider(color: AppColors.border(context)),
                       ),
 
                       // Reviews Section
-                      const Text(
+                      Text(
                         'Reviews',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                       ),
                       const SizedBox(height: 10),
                       _PropertyReviewsWidget(propertyId: stay.id),
@@ -801,7 +802,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                             ),
                             Text(
                               stay.propertyType == 'RV' ? ' / day' : ' / night',
-                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                              style: TextStyle(fontSize: 13, color: AppColors.textSub(context)),
                             ),
                           ],
                         ),
@@ -810,7 +811,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                            _selectedDates == null 
                                ? 'Select dates to reserve' 
                                : '${_selectedDates!.start.day}/${_selectedDates!.start.month} – ${_selectedDates!.end.day}/${_selectedDates!.end.month}',
-                           style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                           style: TextStyle(fontSize: 13, color: AppColors.textSub(context), fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -819,25 +820,50 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                         if (_selectedDates == null || _isLoadingDates || _availabilityError != null) return;
                         AppMotion.tapMedium();
                         final provider = context.read<AppProvider>();
+                        if (!provider.isLoggedIn) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please log in or sign up to continue booking.'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          Navigator.pushNamed(context, AppRoutes.login);
+                          return;
+                        }
                         if (!provider.isAadhaarVerified) {
                           _showAadhaarRequiredSheet(context);
                           return;
                         }
+                        final targetScreen = stay.propertyType == 'RV'
+                            ? RVCheckoutScreen(
+                                stay: stay,
+                                selectedDates: _selectedDates!,
+                                blockedDates: _blockedDates,
+                              )
+                            : stay.propertyType == 'CAMPING_SITE'
+                                ? CampingCheckoutScreen(
+                                    stay: stay,
+                                    selectedDates: _selectedDates!,
+                                    blockedDates: _blockedDates,
+                                  )
+                                : CheckoutScreen(
+                                    stay: stay,
+                                    selectedDates: _selectedDates!,
+                                    blockedDates: _blockedDates,
+                                  );
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => CheckoutScreen(
-                              stay: stay,
-                              selectedDates: _selectedDates!,
-                              blockedDates: _blockedDates,
-                            ),
+                            builder: (_) => targetScreen,
                           ),
                         );
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
                         decoration: BoxDecoration(
-                          color: _selectedDates == null ? AppColors.textMuted.withValues(alpha: 0.5) : const Color(0xFF111111),
+                          color: _selectedDates == null 
+                              ? AppColors.textMuted.withValues(alpha: 0.5) 
+                              : (Theme.of(context).brightness == Brightness.dark ? AppColors.primary : const Color(0xFF111111)),
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: _selectedDates == null ? [] : [
                             BoxShadow(
@@ -870,7 +896,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card(context),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
         ),
@@ -884,7 +910,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.textPrimary),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.text(context)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -894,7 +920,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             const SizedBox(height: 2),
             Text(
               subtitle,
-              style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 10, color: AppColors.textSub(context)),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -905,15 +931,18 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   }
 
   void _showAadhaarRequiredSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        decoration: BoxDecoration(
+          color: AppColors.card(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border.all(color: AppColors.border(context)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -922,7 +951,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: isDark ? Colors.white24 : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -930,9 +959,9 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
+                color: isDark ? const Color(0xFF064E3B) : const Color(0xFFF0FDF4),
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFBBF7D0)),
+                border: Border.all(color: isDark ? const Color(0xFF059669) : const Color(0xFFBBF7D0)),
               ),
               child: const Icon(
                 Icons.verified_user_rounded,
@@ -941,22 +970,22 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Aadhaar Verification Required',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF111111),
+                color: AppColors.text(context),
                 letterSpacing: -0.3,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'UIDAI Aadhaar verification is mandatory before booking any stay or vehicle on StayQ to ensure 100% verified guests and host security.',
               style: TextStyle(
                 fontSize: 14,
-                color: Color(0xFF64748B),
+                color: AppColors.textSub(context),
                 height: 1.45,
               ),
               textAlign: TextAlign.center,
@@ -965,21 +994,21 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color: isDark ? const Color(0xFF222228) : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: AppColors.border(context)),
               ),
               child: Row(
-                children: const [
-                  Icon(Icons.shield_outlined, color: Color(0xFF0F172A), size: 20),
-                  SizedBox(width: 12),
+                children: [
+                  Icon(Icons.shield_outlined, color: AppColors.text(context), size: 20),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Official paperless UIDAI OTP verification. Takes only 30 seconds.',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF334155),
+                        color: AppColors.text(context),
                       ),
                     ),
                   ),
@@ -992,7 +1021,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
               height: 52,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF111111),
+                  backgroundColor: isDark ? AppColors.primary : const Color(0xFF111111),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -1017,10 +1046,10 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text(
+              child: Text(
                 'Cancel',
                 style: TextStyle(
-                  color: Color(0xFF64748B),
+                  color: AppColors.textSub(context),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1051,7 +1080,7 @@ class _PropertyReviewsWidget extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Text('No reviews yet. Be the first to review!', style: TextStyle(color: AppColors.textSecondary));
+          return Text('No reviews yet. Be the first to review!', style: TextStyle(color: AppColors.textSub(context)));
         }
 
         return Column(
@@ -1080,12 +1109,12 @@ class _PropertyReviewsWidget extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(data['guestName'] ?? 'Guest', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text(data['guestName'] ?? 'Guest', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.text(context))),
                             Row(
                               children: [
                                 const Icon(Icons.star_rounded, size: 14, color: AppColors.starYellow),
                                 const SizedBox(width: 2),
-                                Text('$rating', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                Text('$rating', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.text(context))),
                               ],
                             ),
                           ],
@@ -1096,7 +1125,7 @@ class _PropertyReviewsWidget extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     data['reviewText'] ?? '',
-                    style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+                    style: TextStyle(fontSize: 14, color: AppColors.textSub(context), height: 1.5),
                   ),
                 ],
               ),

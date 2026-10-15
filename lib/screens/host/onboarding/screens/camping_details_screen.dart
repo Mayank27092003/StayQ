@@ -88,6 +88,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final provider = Provider.of<HostOnboardingProvider>(context);
 
     return SingleChildScrollView(
@@ -95,41 +96,46 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Camping Details ⛺',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
             ),
           ).animate().fadeIn().slideX(),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Make your campsite stand out! Tell us what makes your nature retreat special.',
             style: TextStyle(
               fontSize: 16,
-              color: AppColors.textSecondary,
+              color: isDark ? Colors.white70 : AppColors.textSecondary,
               height: 1.4,
             ),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           // 0. Exact Campsite Location & Access Route
-          _buildSectionHeader('Campsite Location & Access Point', Icons.place).animate().fadeIn(delay: 150.ms),
+          _buildSectionHeader('Campsite Location & Access Point', Icons.place, isDark).animate().fadeIn(delay: 150.ms),
           const SizedBox(height: 12),
           TextField(
             controller: _campsiteLocationController,
+            style: TextStyle(color: isDark ? Colors.white : AppColors.textPrimary),
             decoration: InputDecoration(
               hintText: 'e.g. Kasol Riverside, Near Chalal Bridge, Parvati Valley',
+              hintStyle: TextStyle(color: isDark ? Colors.white38 : AppColors.textSecondary),
               labelText: 'Exact Campsite Location / Trailhead Access *',
+              labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.textSecondary),
               filled: true,
-              fillColor: AppColors.surfaceLight,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              fillColor: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: isDark ? Colors.white12 : AppColors.borderLight)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: isDark ? Colors.white12 : AppColors.borderLight)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
               prefixIcon: const Icon(Icons.location_on_outlined, color: AppColors.primary),
             ),
           ).animate().fadeIn(delay: 180.ms),
           const SizedBox(height: 28),
 
           // 1. Terrain Type (Horizontal Cards)
-          _buildSectionHeader('Terrain Type', Icons.landscape).animate().fadeIn(delay: 200.ms),
+          _buildSectionHeader('Terrain Type', Icons.landscape, isDark).animate().fadeIn(delay: 200.ms),
           const SizedBox(height: 16),
           SizedBox(
             height: 100,
@@ -151,10 +157,12 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
                     curve: Curves.easeOutCubic,
                     width: 100,
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary : AppColors.surfaceLight,
+                      color: isSelected
+                          ? AppColors.primary
+                          : (isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isSelected ? AppColors.primary : AppColors.borderLight,
+                        color: isSelected ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight),
                         width: 2,
                       ),
                       boxShadow: isSelected
@@ -167,7 +175,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
                         Icon(
                           terrain['icon'] as IconData,
                           size: 32,
-                          color: isSelected ? Colors.white : AppColors.textSecondary,
+                          color: isSelected ? Colors.white : (isDark ? Colors.white70 : AppColors.textSecondary),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -175,7 +183,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: isSelected ? Colors.white : AppColors.textPrimary,
+                            color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.textPrimary),
                           ),
                         ),
                       ],
@@ -188,15 +196,15 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
           const SizedBox(height: 32),
 
           // 2. Accommodation Details
-          _buildSectionHeader('Accommodation', Icons.home_filled).animate().fadeIn(delay: 400.ms),
+          _buildSectionHeader('Accommodation', Icons.home_filled, isDark).animate().fadeIn(delay: 400.ms),
           const SizedBox(height: 16),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.cardBg,
+              color: isDark ? const Color(0xFF1E1C2A) : AppColors.cardBg,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 4)),
+                BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.04), blurRadius: 15, offset: const Offset(0, 4)),
               ],
             ),
             child: Column(
@@ -215,8 +223,9 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
                     provider.tentCapacity++;
                     provider.notifyListeners();
                   },
+                  isDark: isDark,
                 ),
-                const Divider(color: AppColors.borderLight, height: 1),
+                Divider(color: isDark ? Colors.white12 : AppColors.borderLight, height: 1),
                 _buildCounterRow(
                   title: 'Beds Provided',
                   subtitle: 'Mats, cots, or mattresses',
@@ -227,6 +236,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
                   onIncrement: () {
                     _editState(() => _bedsProvided++);
                   },
+                  isDark: isDark,
                 ),
               ],
             ),
@@ -234,7 +244,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
           const SizedBox(height: 32),
 
           // 3. Amenities
-          _buildSectionHeader('Amenities & Dining', Icons.restaurant_menu).animate().fadeIn(delay: 500.ms),
+          _buildSectionHeader('Amenities & Dining', Icons.restaurant_menu, isDark).animate().fadeIn(delay: 500.ms),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -248,6 +258,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
                     provider.hasCampfire = val;
                     provider.notifyListeners();
                   },
+                  isDark: isDark,
                 ).animate().fadeIn(delay: 550.ms).slideX(begin: -0.1),
               ),
               const SizedBox(width: 16),
@@ -258,6 +269,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
                   value: _hasFoodOptions,
                   activeColor: Colors.green,
                   onChanged: (val) => _editState(() => _hasFoodOptions = val),
+                  isDark: isDark,
                 ).animate().fadeIn(delay: 600.ms).slideX(begin: 0.1),
               ),
             ],
@@ -265,7 +277,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
           const SizedBox(height: 28),
 
           // 3b. Washroom & Toilet Facilities
-          _buildSectionHeader('Washroom & Sanitation *', Icons.wash).animate().fadeIn(delay: 620.ms),
+          _buildSectionHeader('Washroom & Sanitation *', Icons.wash, isDark).animate().fadeIn(delay: 620.ms),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -277,10 +289,10 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             ].map((ws) {
               final isSel = _washroomType == ws;
               return ChoiceChip(
-                label: Text(ws, style: TextStyle(color: isSel ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
+                label: Text(ws, style: TextStyle(color: isSel ? Colors.white : (isDark ? Colors.white70 : AppColors.textPrimary), fontWeight: FontWeight.bold, fontSize: 12)),
                 selected: isSel,
                 selectedColor: AppColors.primary,
-                backgroundColor: AppColors.surfaceLight,
+                backgroundColor: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
                 onSelected: (sel) {
                   if (sel) _editState(() => _washroomType = ws);
                 },
@@ -294,12 +306,13 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             icon: Icons.hot_tub,
             value: _hasHotWater,
             onChanged: (val) => _editState(() => _hasHotWater = val),
+            isDark: isDark,
           ),
           const SizedBox(height: 28),
 
           // 3c. Food & Meal Plans
           if (_hasFoodOptions) ...[
-            _buildSectionHeader('Meal Packages & Dining Options', Icons.restaurant).animate().fadeIn(delay: 630.ms),
+            _buildSectionHeader('Meal Packages & Dining Options', Icons.restaurant, isDark).animate().fadeIn(delay: 630.ms),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
@@ -312,10 +325,10 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
               ].map((m) {
                 final isSel = _mealPlan == m;
                 return ChoiceChip(
-                  label: Text(m, style: TextStyle(color: isSel ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
+                  label: Text(m, style: TextStyle(color: isSel ? Colors.white : (isDark ? Colors.white70 : AppColors.textPrimary), fontWeight: FontWeight.bold, fontSize: 12)),
                   selected: isSel,
                   selectedColor: AppColors.primary,
-                  backgroundColor: AppColors.surfaceLight,
+                  backgroundColor: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
                   onSelected: (sel) {
                     if (sel) _editState(() => _mealPlan = m);
                   },
@@ -326,7 +339,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
           ],
 
           // 3d. Stay Essentials Provided by Host
-          _buildSectionHeader('Camping Essentials Provided', Icons.backpack).animate().fadeIn(delay: 640.ms),
+          _buildSectionHeader('Camping Essentials Provided', Icons.backpack, isDark).animate().fadeIn(delay: 640.ms),
           const SizedBox(height: 12),
           _buildSwitchTile(
             title: 'Tents / Glamping Domes & Sleeping Bags',
@@ -334,6 +347,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             icon: Icons.night_shelter,
             value: _tentsProvided,
             onChanged: (val) => _editState(() => _tentsProvided = val),
+            isDark: isDark,
           ),
           const SizedBox(height: 10),
           _buildSwitchTile(
@@ -342,6 +356,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             icon: Icons.local_drink,
             value: _drinkingWater,
             onChanged: (val) => _editState(() => _drinkingWater = val),
+            isDark: isDark,
           ),
           const SizedBox(height: 10),
           _buildSwitchTile(
@@ -350,11 +365,12 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             icon: Icons.battery_charging_full,
             value: _chargingStations,
             onChanged: (val) => _editState(() => _chargingStations = val),
+            isDark: isDark,
           ),
           const SizedBox(height: 28),
 
           // 4. Activities & Trekking
-          _buildSectionHeader('Activities', Icons.directions_walk).animate().fadeIn(delay: 650.ms),
+          _buildSectionHeader('Activities', Icons.directions_walk, isDark).animate().fadeIn(delay: 650.ms),
           const SizedBox(height: 16),
           _buildSwitchTile(
             title: 'Trekking Trails Available',
@@ -362,11 +378,12 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             icon: Icons.hiking,
             value: _hasTrekking,
             onChanged: (val) => _editState(() => _hasTrekking = val),
+            isDark: isDark,
           ).animate().fadeIn(delay: 700.ms).scale(),
           const SizedBox(height: 32),
 
           // 5. Safety & Eco-Friendly
-          _buildSectionHeader('Safety & Environment', Icons.health_and_safety).animate().fadeIn(delay: 750.ms),
+          _buildSectionHeader('Safety & Environment', Icons.health_and_safety, isDark).animate().fadeIn(delay: 750.ms),
           const SizedBox(height: 16),
           _buildSwitchTile(
             title: 'First Aid on Site',
@@ -374,6 +391,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             icon: Icons.medical_services,
             value: _hasFirstAid,
             onChanged: (val) => _editState(() => _hasFirstAid = val),
+            isDark: isDark,
           ).animate().fadeIn(delay: 800.ms).scale(),
           const SizedBox(height: 12),
           _buildSwitchTile(
@@ -382,6 +400,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             icon: Icons.eco,
             value: _isEcoFriendly,
             onChanged: (val) => _editState(() => _isEcoFriendly = val),
+            isDark: isDark,
           ).animate().fadeIn(delay: 850.ms).scale(),
           
           const SizedBox(height: 60),
@@ -390,17 +409,17 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
+  Widget _buildSectionHeader(String title, IconData icon, bool isDark) {
     return Row(
       children: [
         Icon(icon, color: AppColors.primary, size: 24),
         const SizedBox(width: 12),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: isDark ? Colors.white : AppColors.textPrimary,
           ),
         ),
       ],
@@ -413,6 +432,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
     required int value,
     required VoidCallback onDecrement,
     required VoidCallback onIncrement,
+    required bool isDark,
   }) {
     return Padding(
       padding: const EdgeInsets.all(20.0),
@@ -425,28 +445,28 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : AppColors.textPrimary),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : AppColors.textSecondary),
                 ),
               ],
             ),
           ),
           Row(
             children: [
-              _buildIconButton(Icons.remove, onDecrement),
+              _buildIconButton(Icons.remove, onDecrement, isDark),
               SizedBox(
                 width: 48,
                 child: Text(
                   value.toString(),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary),
                 ),
               ),
-              _buildIconButton(Icons.add, onIncrement),
+              _buildIconButton(Icons.add, onIncrement, isDark),
             ],
           ),
         ],
@@ -454,16 +474,16 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
     );
   }
 
-  Widget _buildIconButton(IconData icon, VoidCallback onPressed) {
+  Widget _buildIconButton(IconData icon, VoidCallback onPressed, bool isDark) {
     return InkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppColors.surfaceLight,
+          color: isDark ? Colors.white10 : AppColors.surfaceLight,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.borderLight),
+          border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
         ),
         child: Icon(icon, color: AppColors.primary, size: 20),
       ),
@@ -476,6 +496,7 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
     required bool value,
     required Color activeColor,
     required ValueChanged<bool> onChanged,
+    required bool isDark,
   }) {
     return GestureDetector(
       onTap: () => onChanged(!value),
@@ -483,10 +504,10 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
         duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: value ? activeColor.withOpacity(0.1) : AppColors.surfaceLight,
+          color: value ? activeColor.withOpacity(isDark ? 0.2 : 0.1) : (isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: value ? activeColor : AppColors.borderLight,
+            color: value ? activeColor : (isDark ? Colors.white12 : AppColors.borderLight),
             width: 2,
           ),
         ),
@@ -495,14 +516,14 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
             Icon(
               icon,
               size: 40,
-              color: value ? activeColor : AppColors.textSecondary,
+              color: value ? activeColor : (isDark ? Colors.white70 : AppColors.textSecondary),
             ),
             const SizedBox(height: 12),
             Text(
               title,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: value ? activeColor : AppColors.textPrimary,
+                color: value ? activeColor : (isDark ? Colors.white : AppColors.textPrimary),
               ),
             ),
           ],
@@ -517,14 +538,19 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
     required IconData icon,
     required bool value,
     required ValueChanged<bool> onChanged,
+    required bool isDark,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: value ? AppColors.primary.withOpacity(0.05) : AppColors.surfaceLight,
+        color: value
+            ? AppColors.primary.withOpacity(isDark ? 0.15 : 0.05)
+            : (isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: value ? AppColors.primary.withOpacity(0.5) : AppColors.borderLight,
+          color: value
+              ? AppColors.primary.withOpacity(0.5)
+              : (isDark ? Colors.white12 : AppColors.borderLight),
         ),
       ),
       child: Row(
@@ -532,10 +558,10 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: value ? AppColors.primary.withOpacity(0.2) : Colors.grey.withOpacity(0.1),
+              color: value ? AppColors.primary.withOpacity(0.2) : (isDark ? Colors.white10 : Colors.grey.withOpacity(0.1)),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: value ? AppColors.primary : AppColors.textSecondary),
+            child: Icon(icon, color: value ? AppColors.primary : (isDark ? Colors.white70 : AppColors.textSecondary)),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -544,19 +570,19 @@ class _CampingDetailsScreenState extends State<CampingDetailsScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : AppColors.textPrimary),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : AppColors.textSecondary),
                 ),
               ],
             ),
           ),
           Switch(
             value: value,
-            activeColor: AppColors.primary,
+            activeThumbColor: AppColors.primary,
             onChanged: onChanged,
           ),
         ],

@@ -46,13 +46,13 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.bg(context),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: Icon(Icons.arrow_back_rounded, color: AppColors.icon(context)),
           onPressed: () {
             // Clear the search when going back
             provider.updateSearch(destination: '');
@@ -64,10 +64,10 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           children: [
             Text(
               destination.isNotEmpty ? destination : 'Search Results',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
-                color: AppColors.textPrimary,
+                color: AppColors.text(context),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -75,9 +75,9 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
             if (provider.selectedDateRange != null)
               Text(
                 '${provider.selectedDateRange!.duration.inDays} nights · ${provider.adultsCount + provider.childrenCount} guests',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.textSecondary,
+                  color: AppColors.textSub(context),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -85,7 +85,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.tune_rounded, color: AppColors.textPrimary),
+            icon: Icon(Icons.tune_rounded, color: AppColors.icon(context)),
             onPressed: () {
               showModalBottomSheet(
                 context: context,
@@ -96,7 +96,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.map_outlined, color: AppColors.textPrimary),
+            icon: Icon(Icons.map_outlined, color: AppColors.icon(context)),
             onPressed: () {
               Navigator.push(
                 context,
@@ -146,7 +146,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -181,7 +181,9 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                           width: 100,
                           height: 100,
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceLight,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF222228)
+                                : AppColors.surfaceLight,
                             shape: BoxShape.circle,
                           ),
                           child: const Center(
@@ -190,12 +192,12 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                         ).animate(onPlay: (c) => c.repeat(reverse: true))
                           .scaleXY(begin: 1.0, end: 1.08, duration: 1200.ms, curve: Curves.easeInOut),
                         const SizedBox(height: 20),
-                        const Text(
+                        Text(
                           'No stays found',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
+                            color: AppColors.text(context),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -204,17 +206,16 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                               ? 'Try searching for a different destination\nor adjusting your filters'
                               : 'Adjust your filters to find stays',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
-                            color: AppColors.textSecondary,
+                            color: AppColors.textSub(context),
                             height: 1.5,
                           ),
                         ),
                         const SizedBox(height: 24),
                         BouncingWidget(
                           onTap: () {
-                            provider.updateSearch(destination: '');
-                            // Refresh to show all
+                            provider.resetSearchFilters();
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -268,6 +269,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
 
   Widget _buildFilterChip(String label) {
     final isSelected = _selectedFilter == label;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: FilterChip(
@@ -277,14 +279,14 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         selectedColor: AppColors.primary,
         checkmarkColor: Colors.white,
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : AppColors.textPrimary,
+          color: isSelected ? Colors.white : AppColors.text(context),
           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
           fontSize: 12,
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF222228) : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: isSelected ? AppColors.primary : AppColors.borderLight),
+          side: BorderSide(color: isSelected ? AppColors.primary : AppColors.border(context)),
         ),
       ),
     );

@@ -50,8 +50,7 @@ export function Qube() {
                   <img
                     className="chat__avatar"
                     src="/images/real_concierge.jpg"
-                    alt=""
-                    aria-hidden="true"
+                    alt="Qube AI Smart Travel Assistant by Stay Q"
                   />
                   Qube
                   <span className="chat__badge">AI</span>

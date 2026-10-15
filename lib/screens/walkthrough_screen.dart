@@ -8,7 +8,7 @@ import '../navigation/app_router.dart';
 import '../theme/app_colors.dart';
 
 class WalkthroughScreen extends StatefulWidget {
-  const WalkthroughScreen({Key? key}) : super(key: key);
+  const WalkthroughScreen({super.key});
 
   @override
   State<WalkthroughScreen> createState() => _WalkthroughScreenState();
@@ -44,16 +44,21 @@ class _WalkthroughScreenState extends State<WalkthroughScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bg(context),
       body: Stack(
         children: [
           // Background Gradient
           Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppColors.primaryDark, AppColors.background],
+                  colors: [
+                    isDark ? const Color(0xFF1E1035) : AppColors.primaryDark,
+                    AppColors.bg(context),
+                  ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -122,19 +127,19 @@ class _WalkthroughScreenState extends State<WalkthroughScreen> {
                             // Text Details
                             Text(
                               item.title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
+                                color: AppColors.text(context),
                               ),
                               textAlign: TextAlign.center,
                             ).animate(key: ValueKey('t_$index')).fadeIn(delay: 200.ms).slideY(begin: 0.3),
                             const SizedBox(height: 16),
                             Text(
                               item.description,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
-                                color: AppColors.textSecondary,
+                                color: AppColors.textSub(context),
                                 height: 1.5,
                               ),
                               textAlign: TextAlign.center,
@@ -160,9 +165,9 @@ class _WalkthroughScreenState extends State<WalkthroughScreen> {
                         SmoothPageIndicator(
                           controller: _pageController,
                           count: _items.length,
-                          effect: const ExpandingDotsEffect(
+                          effect: ExpandingDotsEffect(
                             activeDotColor: AppColors.primary,
-                            dotColor: Colors.grey, // Made grey to be visible
+                            dotColor: isDark ? Colors.white24 : Colors.grey.shade400,
                             dotHeight: 8,
                             dotWidth: 8,
                             expansionFactor: 3,
@@ -189,7 +194,7 @@ class _WalkthroughScreenState extends State<WalkthroughScreen> {
                               borderRadius: BorderRadius.circular(100),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.primary.withOpacity(0.3),
+                                  color: AppColors.primary.withValues(alpha: 0.3),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 )

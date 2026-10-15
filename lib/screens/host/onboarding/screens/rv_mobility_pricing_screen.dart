@@ -128,10 +128,11 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark ? const Color(0xFF1E1C2A) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Add Permitted Route / Corridor', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+        title: Text('Add Permitted Route / Corridor', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary)),
         content: TextField(
           controller: _customCorridorController,
           autofocus: true,
+          style: TextStyle(color: isDark ? Colors.white : AppColors.textPrimary),
           decoration: InputDecoration(
             hintText: 'e.g. Bangalore - Ooty - Wayanad',
             hintStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
@@ -193,26 +194,26 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
           ).animate().fadeIn(),
           const SizedBox(height: 8),
 
-          const Text(
+          Text(
             'Mobility Mode & Rental Tariffs',
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
               letterSpacing: -0.5,
             ),
           ).animate().fadeIn(delay: 50.ms).slideX(),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Choose how guests can experience your rig: Self-drive, Chauffeur, or Static stay.',
-            style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary, height: 1.4),
+            style: TextStyle(fontSize: 13.5, color: isDark ? Colors.white70 : AppColors.textSecondary, height: 1.4),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 24),
 
           // 1. Mobility Mode Selector
-          const Text(
+          Text(
             'Mobility & Rental Mode *',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
           ),
           const SizedBox(height: 10),
           _buildMobilityOption(
@@ -240,14 +241,14 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
 
           // If not stationary, show km packages
           if (_mobilityMode != 'STATIONARY') ...[
-            const Text(
+            Text(
               'Daily Included Kilometers *',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Distance included in daily base rate per 24 hours of booking',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary),
             ),
             const SizedBox(height: 10),
             Wrap(
@@ -260,7 +261,7 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
                   label: Text(
                     label,
                     style: TextStyle(
-                      color: isSel ? Colors.white : AppColors.textPrimary,
+                      color: isSel ? Colors.white : (isDark ? Colors.white70 : AppColors.textPrimary),
                       fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
                       fontSize: 12.5,
                     ),
@@ -269,7 +270,7 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
                   selectedColor: AppColors.primary,
                   backgroundColor: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  side: BorderSide(color: isSel ? AppColors.primary : AppColors.borderLight),
+                  side: BorderSide(color: isSel ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight)),
                   onSelected: (sel) {
                     if (sel) {
                       AppMotion.tapSelection();
@@ -284,9 +285,9 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
 
             // Extra Km Rate
             if (_dailyKm > 0) ...[
-              const Text(
+              Text(
                 'Extra Distance Rate (₹/km) *',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
               ),
               const SizedBox(height: 8),
               _buildPriceInput(
@@ -306,14 +307,14 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Permitted Overland Corridors',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Highways & circuits authorized for this rig',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary),
                     ),
                   ],
                 ),
@@ -334,7 +335,7 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
                   label: Text(
                     corridor,
                     style: TextStyle(
-                      color: isSel ? Colors.white : AppColors.textPrimary,
+                      color: isSel ? Colors.white : (isDark ? Colors.white70 : AppColors.textPrimary),
                       fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
                       fontSize: 12,
                     ),
@@ -343,7 +344,7 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
                   selectedColor: AppColors.primary,
                   backgroundColor: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  side: BorderSide(color: isSel ? AppColors.primary : AppColors.borderLight),
+                  side: BorderSide(color: isSel ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight)),
                   onSelected: (_) {
                     AppMotion.tapSelection();
                     setState(() {
@@ -362,14 +363,14 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
           ],
 
           // Base Daily Rate
-          const Text(
+          Text(
             'Base Daily Rental Rate (₹) *',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Rate charged per 24 hours of rig hire',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary),
           ),
           const SizedBox(height: 10),
           _buildPriceInput(
@@ -386,16 +387,16 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
             children: [
               const Icon(Icons.discount_outlined, size: 18, color: AppColors.primary),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Extended Expedition Discounts (%)',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Incentivize long road trips and cross-country expeditions with automated discounts',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
           Row(
@@ -404,7 +405,7 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Weekly (7+ Days)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    Text('Weekly (7+ Days)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary)),
                     const SizedBox(height: 6),
                     _buildPriceInput(
                       controller: _weeklyDiscountController,
@@ -421,7 +422,7 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Monthly (28+ Days)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    Text('Monthly (28+ Days)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary)),
                     const SizedBox(height: 6),
                     _buildPriceInput(
                       controller: _monthlyDiscountController,
@@ -486,13 +487,13 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
                     style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: isSel ? FontWeight.w900 : FontWeight.w700,
-                      color: isSel ? AppColors.primary : AppColors.textPrimary,
+                      color: isSel ? AppColors.primary : (isDark ? Colors.white : AppColors.textPrimary),
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -529,15 +530,15 @@ class _RvMobilityPricingScreenState extends State<RvMobilityPricingScreen> {
             child: TextField(
               controller: controller,
               keyboardType: TextInputType.number,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppColors.textPrimary),
               decoration: InputDecoration(
                 hintText: hint,
-                hintStyle: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+                hintStyle: TextStyle(fontSize: 16, color: isDark ? Colors.white38 : AppColors.textSecondary),
                 border: InputBorder.none,
               ),
             ),
           ),
-          Text(suffix, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+          Text(suffix, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white60 : AppColors.textSecondary)),
         ],
       ),
     );

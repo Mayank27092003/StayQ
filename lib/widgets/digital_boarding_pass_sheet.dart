@@ -129,15 +129,35 @@ Present this pass upon check-in or scan QR code.''';
     }
   }
 
+  String _getCountdownText() {
+    final now = DateTime.now();
+    if (now.isBefore(checkIn)) {
+      final diff = checkIn.difference(now);
+      if (diff.inDays > 0) {
+        return '${diff.inDays}d ${diff.inHours % 24}h until Check-in';
+      } else if (diff.inHours > 0) {
+        return '${diff.inHours}h ${diff.inMinutes % 60}m until Check-in';
+      } else {
+        return '${diff.inMinutes}m until Check-in';
+      }
+    } else if (now.isAfter(checkIn) && now.isBefore(checkOut)) {
+      return 'Check-in Active • Stay in Progress';
+    } else {
+      return 'Stay Completed';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('dd MMM yyyy');
     final nights = checkOut.difference(checkIn).inDays;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final countdownStr = _getCountdownText();
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: AppColors.card(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: EdgeInsets.only(
         top: 16,
@@ -155,7 +175,7 @@ Present this pass upon check-in or scan QR code.''';
                 width: 44,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: isDark ? Colors.white24 : Colors.black12,
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -171,24 +191,24 @@ Present this pass upon check-in or scan QR code.''';
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF073359).withValues(alpha: 0.1),
+                        color: isDark ? const Color(0xFF93C5FD).withValues(alpha: 0.15) : const Color(0xFF073359).withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.confirmation_number_rounded, color: Color(0xFF073359), size: 20),
+                      child: Icon(Icons.confirmation_number_rounded, color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF073359), size: 20),
                     ),
                     const SizedBox(width: 10),
-                    const Text(
+                    Text(
                       'Official Digital Stay Pass',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                        color: AppColors.text(context),
                       ),
                     ),
                   ],
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+                  icon: Icon(Icons.close_rounded, color: AppColors.textSub(context)),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -198,12 +218,12 @@ Present this pass upon check-in or scan QR code.''';
             // BOARDING PASS CARD CONTAINER
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xFFFDFBF7),
+                color: isDark ? const Color(0xFF1E222D) : const Color(0xFFFDFBF7),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFE2D7C3), width: 1.5),
+                border: Border.all(color: isDark ? const Color(0xFF333A48) : const Color(0xFFE2D7C3), width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -253,6 +273,32 @@ Present this pass upon check-in or scan QR code.''';
                     ),
                   ),
 
+                  // Check-in Time Countdown Banner
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                      border: Border(bottom: BorderSide(color: isDark ? const Color(0xFF333A48) : const Color(0xFFE2E8F0))),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.hourglass_top_rounded, size: 14, color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF073359)),
+                        const SizedBox(width: 6),
+                        Text(
+                          countdownStr,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF073359),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   // Pass Body
                   Padding(
                     padding: const EdgeInsets.all(20),
@@ -274,17 +320,17 @@ Present this pass upon check-in or scan QR code.''';
                                   const SizedBox(height: 2),
                                   Text(
                                     stayTitle,
-                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                                   ),
                                   const SizedBox(height: 2),
                                   Row(
                                     children: [
-                                      const Icon(Icons.location_on_outlined, size: 14, color: AppColors.textSecondary),
+                                      Icon(Icons.location_on_outlined, size: 14, color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary),
                                       const SizedBox(width: 4),
                                       Expanded(
                                         child: Text(
                                           stayLocation,
-                                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                          style: TextStyle(fontSize: 13, color: isDark ? const Color(0xFFCBD5E1) : AppColors.textSecondary),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -298,7 +344,7 @@ Present this pass upon check-in or scan QR code.''';
                         ),
 
                         const SizedBox(height: 16),
-                        const Divider(height: 1, color: Color(0xFFE2D7C3)),
+                        Divider(height: 1, color: isDark ? const Color(0xFF333A48) : const Color(0xFFE2D7C3)),
                         const SizedBox(height: 16),
 
                         // Guest Name & Confirmation Code
@@ -312,7 +358,7 @@ Present this pass upon check-in or scan QR code.''';
                                   const SizedBox(height: 4),
                                   Text(
                                     guestName.isNotEmpty ? guestName : 'Valued Guest',
-                                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -338,17 +384,17 @@ Present this pass upon check-in or scan QR code.''';
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF073359).withValues(alpha: 0.08),
+                                      color: isDark ? const Color(0xFF93C5FD).withValues(alpha: 0.15) : const Color(0xFF073359).withValues(alpha: 0.08),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Row(
                                       children: [
                                         Text(
                                           confirmationCode,
-                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF073359), letterSpacing: 0.8),
+                                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF073359), letterSpacing: 0.8),
                                         ),
                                         const SizedBox(width: 4),
-                                        const Icon(Icons.copy_rounded, size: 12, color: Color(0xFF073359)),
+                                        Icon(Icons.copy_rounded, size: 12, color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF073359)),
                                       ],
                                     ),
                                   ),
@@ -364,9 +410,9 @@ Present this pass upon check-in or scan QR code.''';
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: isDark ? const Color(0xFF141720) : Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            border: Border.all(color: isDark ? const Color(0xFF333A48) : const Color(0xFFE2E8F0)),
                           ),
                           child: Row(
                             children: [
@@ -376,7 +422,7 @@ Present this pass upon check-in or scan QR code.''';
                                   children: [
                                     const Text('CHECK-IN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
                                     const SizedBox(height: 2),
-                                    Text(dateFormat.format(checkIn), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                    Text(dateFormat.format(checkIn), style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A))),
                                     const Text('From 2:00 PM', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                                   ],
                                 ),
@@ -384,10 +430,10 @@ Present this pass upon check-in or scan QR code.''';
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
+                                  color: isDark ? const Color(0xFF262D3D) : const Color(0xFFF1F5F9),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Text('$nights ${nights == 1 ? "Night" : "Nights"}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                                child: Text('$nights ${nights == 1 ? "Night" : "Nights"}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569))),
                               ),
                               Expanded(
                                 child: Column(
@@ -395,7 +441,7 @@ Present this pass upon check-in or scan QR code.''';
                                   children: [
                                     const Text('CHECK-OUT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
                                     const SizedBox(height: 2),
-                                    Text(dateFormat.format(checkOut), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                    Text(dateFormat.format(checkOut), style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A))),
                                     const Text('By 11:00 AM', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                                   ],
                                 ),
@@ -406,14 +452,14 @@ Present this pass upon check-in or scan QR code.''';
 
                         const SizedBox(height: 16),
 
-                        // Access Key / PIN Box
+                        // Access Key / Door PIN Box
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF059669).withValues(alpha: 0.08),
+                            color: const Color(0xFF059669).withValues(alpha: isDark ? 0.15 : 0.08),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFF059669).withValues(alpha: 0.3)),
+                            border: Border.all(color: const Color(0xFF059669).withValues(alpha: isDark ? 0.4 : 0.3)),
                           ),
                           child: Row(
                             children: [
@@ -424,15 +470,15 @@ Present this pass upon check-in or scan QR code.''';
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      isStayingWithHost ? 'HOST IN-PERSON CHECK-IN' : 'CHECK-IN INSTRUCTIONS',
+                                      isStayingWithHost ? 'HOST IN-PERSON CHECK-IN' : 'DOOR CODE & ACCESS',
                                       style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF059669), letterSpacing: 1.0),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       isStayingWithHost
                                           ? 'Hosted Stay with ${hostName.isNotEmpty ? hostName : "Host"}'
-                                          : 'Access: $_doorPin',
-                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                          : 'Access Code: $_doorPin',
+                                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                                     ),
                                   ],
                                 ),
@@ -452,7 +498,7 @@ Present this pass upon check-in or scan QR code.''';
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
+                                  border: Border.all(color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1), width: 1.5),
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withValues(alpha: 0.04),
@@ -465,7 +511,7 @@ Present this pass upon check-in or scan QR code.''';
                                   'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=STAYQ-$confirmationCode',
                                   width: 140,
                                   height: 140,
-                                  errorBuilder: (_, __, ___) => const SizedBox(
+                                  errorBuilder: (_, _, _) => const SizedBox(
                                     width: 140,
                                     height: 140,
                                     child: Center(child: Icon(Icons.qr_code_2_rounded, size: 100, color: Color(0xFF073359))),
@@ -482,7 +528,7 @@ Present this pass upon check-in or scan QR code.''';
                         ),
 
                         const SizedBox(height: 16),
-                        const Divider(height: 1, color: Color(0xFFE2D7C3)),
+                        Divider(height: 1, color: isDark ? const Color(0xFF333A48) : const Color(0xFFE2D7C3)),
                         const SizedBox(height: 12),
 
                         // Bottom Summary Row
@@ -495,7 +541,7 @@ Present this pass upon check-in or scan QR code.''';
                                 const Text('TOTAL PAID', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
                                 Text(
                                   '₹${totalAmount.toStringAsFixed(0)}',
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF073359)),
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF073359)),
                                 ),
                               ],
                             ),
@@ -545,8 +591,8 @@ Present this pass upon check-in or scan QR code.''';
                     icon: const Icon(Icons.copy_all_rounded, size: 18),
                     label: const Text('Copy Details'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
-                      side: const BorderSide(color: AppColors.borderLight),
+                      foregroundColor: AppColors.text(context),
+                      side: BorderSide(color: AppColors.border(context)),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),

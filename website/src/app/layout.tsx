@@ -255,6 +255,36 @@ const jsonLd = {
           }
         }
       ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://stayq.space/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://stayq.space"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Luxury Stays & Villas",
+          "item": "https://stayq.space/stays"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Overland Campervans & RV Corridors",
+          "item": "https://stayq.space/rvs"
+        },
+        {
+          "@type": "ListItem",
+          "position": 4,
+          "name": "Zero-Broker Rentals",
+          "item": "https://stayq.space/zero-broker"
+        }
+      ]
     }
   ]
 };

@@ -7,12 +7,15 @@ import '../../models/stay_model.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
 import 'category_view_screen.dart';
+import 'corridor_detail_screen.dart';
 import '../listing/listing_detail_screen.dart';
 import '../../models/corridor_model.dart';
 import '../../models/corridor_region.dart';
 import '../../data/curated_corridors_dataset.dart';
 import '../../services/corridors_repository.dart';
 import '../qube/qube_planner_screen.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class RvOverlandScreen extends StatefulWidget {
   const RvOverlandScreen({super.key});
@@ -252,7 +255,7 @@ class _RvOverlandScreenState extends State<RvOverlandScreen> {
                   Image.asset(
                     'assets/images/campervan_wide_8k.jpg',
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Image.asset(
+                    errorBuilder: (_, _, _) => Image.asset(
                       'assets/images/real_rv.jpg',
                       fit: BoxFit.cover,
                     ),
@@ -886,7 +889,7 @@ class _RvOverlandScreenState extends State<RvOverlandScreen> {
                           ? Image.network(
                               photo,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Image.asset('assets/images/campervan_wide_8k.jpg', fit: BoxFit.cover),
+                              errorBuilder: (_, _, _) => Image.asset('assets/images/campervan_wide_8k.jpg', fit: BoxFit.cover),
                             )
                           : Image.asset(photo, fit: BoxFit.cover),
                     ),
@@ -1151,7 +1154,7 @@ class _RvOverlandScreenState extends State<RvOverlandScreen> {
                 child: Image.asset(
                   story['image'] as String,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Image.asset(
+                  errorBuilder: (_, _, _) => Image.asset(
                     'assets/images/campervan_wide_8k.jpg',
                     fit: BoxFit.cover,
                   ),
@@ -1279,7 +1282,7 @@ class _RvOverlandScreenState extends State<RvOverlandScreen> {
                 child: Image.asset(
                   imagePath,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Image.asset(
+                  errorBuilder: (_, _, _) => Image.asset(
                     'assets/images/campervan_wide_8k.jpg',
                     fit: BoxFit.cover,
                   ),
@@ -1432,341 +1435,721 @@ class _RvOverlandScreenState extends State<RvOverlandScreen> {
   }
 
   Widget _buildCorridorCard(CorridorModel corridor) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1D2D) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: isDark ? const Color(0xFF2E2C44) : AppColors.borderLight),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Row: Numbering/Badge & Duration/Distance Stats
-            Row(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            AppMotion.tapSelection();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CorridorDetailScreen(corridor: corridor),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '#${corridor.sortOrder}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-                if (corridor.badge != null) ...[
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Container(
+                // Top Row: Numbering/Badge & Duration/Distance Stats
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
+                        color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFBFDBFE)),
                       ),
                       child: Text(
-                        corridor.badge!,
+                        '#${corridor.sortOrder}',
                         style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1D4ED8),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ],
-                const Spacer(),
-                Row(
-                  children: [
-                    const Icon(Icons.schedule_rounded, size: 14, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      corridor.durationFormatted,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Icon(Icons.straighten_rounded, size: 14, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      corridor.distanceFormatted,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Corridor Name
-            Text(
-              corridor.name,
-              style: const TextStyle(
-                fontSize: 17.5,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 4),
-
-            // Theme
-            Row(
-              children: [
-                const Icon(Icons.stars_rounded, size: 14, color: Color(0xFFE05638)),
-                const SizedBox(width: 5),
-                Expanded(
-                  child: Text(
-                    corridor.theme,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFE05638),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Route Pathway Visual Chain
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.alt_route_rounded, size: 15, color: AppColors.primary),
-                      const SizedBox(width: 6),
-                      Text(
-                        'ROUTE PATHWAY (${corridor.stops.length} STOPS)',
-                        style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 0.5,
                           color: AppColors.primary,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    corridor.route,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF334155),
-                      height: 1.4,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            // Description
-            Text(
-              corridor.description,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            // Highlights Chips
-            if (corridor.highlights.isNotEmpty) ...[
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: corridor.highlights.map((hl) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                    child: Text(
-                      hl,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF475569),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 10),
-            ],
-
-            // Advisory Notes or Permits (if present)
-            if (corridor.advisoryNotes != null || corridor.permits.isNotEmpty) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFFDE68A)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (corridor.advisoryNotes != null)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFFB45309)),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              corridor.advisoryNotes!,
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                color: Color(0xFF92400E),
-                                height: 1.35,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                    if (corridor.badge != null) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.5) : const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.4) : const Color(0xFFBFDBFE)),
                           ),
-                        ],
-                      ),
-                    if (corridor.permits.isNotEmpty) ...[
-                      if (corridor.advisoryNotes != null) const SizedBox(height: 4),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.assignment_outlined, size: 14, color: Color(0xFFB45309)),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              'Permits: ${corridor.permits.join(', ')}',
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                color: Color(0xFF92400E),
-                                height: 1.35,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          child: Text(
+                            corridor.badge!,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
+                        ),
                       ),
                     ],
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Icon(Icons.schedule_rounded, size: 14, color: isDark ? Colors.white54 : AppColors.textSecondary),
+                        const SizedBox(width: 4),
+                        Text(
+                          corridor.durationFormatted,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Icon(Icons.straighten_rounded, size: 14, color: isDark ? Colors.white54 : AppColors.textSecondary),
+                        const SizedBox(width: 4),
+                        Text(
+                          corridor.distanceFormatted,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 10),
-            ],
+                const SizedBox(height: 12),
 
-            // Source Attribution
-            if (corridor.sourceName != null) ...[
-              Row(
-                children: [
-                  const Icon(Icons.verified_rounded, size: 13, color: Color(0xFF0284C7)),
-                  const SizedBox(width: 5),
-                  Expanded(
-                    child: Text(
-                      'Curated & inspired by ${corridor.sourceName}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF0369A1),
-                        fontWeight: FontWeight.w600,
+                // Corridor Name
+                Text(
+                  corridor.name,
+                  style: TextStyle(
+                    fontSize: 17.5,
+                    fontWeight: FontWeight.w900,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 4),
+
+                // Theme
+                Row(
+                  children: [
+                    const Icon(Icons.stars_rounded, size: 14, color: Color(0xFFE05638)),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        corridor.theme,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFE05638),
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Route Pathway Visual Chain
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF161522) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isDark ? const Color(0xFF2E2C44) : const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.alt_route_rounded, size: 15, color: AppColors.primary),
+                          const SizedBox(width: 6),
+                          Text(
+                            'ROUTE PATHWAY (${corridor.stops.length} STOPS)',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        corridor.route,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Description
+                Text(
+                  corridor.description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Highlights Chips
+                if (corridor.highlights.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: corridor.highlights.map((hl) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF28273A) : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Text(
+                          hl,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+
+                // Advisory Notes or Permits (if present)
+                if (corridor.advisoryNotes != null || corridor.permits.isNotEmpty) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF3F2B04) : const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: isDark ? const Color(0xFF78350F) : const Color(0xFFFDE68A)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (corridor.advisoryNotes != null)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFFF59E0B)),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  corridor.advisoryNotes!,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                                    height: 1.35,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        if (corridor.permits.isNotEmpty) ...[
+                          if (corridor.advisoryNotes != null) const SizedBox(height: 4),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.assignment_outlined, size: 14, color: Color(0xFFF59E0B)),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Permits: ${corridor.permits.join(', ')}',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                                    height: 1.35,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
                   ),
+                  const SizedBox(height: 10),
                 ],
-              ),
-              const SizedBox(height: 12),
-            ],
 
-            // Actions Row: "Plan with Qube" & "View RVs"
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _planWithQube(corridor),
-                    icon: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Image.asset(
-                        'assets/images/qube_robot.jpg',
-                        width: 18,
-                        height: 18,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.auto_awesome, size: 16),
+                // Source Attribution
+                if (corridor.sourceName != null) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.verified_rounded, size: 13, color: Color(0xFF0284C7)),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          'Curated & inspired by ${corridor.sourceName}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0369A1),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                // Google Maps Route Preview Button
+                InkWell(
+                  onTap: () => _openCorridorMapModal(context, corridor),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [const Color(0xFF064E3B).withValues(alpha: 0.4), const Color(0xFF065F46).withValues(alpha: 0.4)]
+                            : [const Color(0xFFF0FDF4), const Color(0xFFDCFCE7)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDark ? const Color(0xFF059669) : const Color(0xFF86EFAC)),
                     ),
-                    label: const Text(
-                      'Plan with Qube',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E293B),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF16A34A),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.map_rounded, color: Colors.white, size: 14),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Explore ${corridor.name} on Google Maps',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF15803D),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                'Interactive route, ${corridor.stops.length} stop pins & turn-by-turn overland directions',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF166534),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios_rounded, size: 12, color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF15803D)),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 2,
-                  child: OutlinedButton.icon(
-                    onPressed: _openRvCategory,
-                    icon: const Icon(Icons.directions_car_filled_rounded, size: 15),
-                    label: const Text(
-                      'View RVs',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                const SizedBox(height: 12),
+
+                // Actions Row: "Plan with Qube" & "View RVs"
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _planWithQube(corridor),
+                        icon: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: Image.asset(
+                            'assets/images/qube_robot.jpg',
+                            width: 18,
+                            height: 18,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const Icon(Icons.auto_awesome, size: 16),
+                          ),
+                        ),
+                        label: const Text(
+                          'Plan with Qube',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark ? const Color(0xFF2E2C44) : const Color(0xFF1E293B),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
                     ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: OutlinedButton.icon(
+                        onPressed: _openRvCategory,
+                        icon: const Icon(Icons.directions_car_filled_rounded, size: 15),
+                        label: const Text(
+                          'View RVs',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  static final Map<String, LatLng> _stopCoordinates = {
+    'Delhi': const LatLng(28.6139, 77.2090),
+    'Shimla': const LatLng(31.1048, 77.1734),
+    'Kufri': const LatLng(31.0979, 77.2678),
+    'Manali': const LatLng(32.2432, 77.1892),
+    'Dharamshala': const LatLng(32.2190, 76.3234),
+    'Dalhousie': const LatLng(32.5387, 75.9710),
+    'Amritsar': const LatLng(31.6340, 74.8723),
+    'Narkanda': const LatLng(31.2584, 77.4589),
+    'Kalpa': const LatLng(31.5369, 78.2562),
+    'Nako': const LatLng(31.8797, 78.6272),
+    'Tabo': const LatLng(32.0924, 78.3828),
+    'Kaza': const LatLng(32.2276, 78.0710),
+    'Key': const LatLng(32.2982, 78.0125),
+    'Solang Valley': const LatLng(32.3166, 77.1582),
+    'Atal Tunnel': const LatLng(32.3600, 77.1600),
+    'Sissu': const LatLng(32.4820, 77.1243),
+    'Keylong': const LatLng(32.5710, 77.0320),
+    'Jispa': const LatLng(32.6410, 77.1870),
+    'Leh': const LatLng(34.1526, 77.5771),
+    'Jaipur': const LatLng(26.9124, 75.7873),
+    'Jodhpur': const LatLng(26.2389, 73.0243),
+    'Jaisalmer': const LatLng(26.9157, 70.9083),
+    'Udaipur': const LatLng(24.5854, 73.7125),
+    'Pushkar': const LatLng(26.4897, 74.5511),
+    'Bikaner': const LatLng(28.0229, 73.3119),
+    'Rann of Kutch': const LatLng(23.8344, 70.2999),
+    'Bhuj': const LatLng(23.2420, 69.6669),
+    'Gir': const LatLng(21.1243, 70.8242),
+    'Somnath': const LatLng(20.8880, 70.4013),
+    'Diu': const LatLng(20.7144, 70.9874),
+    'Goa': const LatLng(15.2993, 74.1240),
+    'Gokarna': const LatLng(14.5479, 74.3188),
+    'Hampi': const LatLng(15.3350, 76.4600),
+    'Coorg': const LatLng(12.3375, 75.8069),
+    'Chikmagalur': const LatLng(13.3161, 75.7720),
+    'Wayanad': const LatLng(11.6854, 76.1320),
+    'Munnar': const LatLng(10.0889, 77.0595),
+    'Kochi': const LatLng(9.9312, 76.2673),
+    'Alleppey': const LatLng(9.4981, 76.3388),
+    'Varkala': const LatLng(8.7379, 76.7163),
+    'Kanyakumari': const LatLng(8.0883, 77.5385),
+    'Guwahati': const LatLng(26.1445, 91.7362),
+    'Shillong': const LatLng(25.5788, 91.8933),
+    'Cherrapunji': const LatLng(25.2702, 91.7323),
+    'Kaziranga': const LatLng(26.5775, 93.1711),
+    'Tawang': const LatLng(27.5861, 91.8653),
+    'Bomdila': const LatLng(27.2645, 92.4159),
+    'Dirang': const LatLng(27.3562, 92.2384),
+    'Majuli': const LatLng(26.9535, 94.2037),
+    'Kohima': const LatLng(25.6751, 94.1086),
+    'Ziro': const LatLng(27.5950, 93.8340),
+  };
+
+  void _openCorridorMapModal(BuildContext context, CorridorModel corridor) {
+    AppMotion.tapSelection();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final points = <LatLng>[];
+    final markers = <Marker>{};
+
+    for (int i = 0; i < corridor.stops.length; i++) {
+      final stopName = corridor.stops[i];
+      LatLng pos = _stopCoordinates[stopName] ??
+          LatLng(20.5937 + (i * 0.4), 78.9629 + (i * 0.4));
+      points.add(pos);
+
+      markers.add(
+        Marker(
+          markerId: MarkerId('stop_$i'),
+          position: pos,
+          infoWindow: InfoWindow(
+            title: '${i + 1}. $stopName',
+            snippet: i == 0
+                ? 'Starting Point'
+                : (i == corridor.stops.length - 1 ? 'Final Destination' : 'Scenic Stop'),
+          ),
+        ),
+      );
+    }
+
+    final initialCenter = points.isNotEmpty ? points.first : const LatLng(20.5937, 78.9629);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        GoogleMapController? modalMapController;
+
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF161522) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.alt_route_rounded, color: AppColors.primary, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            corridor.name,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: isDark ? Colors.white : AppColors.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${corridor.stops.length} Stops • ${corridor.distanceFormatted} • ${corridor.durationFormatted}',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark ? Colors.white60 : AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Interactive Google Map
+              Expanded(
+                child: Stack(
+                  children: [
+                    GoogleMap(
+                      initialCameraPosition: CameraPosition(
+                        target: initialCenter,
+                        zoom: 6.8,
+                      ),
+                      onMapCreated: (c) {
+                        modalMapController = c;
+                        if (points.length > 1) {
+                          double minLat = points.map((p) => p.latitude).reduce((a, b) => a < b ? a : b);
+                          double maxLat = points.map((p) => p.latitude).reduce((a, b) => a > b ? a : b);
+                          double minLng = points.map((p) => p.longitude).reduce((a, b) => a < b ? a : b);
+                          double maxLng = points.map((p) => p.longitude).reduce((a, b) => a > b ? a : b);
+
+                          Future.delayed(const Duration(milliseconds: 350), () {
+                            modalMapController?.animateCamera(
+                              CameraUpdate.newLatLngBounds(
+                                LatLngBounds(
+                                  southwest: LatLng(minLat - 0.5, minLng - 0.5),
+                                  northeast: LatLng(maxLat + 0.5, maxLng + 0.5),
+                                ),
+                                50,
+                              ),
+                            );
+                          });
+                        }
+                      },
+                      markers: markers,
+                      polylines: {
+                        Polyline(
+                          polylineId: PolylineId(corridor.id),
+                          points: points,
+                          color: AppColors.primary,
+                          width: 4,
+                        ),
+                      },
+                      zoomControlsEnabled: false,
+                      myLocationButtonEnabled: false,
+                    ),
+
+                    // Quick stop selector banner
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.75),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: List.generate(corridor.stops.length, (idx) {
+                              final stop = corridor.stops[idx];
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: InkWell(
+                                  onTap: () {
+                                    if (idx < points.length) {
+                                      modalMapController?.animateCamera(
+                                        CameraUpdate.newLatLngZoom(points[idx], 12.0),
+                                      );
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: idx == 0
+                                          ? const Color(0xFF10B981)
+                                          : (idx == corridor.stops.length - 1
+                                              ? const Color(0xFFE05638)
+                                              : Colors.white24),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '${idx + 1}. $stop',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Bottom Actions
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF161522) : Colors.white,
+                  border: Border(
+                    top: BorderSide(
+                      color: isDark ? Colors.white10 : AppColors.borderLight,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final query = corridor.stops.map(Uri.encodeComponent).join('/');
+                          final url = Uri.parse('https://www.google.com/maps/dir/$query');
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        icon: const Icon(Icons.navigation_rounded, size: 16),
+                        label: const Text('Open in Google Maps App', style: TextStyle(fontWeight: FontWeight.w800)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF15803D),
+                          side: const BorderSide(color: Color(0xFF86EFAC)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _planWithQube(corridor);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: const Text('Plan with Qube', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

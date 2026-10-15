@@ -91,17 +91,17 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
           // Screen Title
           Text(
             screenTitle,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
               letterSpacing: -0.5,
             ),
           ).animate().fadeIn().slideX(),
           const SizedBox(height: 6),
           Text(
             screenSubtitle,
-            style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary, height: 1.4),
+            style: TextStyle(fontSize: 13.5, color: isDark ? Colors.white70 : AppColors.textSecondary, height: 1.4),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 18),
 
@@ -130,18 +130,25 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
                   child: const Icon(Icons.verified_user_rounded, color: Colors.white, size: 20),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'One-Time StarHost Verification',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF065F46)),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF065F46),
+                        ),
                       ),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
                         'Documents are securely saved. When you list your next property, your host credentials will be auto-applied!',
-                        style: TextStyle(fontSize: 11.5, color: Color(0xFF047857)),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark ? const Color(0xFFA7F3D0) : const Color(0xFF047857),
+                        ),
                       ),
                     ],
                   ),
@@ -163,9 +170,9 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
             _buildLongTermDocumentsSection(provider, isDark),
           ] else ...[
             // Standard Residential Stays (Owned vs Leased)
-            const Text(
+            Text(
               'Select Property Ownership Type',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
             ),
             const SizedBox(height: 10),
 
@@ -208,7 +215,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,7 +232,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
                     padding: const EdgeInsets.only(top: 10),
                     child: Text(
                       declarationText,
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary, height: 1.4),
                     ),
                   ),
                 ),
@@ -246,14 +253,14 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Required Vehicle & RTO Documents',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
         ),
         const SizedBox(height: 6),
-        const Text(
+        Text(
           'Ensure all vehicle documents reflect matching registration and commercial tourist carriage permits.',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary),
         ),
         const SizedBox(height: 14),
 
@@ -298,14 +305,14 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Required Campsite Land & Tourism Permits',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
         ),
         const SizedBox(height: 6),
-        const Text(
+        Text(
           'Submit evidence of legal possession of the camping grounds and local authority permits.',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary),
         ),
         const SizedBox(height: 14),
 
@@ -350,14 +357,14 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Required Ownership & Society NOC',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
         ),
         const SizedBox(height: 6),
-        const Text(
+        Text(
           'For 0% brokerage long-term rentals, direct ownership deed and active utility records verify direct landlord listing.',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary),
         ),
         const SizedBox(height: 14),
 
@@ -423,7 +430,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
                 : (isDark ? const Color(0xFF1E1C2A) : Colors.white),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.borderLight,
+              color: isSelected ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight),
               width: isSelected ? 2 : 1,
             ),
             boxShadow: isSelected
@@ -432,14 +439,14 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
           ),
           child: Column(
             children: [
-              Icon(icon, color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 24),
+              Icon(icon, color: isSelected ? AppColors.primary : (isDark ? Colors.white70 : AppColors.textSecondary), size: 24),
               const SizedBox(height: 6),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                  color: isSelected ? AppColors.primary : (isDark ? Colors.white : AppColors.textPrimary),
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 1,
@@ -448,7 +455,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(fontSize: 9.5, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 9.5, color: isDark ? Colors.white60 : AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -465,14 +472,14 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Required Ownership Documents',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
         ),
         const SizedBox(height: 6),
-        const Text(
+        Text(
           'As the direct property owner, landlord NOC is not required.',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary),
         ),
         const SizedBox(height: 14),
 
@@ -504,7 +511,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.borderLight),
+            border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -513,9 +520,9 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Is this inside a Flat, Apartment or Gated Society?',
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
                     ),
                     Text(
                       provider.isInsideGatedSociety
@@ -523,7 +530,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
                           : 'Individual house / standalone villa (No Society NOC needed)',
                       style: TextStyle(
                         fontSize: 11,
-                        color: provider.isInsideGatedSociety ? AppColors.primary : AppColors.textSecondary,
+                        color: provider.isInsideGatedSociety ? AppColors.primary : (isDark ? Colors.white60 : AppColors.textSecondary),
                         fontWeight: provider.isInsideGatedSociety ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
@@ -532,7 +539,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
               ),
               Switch(
                 value: provider.isInsideGatedSociety,
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
                 onChanged: (val) {
                   provider.updatePropertyDocuments(isGatedSociety: val);
                 },
@@ -563,14 +570,14 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Required Sublease & Tenancy Documents',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
         ),
         const SizedBox(height: 6),
-        const Text(
+        Text(
           'For leased properties, both registered lease agreement & landlord NOC are mandatory.',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary),
         ),
         const SizedBox(height: 14),
 
@@ -602,7 +609,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.borderLight),
+            border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -611,9 +618,9 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Is this inside a Flat, Apartment or Gated Society?',
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
                     ),
                     Text(
                       provider.isInsideGatedSociety
@@ -621,7 +628,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
                           : 'Individual house / standalone building (No Society NOC needed)',
                       style: TextStyle(
                         fontSize: 11,
-                        color: provider.isInsideGatedSociety ? AppColors.primary : AppColors.textSecondary,
+                        color: provider.isInsideGatedSociety ? AppColors.primary : (isDark ? Colors.white60 : AppColors.textSecondary),
                         fontWeight: provider.isInsideGatedSociety ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
@@ -630,7 +637,7 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
               ),
               Switch(
                 value: provider.isInsideGatedSociety,
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
                 onChanged: (val) {
                   provider.updatePropertyDocuments(isGatedSociety: val);
                 },
@@ -685,12 +692,12 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
         color: isDark ? const Color(0xFF1E1C2A) : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: hasFile ? const Color(0xFF10B981) : AppColors.borderLight,
+          color: hasFile ? const Color(0xFF10B981) : (isDark ? Colors.white12 : AppColors.borderLight),
           width: hasFile ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -721,12 +728,12 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       subtitle,
-                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3),
+                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : AppColors.textSecondary, height: 1.3),
                     ),
                   ],
                 ),
@@ -764,14 +771,14 @@ class _HostVerificationScreenState extends State<HostVerificationScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           '✓ Document Attached',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF047857)),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: isDark ? const Color(0xFF34D399) : const Color(0xFF047857)),
                         ),
                         if (isPdf)
-                          const Text(
+                          Text(
                             'PDF Document',
-                            style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                            style: TextStyle(fontSize: 10, color: isDark ? Colors.white60 : AppColors.textSecondary),
                           ),
                       ],
                     ),

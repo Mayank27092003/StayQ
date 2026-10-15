@@ -71,4 +71,17 @@ class AppColors {
       Theme.of(context).brightness == Brightness.dark
           ? const Color(0xFF27272A)
           : borderLight;
+
+  static Color chip(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF1E1E24)
+          : surfaceLight;
+
+  static Color icon(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? Colors.white : textPrimary;
+
+  static Color iconSub(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFFA1A1AA)
+          : textSecondary;
 }

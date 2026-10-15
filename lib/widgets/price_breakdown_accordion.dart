@@ -38,9 +38,9 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: Column(
         children: [
@@ -52,9 +52,9 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Price details',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                 ),
                 Icon(
                   _isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
@@ -73,28 +73,28 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
               padding: const EdgeInsets.only(top: 14),
               child: Column(
                 children: [
-                  _priceRow('₹${widget.nightRate.toStringAsFixed(0)} x ${widget.nights} nights', subtotal),
+                  _priceRow(context, '₹${widget.nightRate.toStringAsFixed(0)} x ${widget.nights} nights', subtotal),
                   if (widget.cleaningFee > 0) ...[
                     const SizedBox(height: 10),
-                    _priceRow('Cleaning & Sanitization', widget.cleaningFee),
+                    _priceRow(context, 'Cleaning & Sanitization', widget.cleaningFee),
                   ],
                   if (widget.serviceFee > 0) ...[
                     const SizedBox(height: 10),
-                    _priceRow('Fee', widget.serviceFee),
+                    _priceRow(context, 'Fee', widget.serviceFee),
                   ],
                   const SizedBox(height: 10),
-                  _priceRow('Taxes & GST (18%)', calculatedTaxes),
+                  _priceRow(context, 'Taxes & GST (18%)', calculatedTaxes),
                   const SizedBox(height: 4),
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'GST (18%) applied on fee as per Indian tax laws',
-                      style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+                      style: TextStyle(fontSize: 10.5, color: AppColors.textSub(context), fontStyle: FontStyle.italic),
                     ),
                   ),
                   if (widget.referralDiscount > 0) ...[
                     const SizedBox(height: 10),
-                    _priceRow('Referral credit', -widget.referralDiscount, isDiscount: true),
+                    _priceRow(context, 'Referral credit', -widget.referralDiscount, isDiscount: true),
                   ],
                 ],
               ),
@@ -102,15 +102,15 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
             secondChild: const SizedBox(width: double.infinity),
           ),
 
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 14),
-            child: Divider(color: AppColors.borderLight),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Divider(color: AppColors.border(context)),
           ),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Estimated total (INR)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text('Estimated total (INR)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.text(context))),
 
               // Animated Roll-Up Price Counter
               TweenAnimationBuilder<double>(
@@ -135,7 +135,7 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
     );
   }
 
-  Widget _priceRow(String label, double amount, {bool isDiscount = false}) {
+  Widget _priceRow(BuildContext context, String label, double amount, {bool isDiscount = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -144,7 +144,7 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: isDiscount ? FontWeight.w600 : FontWeight.normal,
-            color: isDiscount ? const Color(0xFF059669) : AppColors.textSecondary,
+            color: isDiscount ? const Color(0xFF059669) : AppColors.textSub(context),
           ),
         ),
         Text(
@@ -152,7 +152,7 @@ class _PriceBreakdownAccordionState extends State<PriceBreakdownAccordion> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: isDiscount ? const Color(0xFF059669) : AppColors.textPrimary,
+            color: isDiscount ? const Color(0xFF059669) : AppColors.text(context),
           ),
         ),
       ],

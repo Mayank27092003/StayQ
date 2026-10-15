@@ -13,23 +13,26 @@ export async function saveDraftInventory(
     )
       throw new BadRequestException('Invalid room categories');
     const old = await tx.roomType.findMany({ where: { propertyId } });
-    const rooms = source.roomCategories.map((r: any) => ({
-      propertyId,
-      name: text(r.categoryName || r.name, 'Room name', 200),
-      totalRooms: integer(r.quantity ?? r.totalRooms, 'Room quantity', 1, 1000),
-      guestCapacity: integer(
-        r.maxGuests ?? r.guestCapacity,
-        'Room capacity',
-        1,
-        100,
-      ),
-      basePrice: money(r.pricePerNight ?? r.basePrice, 'Room price'),
-      weekendPrice:
-        r.weekendPrice == null ? null : money(r.weekendPrice, 'Weekend price'),
-      amenities: ['hasAc', 'hasTv', 'hasBalcony', 'hasBreakfast'].filter(
-        (k) => r[k] === true,
-      ),
-    }));
+    const rooms = source.roomCategories.map((r: any) => {
+      const parsedBase = Number(r.pricePerNight ?? r.basePrice ?? source.pricePerNight ?? 1000);
+      const safeBase = Number.isFinite(parsedBase) && parsedBase > 0 ? Math.round(parsedBase * 100) / 100 : 1000;
+      const parsedWeekend = r.weekendPrice != null ? Number(r.weekendPrice) : null;
+      const safeWeekend = parsedWeekend != null && Number.isFinite(parsedWeekend) && parsedWeekend > 0
+        ? Math.round(parsedWeekend * 100) / 100
+        : null;
+
+      return {
+        propertyId,
+        name: String(r.categoryName || r.name || 'Standard Room').trim().slice(0, 200) || 'Standard Room',
+        totalRooms: Math.max(1, Math.min(1000, Math.round(Number(r.quantity ?? r.totalRooms ?? 1)) || 1)),
+        guestCapacity: Math.max(1, Math.min(100, Math.round(Number(r.maxGuests ?? r.guestCapacity ?? 2)) || 2)),
+        basePrice: safeBase,
+        weekendPrice: safeWeekend,
+        amenities: ['hasAc', 'hasTv', 'hasBalcony', 'hasBreakfast'].filter(
+          (k) => r[k] === true,
+        ),
+      };
+    });
     const unchanged =
       rooms.length === old.length &&
       rooms.every(
@@ -60,20 +63,19 @@ export async function saveDraftInventory(
       if (rooms.length) await tx.roomType.createMany({ data: rooms });
     }
   }
-  if (source.initialBlockedDates !== undefined) {
-    if (
-      !Array.isArray(source.initialBlockedDates) ||
-      source.initialBlockedDates.length > 730
-    )
-      throw new BadRequestException('Invalid initial blocked dates');
-    const dates = [
-      ...new Set(
-        source.initialBlockedDates.map((d: any) =>
-          dateOnly(d, 'Blocked date').toISOString(),
-        ),
-      ),
-    ] as string[];
-    const blocks = dates.map((d) => ({
+  const rawBlocked = source.initialBlockedDates ?? source.blockedDates;
+  if (rawBlocked !== undefined && Array.isArray(rawBlocked)) {
+    const dates: string[] = [];
+    for (const d of rawBlocked.slice(0, 730)) {
+      try {
+        const dt = new Date(d);
+        if (!isNaN(dt.getTime())) {
+          dates.push(dt.toISOString());
+        }
+      } catch (_) {}
+    }
+    const uniqueDates = [...new Set(dates)];
+    const blocks = uniqueDates.map((d) => ({
       propertyId,
       type: 'HOST_BLOCKED',
       source: 'MANUAL',

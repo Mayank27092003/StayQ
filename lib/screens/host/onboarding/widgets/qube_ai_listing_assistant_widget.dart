@@ -81,17 +81,24 @@ class _QubeAiListingAssistantWidgetState extends State<QubeAiListingAssistantWid
                 child: const Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 22),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Listing draft helper',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
+                      ),
                     ),
                     Text(
                       'Build a draft from your entered property facts; review before applying',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white60 : AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -132,9 +139,17 @@ class _QubeAiListingAssistantWidgetState extends State<QubeAiListingAssistantWid
               Expanded(
                 child: TextField(
                   controller: _promptController,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'e.g. 4bhk villa in Coorg with coffee estate',
-                    hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+                    hintStyle: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? Colors.white38 : AppColors.textMuted,
+                    ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     filled: true,
                     fillColor: isDark ? const Color(0xFF28253B) : AppColors.surfaceLight,
@@ -194,9 +209,23 @@ class _QubeAiListingAssistantWidgetState extends State<QubeAiListingAssistantWid
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(_generatedTitle, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                  Text(
+                    _generatedTitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 6),
-                  Text(_generatedDesc, style: const TextStyle(fontSize: 12, height: 1.4, color: AppColors.textSecondary)),
+                  Text(
+                    _generatedDesc,
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: isDark ? Colors.white70 : AppColors.textSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,

@@ -15,7 +15,6 @@ import '../../widgets/floating_map_button.dart';
 import '../../widgets/master_home_slider.dart';
 import '../search/search_filter_modal.dart';
 import 'category_view_screen.dart';
-import '../../widgets/bouncing_widget.dart';
 import '../../widgets/home_bento_box.dart';
 import '../../widgets/moving_collage_banner.dart';
 import '../profile/notifications_screen.dart';
@@ -37,10 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasSeenExperiencePopup = false;
 
   void _showExperiencePopup() {
-    final isDark = AppColors.isDark(context);
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.6),
+      barrierColor: Colors.black.withValues(alpha: 0.6),
       builder: (context) {
         return Dialog(
           backgroundColor: Colors.transparent,
@@ -53,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
               border: Border.all(color: AppColors.border(context)),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.2),
+                  color: AppColors.primary.withValues(alpha: 0.2),
                   blurRadius: 40,
                   spreadRadius: 10,
                 ),
@@ -193,13 +191,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: AppColors.card(context),
+                                    gradient: LinearGradient(
+                                      colors: AppColors.isDark(context)
+                                          ? [const Color(0xFF1E1B4B), const Color(0xFF2E1065)]
+                                          : [const Color(0xFFFFFBEB), const Color(0xFFFEF3C7)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: AppColors.border(context)),
+                                    border: Border.all(
+                                      color: const Color(0xFFF59E0B).withValues(alpha: AppColors.isDark(context) ? 0.4 : 0.3),
+                                      width: 1.2,
+                                    ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: AppColors.isDark(context) ? 0.3 : 0.04),
-                                        blurRadius: 8,
+                                        color: const Color(0xFFF59E0B).withValues(alpha: AppColors.isDark(context) ? 0.25 : 0.15),
+                                        blurRadius: 10,
                                         offset: const Offset(0, 2),
                                       ),
                                     ],
@@ -208,30 +215,43 @@ class _HomeScreenState extends State<HomeScreen> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.all(3),
+                                        padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(
-                                          color: AppColors.isDark(context) ? const Color(0xFF78350F) : const Color(0xFFFEF3C7),
+                                          gradient: const LinearGradient(
+                                            colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
                                           shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ],
                                         ),
                                         child: const Icon(
-                                          Icons.account_balance_wallet_rounded,
-                                          size: 14,
-                                          color: Color(0xFFF59E0B),
+                                          Icons.card_giftcard_rounded,
+                                          size: 13,
+                                          color: Colors.white,
                                         ),
-                                      ),
+                                      ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+                                       .scale(duration: 1200.ms, begin: const Offset(1, 1), end: const Offset(1.15, 1.15)),
                                       const SizedBox(width: 6),
                                       Text(
                                         '${provider.loyaltyAvailablePoints} pts',
                                         style: TextStyle(
-                                          color: AppColors.text(context),
+                                          color: AppColors.isDark(context) ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
                                           fontSize: 12,
-                                          fontWeight: FontWeight.w700,
+                                          fontWeight: FontWeight.w800,
                                           letterSpacing: -0.2,
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
+                                ).animate(onPlay: (controller) => controller.repeat(period: 3000.ms))
+                                 .shimmer(duration: 1500.ms, color: Colors.white.withValues(alpha: 0.35)),
                               ),
                               const SizedBox(width: 8),
                               Container(
@@ -482,9 +502,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      const Text(
+                                      Text(
                                         'Curated Local Experiences',
-                                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                                       ),
                                       TextButton.icon(
                                         onPressed: () {
@@ -524,9 +544,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                             textAlign: TextAlign.center,
                                           ),
                                           const SizedBox(height: 8),
-                                          const Text(
+                                          Text(
                                             'Be the first host to list an authentic StayQ experience in this destination!',
-                                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                            style: TextStyle(fontSize: 13, color: AppColors.textSub(context)),
                                             textAlign: TextAlign.center,
                                           ),
                                           const SizedBox(height: 20),
@@ -558,9 +578,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                     physics: const NeverScrollableScrollPhysics(),
                                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                                     itemCount: provider.filteredExperiences.length,
-                                    separatorBuilder: (_, __) => const SizedBox(height: 20),
+                                    separatorBuilder: (_, _) => const SizedBox(height: 20),
                                     itemBuilder: (context, index) {
                                       final exp = provider.filteredExperiences[index];
+                                      final isDark = Theme.of(context).brightness == Brightness.dark;
+
                                       return GestureDetector(
                                         onTap: () {
                                           Navigator.push(
@@ -572,16 +594,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                         },
                                         child: Container(
                                           decoration: BoxDecoration(
-                                            color: Colors.white,
+                                            color: AppColors.card(context),
                                             borderRadius: BorderRadius.circular(20),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.05),
+                                                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                                                 blurRadius: 14,
                                                 offset: const Offset(0, 4),
                                               ),
                                             ],
-                                            border: Border.all(color: AppColors.borderLight),
+                                            border: Border.all(color: AppColors.border(context)),
                                           ),
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -598,8 +620,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                             ? NetworkImage(exp.firstImage) as ImageProvider
                                                             : AssetImage(exp.firstImage),
                                                         fit: BoxFit.cover,
-                                                        errorBuilder: (_, __, ___) => Container(
-                                                          color: AppColors.surfaceLight,
+                                                        errorBuilder: (_, _, _) => Container(
+                                                          color: isDark ? const Color(0xFF222228) : AppColors.surfaceLight,
                                                           child: const Icon(Icons.broken_image, size: 40, color: AppColors.textMuted),
                                                         ),
                                                       ),
@@ -656,18 +678,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         const SizedBox(width: 4),
                                                         Text(
                                                           exp.rating.toStringAsFixed(1),
-                                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.text(context)),
                                                         ),
                                                         Text(
                                                           ' • ${exp.city.isNotEmpty ? exp.city : exp.location}',
-                                                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                                                          style: TextStyle(color: AppColors.textSub(context), fontSize: 13),
                                                         ),
                                                         const Spacer(),
                                                         if (exp.pickupProvided)
                                                           Container(
                                                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                                             decoration: BoxDecoration(
-                                                              color: const Color(0xFFECFDF5),
+                                                              color: isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5),
                                                               borderRadius: BorderRadius.circular(8),
                                                             ),
                                                             child: Row(
@@ -690,10 +712,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     const SizedBox(height: 8),
                                                     Text(
                                                       exp.title,
-                                                      style: const TextStyle(
+                                                      style: TextStyle(
                                                         fontSize: 16,
                                                         fontWeight: FontWeight.bold,
-                                                        color: AppColors.textPrimary,
+                                                        color: AppColors.text(context),
                                                       ),
                                                       maxLines: 2,
                                                       overflow: TextOverflow.ellipsis,
@@ -708,25 +730,25 @@ class _HomeScreenState extends State<HomeScreen> {
                                                             const SizedBox(width: 4),
                                                             Text(
                                                               exp.scheduleTime ?? exp.timeSlot ?? '12:00 PM - 03:00 PM',
-                                                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                                              style: TextStyle(fontSize: 12, color: AppColors.textSub(context)),
                                                             ),
                                                           ],
                                                         ),
                                                         RichText(
                                                           text: TextSpan(
                                                             text: '₹${exp.pricePerPerson.toInt()} ',
-                                                            style: const TextStyle(
+                                                            style: TextStyle(
                                                               fontSize: 16,
                                                               fontWeight: FontWeight.w900,
-                                                              color: AppColors.textPrimary,
+                                                              color: AppColors.text(context),
                                                             ),
-                                                            children: const [
+                                                            children: [
                                                               TextSpan(
                                                                 text: '/ person',
                                                                 style: TextStyle(
                                                                   fontSize: 12,
                                                                   fontWeight: FontWeight.normal,
-                                                                  color: AppColors.textSecondary,
+                                                                  color: AppColors.textSub(context),
                                                                 ),
                                                               ),
                                                             ],
@@ -764,49 +786,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildExperienceCategory(BuildContext context, String title, String imagePath) {
-    return BouncingWidget(
-      onTap: () {
-        Provider.of<AppProvider>(context, listen: false).setCategory(title);
-        Navigator.push(context, MaterialPageRoute(builder: (_) => CategoryViewScreen(categoryTitle: title)));
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.borderLight, width: 2),
-              image: DecorationImage(
-                image: AssetImage(imagePath),
-                fit: BoxFit.cover,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
       ),
     );
   }

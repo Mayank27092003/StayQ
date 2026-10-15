@@ -120,12 +120,12 @@ class HostSuccessPassportScreen extends StatelessWidget {
 
                     const SizedBox(height: 20),
 
-                    const Text(
+                    Text(
                       'Application Under Review! ⏳',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
                         letterSpacing: -0.5,
                       ),
                       textAlign: TextAlign.center,
@@ -133,9 +133,13 @@ class HostSuccessPassportScreen extends StatelessWidget {
 
                     const SizedBox(height: 8),
 
-                    const Text(
+                    Text(
                       'Aapka host profile aur property listing verification ke liye submit ho chuka hai! StayQ Trust & Safety team aapke documents review kar rahi hai.',
-                      style: TextStyle(fontSize: 13, height: 1.45, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.45,
+                        color: isDark ? Colors.white70 : AppColors.textSecondary,
+                      ),
                       textAlign: TextAlign.center,
                     ).animate().fadeIn(delay: 300.ms),
 

@@ -4,13 +4,11 @@ import '../services/session_store.dart';
 import '../services/api/api_client.dart';
 import '../services/api/bookings_api.dart';
 import '../models/json_values.dart';
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:http/http.dart' as http;
 import '../models/stay_model.dart';
 import '../models/booking_model.dart';
 import '../models/booking_party.dart';
@@ -185,8 +183,10 @@ class AppProvider extends ChangeNotifier {
   double _maxPrice = 50000;
   bool _searchExperiencesOnly = false;
   bool? _stayingWithHostFilter;
+  Set<String> _selectedAmenities = {};
 
   bool? get stayingWithHostFilter => _stayingWithHostFilter;
+  Set<String> get selectedAmenities => _selectedAmenities;
   ThemeMode _themeMode = ThemeMode.light;
 
   AppProvider() {
@@ -460,13 +460,6 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> _getToken() async {
-    if (_auth?.currentUser != null) {
-      return await _auth!.currentUser!.getIdToken();
-    }
-    return null;
-  }
-
   Future<void> fetchWishlist() async {
     final uid = _userId; if (!_sameUser(uid)) return;
     try {
@@ -588,6 +581,16 @@ class AppProvider extends ChangeNotifier {
       }
       if (_stayingWithHostFilter != null && stay.isStayingWithHost != _stayingWithHostFilter) {
         return false;
+      }
+      if (_selectedAmenities.isNotEmpty) {
+        final matchesAmenities = _selectedAmenities.every((amenity) {
+          final target = amenity.toLowerCase().trim();
+          return stay.amenities.any((a) {
+            final al = a.toLowerCase().trim();
+            return al == target || al.replaceAll(' ', '_') == target.replaceAll(' ', '_');
+          });
+        });
+        if (!matchesAmenities) return false;
       }
       if (_searchLatitude != null && _searchLongitude != null) {
         if ((stay.lat == 0 && stay.lng == 0) || _distanceKm(stay.lat, stay.lng) > 50) return false;
@@ -763,10 +766,16 @@ class AppProvider extends ChangeNotifier {
 
   Future<bool> checkProfileComplete() async {
     if (!_isLoggedIn) return false;
+    final localComplete = _userName.trim().isNotEmpty &&
+        _userEmail.trim().isNotEmpty &&
+        _userPhone.trim().isNotEmpty;
     try {
       final data = jsonMap(await ApiClient.instance.get('/users/profile'));
-      return ['email', 'phone', 'displayName'].every((k) => data[k]?.toString().trim().isNotEmpty == true);
-    } catch (_) { return false; }
+      final serverComplete = ['email', 'phone', 'displayName'].every((k) => data[k]?.toString().trim().isNotEmpty == true);
+      return serverComplete || localComplete;
+    } catch (_) {
+      return localComplete;
+    }
   }
 
   Future<void> saveProfileDetails({String? email, String? phone, String? name, String? bio,
@@ -986,6 +995,7 @@ class AppProvider extends ChangeNotifier {
     double? minPrice,
     double? maxPrice,
     bool? isStayingWithHost,
+    Set<String>? amenities,
   }) {
     if (destination != null) { _searchDestination = destination; _searchLatitude = null; _searchLongitude = null; }
     if (dateRange != null) _selectedDateRange = dateRange;
@@ -996,6 +1006,7 @@ class AppProvider extends ChangeNotifier {
     if (minPrice != null) _minPrice = minPrice;
     if (maxPrice != null) _maxPrice = maxPrice;
     _stayingWithHostFilter = isStayingWithHost;
+    if (amenities != null) _selectedAmenities = Set<String>.from(amenities);
     notifyListeners();
     fetchExperiences();
   }
@@ -1010,6 +1021,7 @@ class AppProvider extends ChangeNotifier {
     _minPrice = 500;
     _maxPrice = 50000;
     _stayingWithHostFilter = null;
+    _selectedAmenities = {};
     _searchExperiencesOnly = false;
     _selectedCategory = 'All Stays';
     notifyListeners();
@@ -1107,10 +1119,6 @@ class AppProvider extends ChangeNotifier {
   }
 
   // ─── StayQ Rewards & Loyalty Operations ───
-
-  Future<void> _saveLoyaltyToPrefs() async {
-    // Spendable balances and approvals are reloaded from the server each session.
-  }
 
   Future<void> activateHostPro(String planId, {Map<String, dynamic>? verifiedSubscription}) async {
     final data = verifiedSubscription ?? const <String, dynamic>{};

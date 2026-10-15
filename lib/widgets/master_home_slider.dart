@@ -14,16 +14,18 @@ class MasterHomeSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       height: 80,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: AppColors.border(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -46,7 +48,7 @@ class MasterHomeSlider extends StatelessWidget {
                     borderRadius: BorderRadius.circular(26),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.3),
+                        color: AppColors.primary.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
@@ -66,6 +68,7 @@ class MasterHomeSlider extends StatelessWidget {
                   behavior: HitTestBehavior.opaque,
                   child: Center(
                     child: _buildTabContent(
+                      context: context,
                       icon: Icons.home_rounded,
                       title: 'Stays',
                       isActive: selectedIndex == 0,
@@ -79,6 +82,7 @@ class MasterHomeSlider extends StatelessWidget {
                   behavior: HitTestBehavior.opaque,
                   child: Center(
                     child: _buildTabContent(
+                      context: context,
                       icon: Icons.explore_rounded,
                       title: 'Experiences',
                       isActive: selectedIndex == 1,
@@ -93,7 +97,12 @@ class MasterHomeSlider extends StatelessWidget {
     ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.2);
   }
 
-  Widget _buildTabContent({required IconData icon, required String title, required bool isActive}) {
+  Widget _buildTabContent({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required bool isActive,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -101,12 +110,12 @@ class MasterHomeSlider extends StatelessWidget {
           duration: const Duration(milliseconds: 300),
           padding: EdgeInsets.all(isActive ? 8 : 6),
           decoration: BoxDecoration(
-            color: isActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
+            color: isActive ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
             shape: BoxShape.circle,
           ),
           child: Icon(
             icon,
-            color: isActive ? Colors.white : AppColors.textSecondary,
+            color: isActive ? Colors.white : AppColors.textSub(context),
             size: isActive ? 20 : 18,
           ),
         ),
@@ -116,7 +125,7 @@ class MasterHomeSlider extends StatelessWidget {
           style: TextStyle(
             fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
             fontSize: isActive ? 15 : 14,
-            color: isActive ? Colors.white : AppColors.textSecondary,
+            color: isActive ? Colors.white : AppColors.textSub(context),
             letterSpacing: -0.2,
           ),
           child: Text(title),

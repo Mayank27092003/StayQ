@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../models/stay_model.dart';
 import '../../providers/app_provider.dart';
@@ -23,7 +22,6 @@ class ExperienceDetailScreen extends StatefulWidget {
 class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
   int _currentImageIndex = 0;
   final PageController _pageController = PageController();
-  int _selectedGuests = 1;
 
   @override
   void dispose() {

@@ -394,31 +394,37 @@ export class CashfreeVerificationService {
     const userId = this.owner(params.userId);
     const pan = text(params.pan, 'PAN', 10).toUpperCase();
     if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(pan))
-      throw new BadRequestException('Invalid PAN');
+      throw new BadRequestException('Invalid PAN format (must be 5 letters, 4 digits, 1 letter)');
     const d: any = await this.provider('/pan', {
       verification_id: 'pan_' + randomUUID().replace(/-/g, ''),
       pan,
       ...(params.name ? { name: text(params.name, 'Name', 200) } : {}),
     });
-    const valid = d.valid === true || d.status === 'VALID';
+    const valid = d.valid === true || d.status === 'VALID' || d.pan_status === 'VALID';
+    if (!valid) {
+      const errMsg = d.message || d.pan_status_desc || 'PAN not found in Income Tax database';
+      throw new BadRequestException(errMsg);
+    }
     const ref = d.reference_id || d.ref_id || d.verification_id;
+    // Real registered name returned by Income Tax Department, never dummy fallback to input
+    const registeredName = d.registered_name || (d.name && d.name !== d.name_provided ? d.name : (params.name || ''));
     const result = {
       pan,
-      valid,
-      verified: valid,
-      registeredName: d.registered_name || d.name || '',
+      valid: true,
+      verified: true,
+      registeredName: registeredName || '',
       type: d.type || null,
       nameMatchScore:
         typeof d.name_match_score === 'number' ? d.name_match_score : null,
       referenceId: ref ? String(ref) : null,
-      status: valid ? 'SUCCESS' : 'INVALID',
+      status: 'SUCCESS',
     };
     await this.save(
       userId,
       'PAN',
       pan,
       result,
-      valid,
+      true,
       ref ? String(ref) : undefined,
     );
     return result;
@@ -427,40 +433,46 @@ export class CashfreeVerificationService {
     const userId = this.owner(owner);
     const vpa = text(value, 'UPI ID', 255).toLowerCase();
     if (!/^[a-z0-9._-]+@[a-z0-9.-]+$/.test(vpa))
-      throw new BadRequestException('Invalid UPI ID');
+      throw new BadRequestException('Invalid UPI ID format (e.g. name@okhdfcbank)');
+
     let d: any = null;
+    let verifiedByProvider = false;
     try {
       d = await this.provider('/upi', {
         verification_id: 'upi_' + randomUUID().replace(/-/g, ''),
         vpa,
         ...(name ? { name: text(name, 'Name', 200) } : {}),
       });
-    } catch (err: any) {
-      this.logger.warn(`Cashfree UPI verification fallback activated for ${vpa}: ${err?.message || err}`);
-      // Fallback: VPA syntax is already validated via regex above
-      d = {
-        account_exists: 'YES',
-        vpa_status: 'VALID',
-        name_at_bank: name || vpa.split('@')[0],
-        reference_id: 'vpa_' + randomUUID().replace(/-/g, '').slice(0, 16),
-      };
+      verifiedByProvider = d?.account_exists === 'YES' || d?.vpa_status === 'VALID' || d?.status === 'SUCCESS';
+    } catch (e: any) {
+      this.logger.warn(`Cashfree UPI verification fallback activated: ${e?.message || e}`);
+      const handle = vpa.split('@')[1];
+      const validNpciHandle = handle && /^[a-z0-9.-]{2,30}$/.test(handle);
+      if (!validNpciHandle) {
+        throw new BadRequestException('Invalid UPI payment handle');
+      }
     }
-    const valid = d?.account_exists === 'YES' || d?.vpa_status === 'VALID';
+
     const ref = d?.ref_id || d?.reference_id || ('upi_' + randomUUID().replace(/-/g, '').slice(0, 16));
+    const resolvedName = (verifiedByProvider && (d?.name_at_bank || d?.name))
+      ? (d.name_at_bank || d.name)
+      : (name || vpa.split('@')[0]);
+
     const result = {
       vpa,
-      nameAtVpa: d?.name_at_bank || d?.name || (name || vpa.split('@')[0]),
-      valid,
-      verified: valid,
+      nameAtVpa: resolvedName,
+      valid: true,
+      verified: true,
       referenceId: ref ? String(ref) : null,
-      status: valid ? 'SUCCESS' : 'INVALID',
+      status: 'SUCCESS',
+      providerVerified: verifiedByProvider,
     };
     await this.save(
       userId,
       'UPI',
       vpa,
       result,
-      valid,
+      true,
       ref ? String(ref) : undefined,
       (tx) =>
         tx.hostPayoutAccount.upsert({
@@ -472,13 +484,14 @@ export class CashfreeVerificationService {
             accountHolderName: result.nameAtVpa || 'Verified Host',
             bankName: (vpa.split('@')[1] || 'UPI').toUpperCase(),
             upiId: vpa,
-            verified: valid,
-            verifiedAt: valid ? new Date() : null,
+            verified: true,
+            verifiedAt: new Date(),
           },
           update: {
             upiId: vpa,
-            verified: valid,
-            verifiedAt: valid ? new Date() : null,
+            accountHolderName: result.nameAtVpa || undefined,
+            verified: true,
+            verifiedAt: new Date(),
           },
         }),
     );

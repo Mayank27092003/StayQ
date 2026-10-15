@@ -472,11 +472,9 @@ export class PropertiesService {
       const current = await this.owned(id, user, tx);
       const { data, images, tags, source } = propertyInput(payload, current);
       if (source.status !== undefined) {
-        if (!['DRAFT', 'PAUSED'].includes(source.status))
-          throw new ForbiddenException(
-            'Submit a draft through the review endpoint; publication is managed by admins',
-          );
-        data.status = source.status;
+        if (['DRAFT', 'PAUSED'].includes(source.status)) {
+          data.status = source.status;
+        }
       }
       if (
         ['address', 'city', 'state', 'lat', 'lng', 'type', 'maxGuests'].some(

@@ -14,6 +14,8 @@ class ZeroBrokerBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return BouncingWidget(
       onTap: () {
         AppMotion.tapSelection();
@@ -29,12 +31,12 @@ class ZeroBrokerBanner extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card(context),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.borderLight, width: 1.5),
+          border: Border.all(color: AppColors.border(context), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
               blurRadius: 15,
               offset: const Offset(0, 4),
             ),
@@ -51,7 +53,7 @@ class ZeroBrokerBanner extends StatelessWidget {
                 height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withOpacity(0.03),
+                  color: AppColors.primary.withValues(alpha: 0.03),
                 ),
               ),
             ),
@@ -63,7 +65,7 @@ class ZeroBrokerBanner extends StatelessWidget {
                 height: 80,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withOpacity(0.03),
+                  color: AppColors.primary.withValues(alpha: 0.03),
                 ),
               ),
             ),
@@ -86,9 +88,9 @@ class ZeroBrokerBanner extends StatelessWidget {
                       width: 56,
                       height: 56,
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceLight,
+                        color: isDark ? const Color(0xFF222228) : AppColors.surfaceLight,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
                         image: const DecorationImage(
                           image: AssetImage('assets/images/user_welcome_mascot.jpg'),
                           fit: BoxFit.cover,
@@ -139,20 +141,20 @@ class ZeroBrokerBanner extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           '11-Month Leases',
                           style: TextStyle(
-                            color: AppColors.textPrimary,
+                            color: AppColors.text(context),
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             height: 1.2,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
+                        Text(
                           'Direct owner connect for long stays.',
                           style: TextStyle(
-                            color: AppColors.textSecondary,
+                            color: AppColors.textSub(context),
                             fontSize: 13,
                             height: 1.4,
                           ),
@@ -162,9 +164,9 @@ class ZeroBrokerBanner extends StatelessWidget {
                   ),
                   
                   // Arrow
-                  const Icon(
+                  Icon(
                     Icons.arrow_forward_ios_rounded,
-                    color: AppColors.textSecondary,
+                    color: AppColors.textSub(context),
                     size: 16,
                   ),
                 ],

@@ -31,8 +31,11 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     if (process.env.JOBS_ENABLED === 'true') {
       this.timer = setInterval(
         () =>
-          void this.run().catch(() =>
-            this.logger.error('Job worker iteration failed'),
+          void this.run().catch((e: any) =>
+            this.logger.error(
+              `Job worker iteration failed: ${e?.message || e}`,
+              e?.stack,
+            ),
           ),
         15000,
       );
@@ -47,20 +50,30 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     this.running = true;
     let processed = 0;
     try {
-      await this.bookings.cleanupExpiredHolds();
+      try {
+        await this.bookings.cleanupExpiredHolds();
+      } catch (e: any) {
+        this.logger.error(
+          `Failed to cleanup expired holds: ${e?.message || e}`,
+          e?.stack,
+        );
+      }
       for (let i = 0; i < 25; i++) {
-        const job = await this.prisma.$transaction(async (tx) => {
-          const rows: { id: string }[] =
-            await tx.$queryRaw`SELECT id FROM "DomainJob" WHERE "completedAt" IS NULL AND "availableAt"<=NOW() AND ("lockedUntil" IS NULL OR "lockedUntil"<NOW()) ORDER BY "availableAt", id LIMIT 1 FOR UPDATE SKIP LOCKED`;
-          if (!rows.length) return null;
-          return tx.domainJob.update({
-            where: { id: rows[0].id },
-            data: {
-              lockedUntil: new Date(Date.now() + 120000),
-              attempts: { increment: 1 },
-            },
-          });
-        });
+        const rows: any[] = await this.prisma.$queryRaw`
+          UPDATE "DomainJob"
+          SET "lockedUntil" = NOW() + INTERVAL '120 seconds', "attempts" = "attempts" + 1
+          WHERE id = (
+            SELECT id FROM "DomainJob"
+            WHERE "completedAt" IS NULL
+              AND "availableAt" <= NOW()
+              AND ("lockedUntil" IS NULL OR "lockedUntil" < NOW())
+            ORDER BY "availableAt", id
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+          )
+          RETURNING *;
+        `;
+        const job = rows && rows.length ? rows[0] : null;
         if (!job) break;
         try {
           if (job.type === 'REFUND_RECONCILE') {
@@ -290,10 +303,15 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
           });
           processed++;
         } catch (e: any) {
+          const isMaxRetries = job.attempts >= 10;
+          this.logger.warn(
+            `Job ${job.id} (${job.type}) failed (attempt ${job.attempts}): ${e?.message}`,
+          );
           await this.prisma.domainJob.update({
             where: { id: job.id },
             data: {
               lockedUntil: null,
+              completedAt: isMaxRetries ? new Date() : null,
               availableAt: new Date(
                 Date.now() +
                   Math.min(3600000, 15000 * 2 ** Math.min(job.attempts, 8)),

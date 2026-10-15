@@ -119,7 +119,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final unreadCount = _notifications.where((n) => n['readAt'] == null && n['isRead'] != true).length;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         title: const Text('Notifications', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         actions: [
@@ -152,15 +152,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             child: const Icon(Icons.notifications_off_outlined, color: AppColors.primary, size: 36),
                           ),
                           const SizedBox(height: 16),
-                          const Text(
+                          Text(
                             'No notifications yet',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.textPrimary),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.text(context)),
                           ),
                           const SizedBox(height: 6),
-                          const Text(
+                          Text(
                             "We'll notify you about your bookings, messages, and updates here.",
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            style: TextStyle(fontSize: 13, color: AppColors.textSub(context)),
                           ),
                         ],
                       ),
@@ -186,10 +186,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             margin: const EdgeInsets.only(bottom: 10),
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: isRead ? Colors.white : AppColors.primary.withValues(alpha: 0.04),
+                              color: isRead ? AppColors.card(context) : (Theme.of(context).brightness == Brightness.dark ? AppColors.primary.withValues(alpha: 0.12) : AppColors.primary.withValues(alpha: 0.04)),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: isRead ? AppColors.borderLight : AppColors.primary.withValues(alpha: 0.25),
+                                color: isRead ? AppColors.border(context) : AppColors.primary.withValues(alpha: 0.35),
                                 width: isRead ? 1 : 1.2,
                               ),
                               boxShadow: [
@@ -221,16 +221,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                         style: TextStyle(
                                           fontWeight: isRead ? FontWeight.w600 : FontWeight.bold,
                                           fontSize: 15,
-                                          color: AppColors.textPrimary,
+                                          color: AppColors.text(context),
                                         ),
                                       ),
                                       if (body.isNotEmpty) ...[
                                         const SizedBox(height: 4),
                                         Text(
                                           body,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 13,
-                                            color: AppColors.textSecondary,
+                                            color: AppColors.textSub(context),
                                             height: 1.3,
                                           ),
                                         ),
@@ -238,7 +238,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                       const SizedBox(height: 6),
                                       Text(
                                         timeAgo,
-                                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                                        style: TextStyle(fontSize: 11, color: AppColors.textSub(context)),
                                       ),
                                     ],
                                   ),

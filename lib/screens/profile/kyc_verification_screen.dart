@@ -9,6 +9,31 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
 import '../../widgets/bouncing_widget.dart';
 
+class AadhaarNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digitsOnly = newValue.text.replaceAll(' ', '');
+    if (digitsOnly.length > 12) {
+      return oldValue;
+    }
+    final buffer = StringBuffer();
+    for (int i = 0; i < digitsOnly.length; i++) {
+      if (i > 0 && i % 4 == 0) {
+        buffer.write(' ');
+      }
+      buffer.write(digitsOnly[i]);
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
 class KycVerificationScreen extends StatefulWidget {
   final bool initialIsHost;
   final int initialTabIndex;
@@ -35,6 +60,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
 
   // Bank Form State
   final _accountController = TextEditingController();
+  final _confirmAccountController = TextEditingController();
   final _ifscController = TextEditingController();
   final _accountHolderController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -73,6 +99,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
     final apiClient = ApiClient.instance;
     _verificationApi = VerificationApi(apiClient);
     _accountController.addListener(() => _invalidate('bank'));
+    _confirmAccountController.addListener(() => _invalidate('bank'));
     _ifscController.addListener(() => _invalidate('bank'));
     _aadhaarController.addListener(() { _aadhaarRefId = null; _challengeAadhaar = null; _invalidate('aadhaar'); });
     _panController.addListener(() => _invalidate('pan'));
@@ -97,6 +124,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
   void dispose() {
     _tabController.dispose();
     _accountController.dispose();
+    _confirmAccountController.dispose();
     _ifscController.dispose();
     _accountHolderController.dispose();
     _phoneController.dispose();
@@ -128,12 +156,41 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
     }
   }
 
+  void _showErrorDialog({required String title, required String message}) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.text(context))),
+        content: Text(message, style: TextStyle(color: AppColors.textSub(context))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   // 1. Bank Account Penny Drop
   Future<void> _verifyBank() async {
     final acc = _accountController.text.trim();
-    final ifsc = _ifscController.text.trim();
+    final confirmAcc = _confirmAccountController.text.trim();
+    final ifsc = _ifscController.text.trim().toUpperCase();
     if (acc.length < 8 || ifsc.length != 11) {
-      _showSnackbar('Please enter a valid Account Number & 11-digit IFSC code', isError: true);
+      _showErrorDialog(
+        title: 'Invalid Bank Details',
+        message: 'Please enter a valid Account Number (min 8 digits) and an 11-digit IFSC code.',
+      );
+      return;
+    }
+    if (acc != confirmAcc) {
+      _showErrorDialog(
+        title: 'Account Numbers Do Not Match',
+        message: 'The confirmation account number does not match. Please verify and re-enter.',
+      );
       return;
     }
 
@@ -351,14 +408,14 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         title: const Text('Identity & SecureID Verification', style: TextStyle(fontWeight: FontWeight.bold)),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
           labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
+          unselectedLabelColor: AppColors.textSub(context),
           indicatorColor: AppColors.primary,
           indicatorWeight: 3,
           tabs: const [
@@ -408,12 +465,12 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF4F46E5).withValues(alpha: 0.1),
+            const Color(0xFF4F46E5).withValues(alpha: 0.12),
             const Color(0xFF06B6D4).withValues(alpha: 0.08),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF4F46E5).withValues(alpha: 0.2)),
+        border: Border.all(color: const Color(0xFF4F46E5).withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -429,18 +486,18 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
                 child: const Icon(Icons.verified_user_rounded, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Cashfree SecureID Verified Protection',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.text(context)),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       'Instant 60-sec refund routing & verified host payouts',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: TextStyle(fontSize: 12, color: AppColors.textSub(context)),
                     ),
                   ],
                 ),
@@ -463,13 +520,14 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
   }
 
   Widget _buildStatusPill(String title, bool isVerified) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isVerified ? const Color(0xFF10B981).withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.05),
+        color: isVerified ? const Color(0xFF10B981).withValues(alpha: 0.15) : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isVerified ? const Color(0xFF10B981) : AppColors.borderLight,
+          color: isVerified ? const Color(0xFF10B981) : AppColors.border(context),
         ),
       ),
       child: Row(
@@ -478,7 +536,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
           Icon(
             isVerified ? Icons.check_circle_rounded : Icons.pending_outlined,
             size: 14,
-            color: isVerified ? const Color(0xFF059669) : AppColors.textMuted,
+            color: isVerified ? (isDark ? const Color(0xFF34D399) : const Color(0xFF059669)) : AppColors.textSub(context),
           ),
           const SizedBox(width: 4),
           Text(
@@ -486,7 +544,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: isVerified ? const Color(0xFF059669) : AppColors.textSecondary,
+              color: isVerified ? (isDark ? const Color(0xFF34D399) : const Color(0xFF059669)) : AppColors.textSub(context),
             ),
           ),
         ],
@@ -501,12 +559,13 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
     required VoidCallback onEdit,
     String editLabel = 'Update Details',
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF10B981).withValues(alpha: 0.06),
+        color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.12 : 0.06),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.4 : 0.3), width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -528,12 +587,12 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF047857)),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? const Color(0xFF34D399) : const Color(0xFF047857)),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: TextStyle(fontSize: 12, color: AppColors.textSub(context)),
                     ),
                   ],
                 ),
@@ -559,7 +618,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
             ],
           ),
           const SizedBox(height: 16),
-          const Divider(color: Color(0xFFA7F3D0)),
+          Divider(color: isDark ? const Color(0xFF065F46) : const Color(0xFFA7F3D0)),
           const SizedBox(height: 12),
           ...fields.map((f) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -568,14 +627,14 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
                   children: [
                     Text(
                       f.key,
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 13, color: AppColors.textSub(context), fontWeight: FontWeight.w500),
                     ),
                     Flexible(
                       child: Text(
                         f.value,
                         textAlign: TextAlign.end,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 13, color: AppColors.text(context), fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -586,10 +645,10 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
-              label: Text(editLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+              icon: Icon(Icons.edit_outlined, size: 16, color: AppColors.textSub(context)),
+              label: Text(editLabel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSub(context))),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.borderLight),
+                side: BorderSide(color: AppColors.border(context)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
@@ -654,14 +713,14 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
             ),
             const SizedBox(height: 8),
           ],
-          const Text(
+          Text(
             'Penny Drop Bank Verification (Optional)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Bank verification is optional — only required if you request instant bank refunds. Aadhaar is sufficient for booking stays.',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 13, color: AppColors.textSub(context)),
           ),
           const SizedBox(height: 20),
 
@@ -765,14 +824,14 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
             ),
             const SizedBox(height: 8),
           ],
-          const Text(
+          Text(
             'UIDAI Aadhaar OKYC Verification',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Official paperless Aadhaar authentication. Enter your 12-digit Aadhaar number to receive an OTP directly from UIDAI.',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 13, color: AppColors.textSub(context)),
           ),
           const SizedBox(height: 20),
 
@@ -810,9 +869,9 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
             const SizedBox(height: 24),
             const Divider(),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Enter 6-Digit UIDAI OTP',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.text(context)),
             ),
             const SizedBox(height: 12),
             _buildInputField(
@@ -914,14 +973,14 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
             ),
             const SizedBox(height: 8),
           ],
-          const Text(
+          Text(
             'NSDL PAN Card Verification',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Validates PAN card authenticity with the Income Tax Department and verifies legal name for host payouts and guest compliance.',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 13, color: AppColors.textSub(context)),
           ),
           const SizedBox(height: 20),
 
@@ -1013,14 +1072,14 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
             ),
             const SizedBox(height: 8),
           ],
-          const Text(
+          Text(
             'Instant UPI Refund & Payout Setup',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Verify your UPI VPA to enable automated 60-second instant refunds when you cancel any booking or receive fast host earnings.',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 13, color: AppColors.textSub(context)),
           ),
           const SizedBox(height: 20),
 
@@ -1074,28 +1133,30 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
     bool isCaps = false,
     List<TextInputFormatter>? inputFormatters,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
+        Text(label, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.text(context))),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
           textCapitalization: isCaps ? TextCapitalization.characters : TextCapitalization.none,
           inputFormatters: inputFormatters,
+          style: TextStyle(color: AppColors.text(context)),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: isDark ? const Color(0xFF222228) : Colors.white,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppColors.borderLight),
+              borderSide: BorderSide(color: AppColors.border(context)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppColors.borderLight),
+              borderSide: BorderSide(color: AppColors.border(context)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
@@ -1151,22 +1212,22 @@ class _KycVerificationScreenState extends State<KycVerificationScreen>
                 if (data['registeredName'] != null)
                   Text(
                     'Registered Name: ${data['registeredName']}',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.text(context)),
                   ),
                 if (displayScore != null)
                   Text(
                     'Name Match Score: $displayScore%',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 12, color: AppColors.textSub(context)),
                   ),
                 if (data['name'] != null && data['name'] != data['registeredName'])
                   Text(
                     'Name: ${data['name']}',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.text(context)),
                   ),
                 if (data['message'] != null)
                   Text(
                     data['message'],
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 12, color: AppColors.textSub(context)),
                   ),
               ],
             ),

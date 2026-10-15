@@ -2,7 +2,6 @@ import '../../services/api/api_client.dart';
 import '../../models/json_values.dart';
 import 'dart:convert';
 import 'dart:math';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -299,16 +298,16 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         title: const Text('24/7 Help & Support', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: Container(
-            decoration: const BoxDecoration(
-              color: AppColors.background,
+            decoration: BoxDecoration(
+              color: AppColors.bg(context),
               border: Border(
-                bottom: BorderSide(color: AppColors.borderLight, width: 1),
+                bottom: BorderSide(color: AppColors.border(context), width: 1),
               ),
             ),
             child: TabBar(
@@ -316,7 +315,7 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
               indicatorColor: AppColors.primary,
               indicatorWeight: 3,
               labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.textSecondary,
+              unselectedLabelColor: AppColors.textSub(context),
               labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
               unselectedLabelStyle: const TextStyle(fontSize: 12),
               tabs: const [
@@ -358,7 +357,7 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                 avatar: Icon(topic['icon'], size: 14, color: isSelected ? Colors.white : topic['color']),
                 selected: isSelected,
                 selectedColor: AppColors.primary,
-                labelStyle: TextStyle(color: isSelected ? Colors.white : AppColors.textPrimary),
+                labelStyle: TextStyle(color: isSelected ? Colors.white : AppColors.text(context)),
                 onSelected: (selected) {
                   setState(() {
                     _selectedTopic = selected ? topic['title'] : null;
@@ -381,8 +380,9 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                     .map((p) => Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: ActionChip(
-                            label: Text(p, style: const TextStyle(fontSize: 11)),
-                            backgroundColor: Colors.white,
+                            label: Text(p, style: TextStyle(fontSize: 11, color: AppColors.text(context))),
+                            backgroundColor: AppColors.card(context),
+                            side: BorderSide(color: AppColors.border(context)),
                             onPressed: () => _sendMessage(p),
                           ),
                         ))
@@ -408,8 +408,9 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
                   decoration: BoxDecoration(
-                    color: isUser ? AppColors.primary : Colors.white,
+                    color: isUser ? AppColors.primary : AppColors.card(context),
                     borderRadius: BorderRadius.circular(16),
+                    border: isUser ? null : Border.all(color: AppColors.border(context)),
                     boxShadow: [
                       BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2)),
                     ],
@@ -420,7 +421,7 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                       Text(
                         msg['text'],
                         style: TextStyle(
-                          color: isUser ? Colors.white : AppColors.textPrimary,
+                          color: isUser ? Colors.white : AppColors.text(context),
                           fontSize: 14,
                           height: 1.4,
                         ),
@@ -457,11 +458,11 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
         if (_userMessageCount >= 3)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.white,
+            color: AppColors.card(context),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Still need human assistance?', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                Text('Still need human assistance?', style: TextStyle(fontSize: 12, color: AppColors.textSub(context))),
                 TextButton.icon(
                   onPressed: _showEscalationSheet,
                   icon: const Icon(Icons.headset_mic_rounded, size: 16),
@@ -474,15 +475,16 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
         // Message Input
         Container(
           padding: const EdgeInsets.all(12),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: AppColors.borderLight)),
+          decoration: BoxDecoration(
+            color: AppColors.card(context),
+            border: Border(top: BorderSide(color: AppColors.border(context))),
           ),
           child: Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _chatController,
+                  style: TextStyle(color: AppColors.text(context)),
                   decoration: const InputDecoration(
                     hintText: 'Type your question or issue...',
                     border: InputBorder.none,
@@ -514,9 +516,9 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
           builder: (context, setModalState) {
             return Container(
               height: MediaQuery.of(context).size.height * 0.85,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              decoration: BoxDecoration(
+                color: AppColors.card(context),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
@@ -627,52 +629,59 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                           const SizedBox(height: 16),
 
                           // Name
-                          const Text('Full Name', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                          Text('Full Name', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSub(context))),
                           const SizedBox(height: 6),
                           TextField(
                             controller: _nameController,
+                            style: TextStyle(color: AppColors.text(context)),
                             decoration: InputDecoration(
                               filled: true,
-                              fillColor: Colors.grey.shade50,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                              fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF222228) : Colors.grey.shade50,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border(context))),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border(context))),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                             ),
                           ),
                           const SizedBox(height: 14),
 
                           // Phone
-                          const Text('WhatsApp / Phone Number', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                          Text('WhatsApp / Phone Number', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSub(context))),
                           const SizedBox(height: 6),
                           TextField(
                             controller: _phoneController,
                             keyboardType: TextInputType.phone,
+                            style: TextStyle(color: AppColors.text(context)),
                             decoration: InputDecoration(
                               filled: true,
-                              fillColor: Colors.grey.shade50,
+                              fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF222228) : Colors.grey.shade50,
                               hintText: '+91 ',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                              hintStyle: TextStyle(color: AppColors.textSub(context).withValues(alpha: 0.6)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border(context))),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border(context))),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                             ),
                           ),
                           const SizedBox(height: 14),
 
                           // Email
-                          const Text('Email Address', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                          Text('Email Address', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSub(context))),
                           const SizedBox(height: 6),
                           TextField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
+                            style: TextStyle(color: AppColors.text(context)),
                             decoration: InputDecoration(
                               filled: true,
-                              fillColor: Colors.grey.shade50,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                              fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF222228) : Colors.grey.shade50,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border(context))),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border(context))),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                             ),
                           ),
                           const SizedBox(height: 14),
 
                           // Urgency
-                          const Text('Urgency Level', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                          Text('Urgency Level', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSub(context))),
                           const SizedBox(height: 6),
                           Row(
                             children: [
@@ -686,16 +695,19 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                           const SizedBox(height: 14),
 
                           // Issue Summary
-                          const Text('Brief Issue Summary', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                          Text('Brief Issue Summary', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSub(context))),
                           const SizedBox(height: 6),
                           TextField(
                             controller: _issueController,
                             maxLines: 3,
+                            style: TextStyle(color: AppColors.text(context)),
                             decoration: InputDecoration(
                               filled: true,
-                              fillColor: Colors.grey.shade50,
+                              fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF222228) : Colors.grey.shade50,
                               hintText: 'Describe what you need help with...',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                              hintStyle: TextStyle(color: AppColors.textSub(context).withValues(alpha: 0.6)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border(context))),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border(context))),
                               contentPadding: const EdgeInsets.all(12),
                             ),
                           ),
@@ -761,9 +773,9 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : Colors.white,
+            color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.card(context),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isSelected ? AppColors.primary : AppColors.borderLight, width: isSelected ? 2 : 1),
+            border: Border.all(color: isSelected ? AppColors.primary : AppColors.border(context), width: isSelected ? 2 : 1),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -772,14 +784,14 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isSelected ? AppColors.primary : AppColors.textPrimary),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isSelected ? AppColors.primary : AppColors.text(context)),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
+                style: TextStyle(fontSize: 9, color: AppColors.textSub(context)),
               ),
             ],
           ),
@@ -799,11 +811,14 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
               Expanded(
                 child: TextField(
                   controller: _emailController,
+                  style: TextStyle(color: AppColors.text(context)),
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: AppColors.card(context),
                     hintText: 'Tickets belong to your signed-in account',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                    hintStyle: TextStyle(color: AppColors.textSub(context).withValues(alpha: 0.6), fontSize: 13),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border(context))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border(context))),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   ),
                 ),
@@ -832,11 +847,11 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.confirmation_number_outlined, size: 48, color: AppColors.textMuted.withValues(alpha: 0.5)),
+                          Icon(Icons.confirmation_number_outlined, size: 48, color: AppColors.textSub(context).withValues(alpha: 0.5)),
                           const SizedBox(height: 12),
-                          const Text('No Active Tickets Found', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text('No Active Tickets Found', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.text(context))),
                           const SizedBox(height: 4),
-                          const Text('Submit a ticket in the Transfer tab to track resolution.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          Text('Submit a ticket in the Transfer tab to track resolution.', style: TextStyle(fontSize: 12, color: AppColors.textSub(context))),
                         ],
                       ),
                     )
@@ -848,8 +863,12 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                         final status = t['status'] ?? 'OPEN';
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 1,
+                          color: AppColors.card(context),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(color: AppColors.border(context)),
+                          ),
+                          elevation: 0,
                           child: Padding(
                             padding: const EdgeInsets.all(16),
                             child: Column(
@@ -867,7 +886,7 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: status == 'RESOLVED' ? Colors.green.withValues(alpha: 0.1) : Colors.amber.withValues(alpha: 0.1),
+                                        color: status == 'RESOLVED' ? Colors.green.withValues(alpha: 0.12) : Colors.amber.withValues(alpha: 0.12),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
@@ -875,16 +894,16 @@ class _SupportScreenState extends State<SupportScreen> with SingleTickerProvider
                                         style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold,
-                                          color: status == 'RESOLVED' ? Colors.green : Colors.amber[800],
+                                          color: status == 'RESOLVED' ? Colors.green : Colors.amber[700],
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
-                                Text(t['subject'] ?? 'Support Inquiry', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                Text(t['subject'] ?? 'Support Inquiry', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.text(context))),
                                 const SizedBox(height: 4),
-                                Text(t['message']?.toString().split('--- AI PRE-TRIAGE')[0] ?? '', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                Text(t['message']?.toString().split('--- AI PRE-TRIAGE')[0] ?? '', style: TextStyle(fontSize: 12, color: AppColors.textSub(context))),
                                 if (t['resolution'] != null) ...[
                                   const SizedBox(height: 8),
                                   Container(

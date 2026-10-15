@@ -231,7 +231,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+        Text(label, style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : AppColors.textSecondary, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -249,11 +249,12 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                 child: TextField(
                   controller: controller,
                   keyboardType: TextInputType.number,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary),
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     isDense: true,
                     hintText: hint,
+                    hintStyle: TextStyle(color: isDark ? Colors.white38 : AppColors.textSecondary),
                   ),
                 ),
               ),
@@ -278,10 +279,10 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
         children: [
           Text(
             isHotel ? 'Room Categories & Rates' : 'Rooms & Pricing',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
               letterSpacing: -0.5,
             ),
           ).animate().fadeIn().slideX(),
@@ -290,9 +291,9 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
             isHotel
                 ? 'Manage room types (Master Suite, Deluxe, etc.), unit counts, and nightly pricing.'
                 : 'Configure individual bedroom layouts ("Where you\'ll sleep") and full property rates.',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: AppColors.textSecondary,
+              color: isDark ? Colors.white70 : AppColors.textSecondary,
             ),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 18),
@@ -454,7 +455,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                               provider.propertyType == 'CAMPING_SITE'
                                   ? '$totalInventory Campsite Units Configured'
                                   : '$totalInventory of $targetRooms Rooms Configured',
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppColors.textPrimary),
                             ),
                             const SizedBox(width: 6),
                             if (isExactMatch)
@@ -498,7 +499,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                           totalInventory < targetRooms
                               ? 'You have ${targetRooms - totalInventory} more ${targetRooms - totalInventory == 1 ? "room" : "rooms"} to allocate across room types.'
                               : 'Total units exceed Basic Info room count ($targetRooms). You can adjust quantity per room type.',
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                          style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : AppColors.textSecondary, fontWeight: FontWeight.w500),
                         ),
                       ),
                     ],
@@ -515,11 +516,11 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
           children: [
             Text(
               provider.propertyType == 'CAMPING_SITE' ? 'Campsite Units & Rates' : 'Room Categories & Rates',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
             ),
             Text(
               '${provider.roomCategories.length} configured',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? Colors.white60 : AppColors.textSecondary),
             ),
           ],
         ),
@@ -599,14 +600,14 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Choose Room Type',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppColors.textPrimary),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Select standard hospitality category or keep custom name:',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
               ConstrainedBox(
@@ -652,12 +653,12 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                      color: isSelected ? AppColors.primary : (isDark ? Colors.white : AppColors.textPrimary),
                                     ),
                                   ),
                                   Text(
                                     item['subtitle']!,
-                                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                    style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : AppColors.textSecondary),
                                   ),
                                 ],
                               ),
@@ -710,14 +711,14 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
               const SizedBox(height: 16),
               Text(
                 provider.propertyType == 'CAMPING_SITE' ? 'Add Campsite Unit / Pitch' : 'Add Room Category',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppColors.textPrimary),
               ),
               const SizedBox(height: 4),
               Text(
                 provider.propertyType == 'CAMPING_SITE'
                     ? 'Select an accommodation unit to add to your campsite inventory:'
                     : 'Select a room type to add to your property inventory:',
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
               ConstrainedBox(
@@ -774,11 +775,11 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                                 children: [
                                   Text(
                                     item['title']!,
-                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
                                   ),
                                   Text(
                                     item['subtitle']!,
-                                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                    style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : AppColors.textSecondary),
                                   ),
                                 ],
                               ),
@@ -809,7 +810,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1C2A) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -852,7 +853,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                 child: TextFormField(
                   key: ValueKey('cat_name_${category.id}_${category.categoryName}'),
                   initialValue: category.categoryName,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
                   decoration: InputDecoration(
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
@@ -884,7 +885,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
             ],
           ),
 
-          const Divider(height: 20),
+          Divider(height: 20, color: isDark ? Colors.white12 : null),
 
           // Inventory Units & Price Row
           Row(
@@ -894,7 +895,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Room Units', style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                    Text('Room Units', style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
                     Row(
                       children: [
@@ -910,7 +911,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
                             '${category.quantity}',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppColors.textPrimary),
                           ),
                         ),
                         _buildMiniStepperButton(Icons.add, () {
@@ -930,14 +931,14 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Price / Night', style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                    Text('Price / Night', style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: isDark ? Colors.black26 : AppColors.surfaceLight,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.borderLight),
+                        border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
                       ),
                       child: Row(
                         children: [
@@ -948,7 +949,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                               key: ValueKey('cat_price_${category.id}'),
                               initialValue: category.pricePerNight.toInt().toString(),
                               keyboardType: TextInputType.number,
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
                               decoration: const InputDecoration(
                                 isDense: true,
                                 border: InputBorder.none,
@@ -975,7 +976,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
           const SizedBox(height: 14),
 
           // Bed Type Selection Chips
-          const Text('Bed Setup:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+          Text('Bed Setup:', style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -994,7 +995,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                   decoration: BoxDecoration(
                     color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : (isDark ? Colors.black26 : AppColors.surfaceLight),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: isSelected ? AppColors.primary : AppColors.borderLight),
+                    border: Border.all(color: isSelected ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1006,7 +1007,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                          color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                          color: isSelected ? AppColors.primary : (isDark ? Colors.white : AppColors.textPrimary),
                         ),
                       ),
                     ],
@@ -1101,7 +1102,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                       child: TextField(
                         controller: _priceController,
                         keyboardType: TextInputType.number,
-                        style: const TextStyle(fontSize: 44, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                        style: TextStyle(fontSize: 44, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppColors.textPrimary),
                         decoration: const InputDecoration(
                           border: InputBorder.none,
                           isDense: true,
@@ -1126,7 +1127,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                 ),
 
                 const SizedBox(height: 18),
-                const Divider(color: Colors.black12),
+                Divider(color: isDark ? Colors.white12 : Colors.black12),
                 const SizedBox(height: 8),
 
                 // Monthly Projection Mini-Badge
@@ -1238,7 +1239,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.borderLight),
+                border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1250,7 +1251,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                       Expanded(
                         child: TextFormField(
                           initialValue: room.categoryName,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
                           decoration: const InputDecoration(
                             isDense: true,
                             contentPadding: EdgeInsets.zero,
@@ -1281,14 +1282,14 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
                           decoration: BoxDecoration(
                             color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : (isDark ? Colors.black26 : Colors.white),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: isSelected ? AppColors.primary : AppColors.borderLight),
+                            border: Border.all(color: isSelected ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight)),
                           ),
                           child: Text(
                             '${bed['icon']} ${bed['title']}',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                              color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                              color: isSelected ? AppColors.primary : (isDark ? Colors.white : AppColors.textPrimary),
                             ),
                           ),
                         ),
@@ -1347,6 +1348,7 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
   }
 
   Widget _buildFeatureToggleChip(String label, bool isSelected, Function(bool) onToggle) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () {
         AppMotion.tapSelection();
@@ -1356,16 +1358,24 @@ class _RoomSetupAndPricingScreenState extends State<RoomSetupAndPricingScreen> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF10B981).withValues(alpha: 0.12) : AppColors.surfaceLight,
+          color: isSelected
+              ? const Color(0xFF10B981).withValues(alpha: 0.15)
+              : (isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.surfaceLight),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isSelected ? const Color(0xFF10B981) : AppColors.borderLight),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF10B981)
+                : (isDark ? Colors.white12 : AppColors.borderLight),
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 11,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-            color: isSelected ? const Color(0xFF047857) : AppColors.textSecondary,
+            color: isSelected
+                ? (isDark ? const Color(0xFF34D399) : const Color(0xFF047857))
+                : (isDark ? Colors.white70 : AppColors.textSecondary),
           ),
         ),
       ),

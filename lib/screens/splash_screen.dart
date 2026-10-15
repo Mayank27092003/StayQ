@@ -18,8 +18,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   
   late Animation<double> _drawAnimation;
   late Animation<double> _shimmerAnimation;
-  late Animation<double> _imageFadeAnimation;
-  late Animation<double> _imageScaleAnimation;
   late Animation<double> _textFadeAnimation;
 
   @override
@@ -44,20 +42,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       curve: const Interval(0.50, 0.65, curve: Curves.linear),
     );
 
-    // 2.4s -> 3.0s: The 3D logo fades in
-    _imageFadeAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.60, 0.75, curve: Curves.easeIn),
-    );
-
-    // 2.4s -> 4.0s: The 3D logo subtly scales up ("breathing")
-    _imageScaleAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.60, 1.0, curve: Curves.easeOutCubic),
-      ),
-    );
-
     // 3.0s -> 3.6s: "StayQ" text fades in
     _textFadeAnimation = CurvedAnimation(
       parent: _controller,
@@ -71,17 +55,31 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           if (!mounted) return;
           final provider = context.read<AppProvider>();
           if (!provider.isLoggedIn) {
-            Navigator.pushReplacementNamed(context, provider.hasSeenWalkthrough ? AppRoutes.login : AppRoutes.walkthrough); return;
+            Navigator.pushReplacementNamed(
+              context,
+              provider.hasSeenWalkthrough ? AppRoutes.login : AppRoutes.walkthrough,
+            );
+            return;
           }
           final complete = await provider.checkProfileComplete();
           if (!mounted) return;
-          if (!complete) { Navigator.pushReplacementNamed(context, AppRoutes.completeProfile); return; }
+          if (!complete) {
+            Navigator.pushReplacementNamed(context, AppRoutes.completeProfile);
+            return;
+          }
           final draft = context.read<HostOnboardingProvider>();
           await draft.ready;
           if (!mounted) return;
           if (provider.isHostMode && draft.currentPage > 0 && draft.title.isNotEmpty) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HostOnboardingScreen(startAtBeginning: false)));
-          } else Navigator.pushReplacementNamed(context, AppRoutes.mainShell);
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const HostOnboardingScreen(startAtBeginning: false),
+              ),
+            );
+          } else {
+            Navigator.pushReplacementNamed(context, AppRoutes.mainShell);
+          }
         });
       }
     });

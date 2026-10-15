@@ -42,11 +42,15 @@ class BookingCheckout {
         if (_pending!.isConfirmed) return _pending!.copyWith(isPaid: true);
         if (attempt < 2) await Future<void>.delayed(const Duration(seconds: 2));
       }
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Payment received. Booking confirmation is pending. Check Trips for its status.')));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Payment received. Booking confirmation is pending. Check Trips for its status.')));
+      }
       return null;
     } catch (e) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
       return null;
     } finally { busy = false; }
   }

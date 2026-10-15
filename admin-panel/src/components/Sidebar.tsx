@@ -208,6 +208,13 @@ export default function Sidebar() {
                   <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-purple-50 text-[#5A31F4] border border-purple-200">Plans</span>
                 </Link>
               )}
+              {canSeeRevenue && (
+                <Link className={getLinkClasses("/subscribers")} href="/subscribers">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/subscribers") ? "'FILL' 1" : "normal" }}>card_membership</span>
+                  <span className="flex-1">Subscribers</span>
+                  <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Active</span>
+                </Link>
+              )}
               {canSeeTaxes && (
                 <Link className={getLinkClasses("/taxes")} href="/taxes">
                   <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/taxes") ? "'FILL' 1" : "normal" }}>account_balance</span>

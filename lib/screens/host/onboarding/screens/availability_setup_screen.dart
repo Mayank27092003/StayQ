@@ -54,32 +54,34 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
     }
   }
 
-  Widget _buildTimeField(String label, TextEditingController controller) {
+  Widget _buildTimeField(String label, TextEditingController controller, bool isDark) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
           GestureDetector(
             onTap: () => _selectTime(context, controller),
             child: Container(
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.borderLight),
+                border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
               ),
               child: AbsorbPointer(
                 child: TextField(
                   controller: controller,
                   readOnly: true,
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: isDark ? Colors.white : AppColors.textPrimary),
+                  decoration: InputDecoration(
                     hintText: 'e.g. 14:00',
+                    hintStyle: TextStyle(color: isDark ? Colors.white38 : AppColors.textSecondary),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
                 ),
               ),
@@ -97,6 +99,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
     required String presetKey,
     required bool isSelected,
     required VoidCallback onTap,
+    required bool isDark,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -105,15 +108,17 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.06) : AppColors.cardBg,
+          color: isSelected
+              ? (isDark ? const Color(0xFF3B1E63) : AppColors.primary.withValues(alpha: 0.06))
+              : (isDark ? const Color(0xFF1E1C2A) : AppColors.cardBg),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.borderLight,
+            color: isSelected ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -125,7 +130,9 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : AppColors.surfaceLight,
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.2)
+                    : (isDark ? Colors.white10 : AppColors.surfaceLight),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -145,7 +152,9 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                           style: TextStyle(
                             fontSize: 14.5,
                             fontWeight: FontWeight.bold,
-                            color: isSelected ? AppColors.primaryDark : AppColors.textPrimary,
+                            color: isSelected
+                                ? (isDark ? Colors.white : AppColors.primaryDark)
+                                : (isDark ? Colors.white : AppColors.textPrimary),
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -160,7 +169,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -173,6 +182,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final provider = Provider.of<HostOnboardingProvider>(context);
     final daysInMonth = DateUtils.getDaysInMonth(_currentMonth.year, _currentMonth.month);
     final firstDayOffset = DateTime(_currentMonth.year, _currentMonth.month, 1).weekday % 7;
@@ -199,27 +209,27 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Availability & Calendar',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
             ),
           ).animate().fadeIn().slideX(),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Choose your hosting schedule. You can list all days or pick specific open and blocked dates on StayQ.',
             style: TextStyle(
               fontSize: 14,
-              color: AppColors.textSecondary,
+              color: isDark ? Colors.white70 : AppColors.textSecondary,
             ),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 24),
 
-          const Text(
+          Text(
             'Hosting Strategy',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary),
           ),
           const SizedBox(height: 12),
           _buildStrategyCard(
@@ -229,6 +239,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
             presetKey: 'ALL_DAYS',
             isSelected: provider.availabilityScheduleType == 'ALL_DAYS',
             onTap: () => provider.setSchedulePreset('ALL_DAYS'),
+            isDark: isDark,
           ),
           _buildStrategyCard(
             title: 'Weekends Only on StayQ',
@@ -237,6 +248,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
             presetKey: 'WEEKENDS_ONLY',
             isSelected: provider.availabilityScheduleType == 'WEEKENDS_ONLY',
             onTap: () => provider.setSchedulePreset('WEEKENDS_ONLY'),
+            isDark: isDark,
           ),
           _buildStrategyCard(
             title: 'Custom Schedule Split (e.g. 10 Days)',
@@ -245,6 +257,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
             presetKey: 'CUSTOM_SPLIT',
             isSelected: provider.availabilityScheduleType == 'CUSTOM_SPLIT',
             onTap: () => provider.setSchedulePreset('CUSTOM_SPLIT'),
+            isDark: isDark,
           ),
 
           const SizedBox(height: 24),
@@ -252,12 +265,12 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: AppColors.cardBg,
+              color: isDark ? const Color(0xFF1E1C2A) : AppColors.cardBg,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -275,12 +288,12 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                         children: [
                           Text(
                             DateFormat('MMMM yyyy').format(_currentMonth),
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary),
                           ),
                           const SizedBox(height: 2),
-                          const Text(
+                          Text(
                             'Tap dates to toggle StayQ Open vs Blocked',
-                            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                            style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -288,7 +301,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                     Row(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.chevron_left, size: 22),
+                          icon: Icon(Icons.chevron_left, size: 22, color: isDark ? Colors.white : AppColors.textPrimary),
                           onPressed: () {
                             setState(() {
                               _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
@@ -296,7 +309,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                           },
                         ),
                         IconButton(
-                          icon: const Icon(Icons.chevron_right, size: 22),
+                          icon: Icon(Icons.chevron_right, size: 22, color: isDark ? Colors.white : AppColors.textPrimary),
                           onPressed: () {
                             setState(() {
                               _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
@@ -352,13 +365,13 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: const ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+                  children: ['S', 'M', 'T', 'W', 'T', 'F', 'S']
                       .map((d) => SizedBox(
                             width: 32,
                             child: Text(
                               d,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 12),
+                              style: TextStyle(color: isDark ? Colors.white54 : AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 12),
                             ),
                           ))
                       .toList(),
@@ -398,13 +411,13 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                           color: isPast
                               ? Colors.transparent
                               : isBlocked
-                                  ? const Color(0xFFFEE2E2)
+                                  ? (isDark ? const Color(0xFF451A1A) : const Color(0xFFFEE2E2))
                                   : isWeekend
-                                      ? const Color(0xFFEDE9FE)
-                                      : const Color(0xFFD1FAE5),
+                                      ? (isDark ? const Color(0xFF2D1B4E) : const Color(0xFFEDE9FE))
+                                      : (isDark ? const Color(0xFF133E2B) : const Color(0xFFD1FAE5)),
                           border: Border.all(
                             color: isPast
-                                ? AppColors.borderLight.withValues(alpha: 0.3)
+                                ? (isDark ? Colors.white12 : AppColors.borderLight.withValues(alpha: 0.3))
                                 : isBlocked
                                     ? const Color(0xFFEF4444)
                                     : isWeekend
@@ -423,10 +436,10 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 color: isPast
-                                    ? AppColors.textMuted.withValues(alpha: 0.4)
+                                    ? (isDark ? Colors.white38 : AppColors.textMuted.withValues(alpha: 0.4))
                                     : isBlocked
-                                        ? const Color(0xFFDC2626)
-                                        : AppColors.textPrimary,
+                                        ? const Color(0xFFEF4444)
+                                        : (isDark ? Colors.white : AppColors.textPrimary),
                                 decoration: isBlocked ? TextDecoration.lineThrough : null,
                               ),
                             ),
@@ -437,14 +450,14 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                                 style: TextStyle(
                                   fontSize: 8,
                                   fontWeight: FontWeight.bold,
-                                  color: isWeekend ? const Color(0xFF7C3AED) : const Color(0xFF059669),
+                                  color: isWeekend ? const Color(0xFFA78BFA) : const Color(0xFF34D399),
                                 ),
                               ),
                             ] else if (!isPast && isBlocked) ...[
                               const SizedBox(height: 2),
                               const Text(
                                 'Blocked',
-                                style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
+                                style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: Color(0xFFEF4444)),
                               ),
                             ],
                           ],
@@ -462,9 +475,9 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.cardBg,
+              color: isDark ? const Color(0xFF1E1C2A) : AppColors.cardBg,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -475,10 +488,10 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text('Weekend Price Surcharge', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                          SizedBox(height: 3),
-                          Text('Extra price for Fri & Sat nights', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        children: [
+                          Text('Weekend Price Surcharge', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
+                          const SizedBox(height: 3),
+                          Text('Extra price for Fri & Sat nights', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -508,16 +521,16 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 9),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: isSelected ? AppColors.primary : AppColors.surfaceLight,
+                            color: isSelected ? AppColors.primary : (isDark ? Colors.white10 : AppColors.surfaceLight),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: isSelected ? AppColors.primary : AppColors.borderLight),
+                            border: Border.all(color: isSelected ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight)),
                           ),
                           child: Text(
-                            pct == 0 ? 'None' : '+${pct}%',
+                            pct == 0 ? 'None' : '+$pct%',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white : AppColors.textPrimary,
+                              color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.textPrimary),
                             ),
                           ),
                         ),
@@ -534,9 +547,9 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.cardBg,
+              color: isDark ? const Color(0xFF1E1C2A) : AppColors.cardBg,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -544,10 +557,10 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text('Instant Book', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                      SizedBox(height: 3),
-                      Text('Guests can book instantly without manual host review', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    children: [
+                      Text('Instant Book', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
+                      const SizedBox(height: 3),
+                      Text('Guests can book instantly without manual host review', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary)),
                     ],
                   ),
                 ),
@@ -566,9 +579,9 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
           const SizedBox(height: 20),
           Row(
             children: [
-              _buildTimeField('Check-in Time', _checkInController),
+              _buildTimeField('Check-in Time', _checkInController, isDark),
               const SizedBox(width: 16),
-              _buildTimeField('Check-out Time', _checkOutController),
+              _buildTimeField('Check-out Time', _checkOutController, isDark),
             ],
           ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
 
@@ -576,17 +589,17 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.cardBg,
+              color: isDark ? const Color(0xFF1E1C2A) : AppColors.cardBg,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Minimum Stay (Nights)',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -603,7 +616,7 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                     ),
                     Text(
                       '${provider.minStay}',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary),
                     ),
                     IconButton(
                       onPressed: () {
@@ -621,9 +634,9 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.cardBg,
+              color: isDark ? const Color(0xFF1E1C2A) : AppColors.cardBg,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,10 +647,10 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text('Preparation Time (Turnaround Buffer)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                          SizedBox(height: 3),
-                          Text('Blocked days between bookings to clean and restock', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        children: [
+                          Text('Preparation Time (Turnaround Buffer)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
+                          const SizedBox(height: 3),
+                          Text('Blocked days between bookings to clean and restock', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -670,16 +683,16 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 9),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: isSel ? AppColors.primary : AppColors.surfaceLight,
+                            color: isSel ? AppColors.primary : (isDark ? Colors.white10 : AppColors.surfaceLight),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: isSel ? AppColors.primary : AppColors.borderLight),
+                            border: Border.all(color: isSel ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight)),
                           ),
                           child: Text(
                             item['label'] as String,
                             style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.bold,
-                              color: isSel ? Colors.white : AppColors.textPrimary,
+                              color: isSel ? Colors.white : (isDark ? Colors.white : AppColors.textPrimary),
                             ),
                           ),
                         ),
@@ -695,9 +708,9 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.cardBg,
+              color: isDark ? const Color(0xFF1E1C2A) : AppColors.cardBg,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -708,10 +721,10 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text('Advance Booking Notice', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                          SizedBox(height: 3),
-                          Text('Minimum lead time required before a guest check-in', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        children: [
+                          Text('Advance Booking Notice', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
+                          const SizedBox(height: 3),
+                          Text('Minimum lead time required before a guest check-in', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -745,16 +758,16 @@ class _AvailabilitySetupScreenState extends State<AvailabilitySetupScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 9),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: isSel ? AppColors.primary : AppColors.surfaceLight,
+                            color: isSel ? AppColors.primary : (isDark ? Colors.white10 : AppColors.surfaceLight),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: isSel ? AppColors.primary : AppColors.borderLight),
+                            border: Border.all(color: isSel ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight)),
                           ),
                           child: Text(
                             item['label'] as String,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: isSel ? Colors.white : AppColors.textPrimary,
+                              color: isSel ? Colors.white : (isDark ? Colors.white : AppColors.textPrimary),
                             ),
                           ),
                         ),

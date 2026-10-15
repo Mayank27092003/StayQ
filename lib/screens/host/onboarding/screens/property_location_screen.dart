@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../../providers/host_onboarding_provider.dart';
+import '../../../../data/curated_corridors_dataset.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_motion.dart';
 import '../../../../widgets/bouncing_widget.dart';
@@ -1165,6 +1166,285 @@ class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
                 ),
               ).animate().fadeIn(duration: 300.ms),
             ],
+
+            // ─── CARD 5: Overland Route Waystation (Ecosystem Link) ───
+            _buildCardContainer(
+              title: 'Overland Route Waystation',
+              subtitle: 'Link your property to a curated RV corridor so road-trippers and campervans discover and book your stay.',
+              icon: Icons.alt_route_rounded,
+              isDark: isDark,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: provider.isCorridorWaypoint
+                        ? (isDark ? const Color(0xFF261842) : const Color(0xFFF5F3FF))
+                        : (isDark ? const Color(0xFF14121F) : const Color(0xFFF8FAFC)),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: provider.isCorridorWaypoint
+                          ? AppColors.primary
+                          : (isDark ? Colors.white12 : AppColors.borderLight),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: provider.isCorridorWaypoint
+                              ? AppColors.primary
+                              : Colors.grey.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.explore_rounded,
+                          color: provider.isCorridorWaypoint ? Colors.white : Colors.grey,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'I Want to Be in a Corridor',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white : AppColors.textPrimary,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Surface this listing on StayQ Overland Corridors as a verified stay & recharge stop.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? Colors.white60 : AppColors.textSecondary,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: provider.isCorridorWaypoint,
+                        activeThumbColor: AppColors.primary,
+                        onChanged: (val) {
+                          if (val && (provider.linkedCorridorId == null || provider.linkedCorridorId!.isEmpty)) {
+                            final first = curatedCampervanCorridors.first;
+                            provider.updateCorridorLink(
+                              isWaypoint: true,
+                              corridorId: first.id,
+                              corridorSlug: first.slug,
+                              corridorName: first.name,
+                            );
+                          } else {
+                            provider.updateCorridorLink(isWaypoint: val);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                if (provider.isCorridorWaypoint) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Select Passing Route / Corridor',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF14121F) : AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark ? Colors.white12 : AppColors.borderLight,
+                        width: 1.1,
+                      ),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: (provider.linkedCorridorId != null &&
+                                curatedCampervanCorridors.any((c) => c.id == provider.linkedCorridorId))
+                            ? provider.linkedCorridorId
+                            : curatedCampervanCorridors.first.id,
+                        isExpanded: true,
+                        dropdownColor: isDark ? const Color(0xFF1E1C2A) : Colors.white,
+                        items: curatedCampervanCorridors.map((c) {
+                          return DropdownMenuItem<String>(
+                            value: c.id,
+                            child: Text(
+                              '${c.name} (${c.distanceKm} km • ${c.region.displayName})',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : AppColors.textPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (selectedId) {
+                          if (selectedId != null) {
+                            final chosen = curatedCampervanCorridors.firstWhere((c) => c.id == selectedId);
+                            provider.updateCorridorLink(
+                              corridorId: chosen.id,
+                              corridorSlug: chosen.slug,
+                              corridorName: chosen.name,
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+                  // Corridor Details Preview & Map Centering
+                  Builder(
+                    builder: (context) {
+                      final chosen = curatedCampervanCorridors.firstWhere(
+                        (c) => c.id == provider.linkedCorridorId,
+                        orElse: () => curatedCampervanCorridors.first,
+                      );
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.04)
+                              : Colors.grey.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.route_rounded, size: 15, color: AppColors.primary),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Stops: ${chosen.stops.join(' ➔ ')}',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white70 : AppColors.textPrimary,
+                                      decoration: TextDecoration.none,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              chosen.description,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? Colors.white54 : AppColors.textSecondary,
+                                height: 1.35,
+                                decoration: TextDecoration.none,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 10),
+                            InkWell(
+                              onTap: () {
+                                final lat = provider.latitude ?? 28.6139;
+                                final lng = provider.longitude ?? 77.2090;
+                                _mapController?.animateCamera(
+                                  CameraUpdate.newLatLngZoom(LatLng(lat, lng), 16.5),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('📍 Map centered on waypoint coordinates: ${lat.toStringAsFixed(4)}°, ${lng.toStringAsFixed(4)}°'),
+                                    duration: const Duration(seconds: 2),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.my_location_rounded, size: 14, color: AppColors.primary),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'View Waypoint on Google Map',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    initialValue: provider.corridorWaypointNote,
+                    onChanged: (note) => provider.updateCorridorLink(note: note),
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Waypoint & Parking Highlights (Optional)',
+                      hintText: 'e.g. 15A power plug, safe campervan parking, fresh spring water',
+                      labelStyle: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? Colors.white60 : AppColors.textSecondary,
+                      ),
+                      hintStyle: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? Colors.white38 : AppColors.textSecondary,
+                      ),
+                      filled: true,
+                      fillColor: isDark ? const Color(0xFF14121F) : AppColors.surfaceLight,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDark ? Colors.white12 : AppColors.borderLight),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDark ? Colors.white12 : AppColors.borderLight),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primary),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      isDense: true,
+                    ),
+                  ),
+                ],
+              ],
+            ).animate().fadeIn(delay: 260.ms).slideY(begin: 0.05),
 
             const SizedBox(height: 36),
           ],

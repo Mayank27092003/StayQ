@@ -44,6 +44,7 @@ class StayModel {
   final bool equipmentIncluded;
   final int kidsFreeAgeLimit;
   final String? scheduleTime;
+  final bool govtIdRequired;
 
   bool get pickupProvided =>
       transportOption == 'PICKUP_DROP' ||
@@ -123,6 +124,7 @@ class StayModel {
     this.sponsoredTier,
     this.sponsoredUntil,
     this.searchRankBoost = 0,
+    this.govtIdRequired = false,
   });
 
   factory StayModel.fromFirestore(Map<String, dynamic> data, String documentId) {
@@ -203,6 +205,7 @@ class StayModel {
       sponsoredTier: json['sponsoredTier']?.toString(),
       sponsoredUntil: DateTime.tryParse(json['sponsoredUntil']?.toString() ?? ''),
       searchRankBoost: jsonInt(json['searchRankBoost']),
+      govtIdRequired: json['govtIdRequired'] == true || json['rules']?['govtIdRequired'] == true,
     );
   }
 
@@ -265,6 +268,7 @@ class StayModel {
       'blockedDates': blockedDates.map((d) => d.toIso8601String()).toList(),
       'isSponsored': isSponsored, 'sponsoredTier': sponsoredTier,
       'sponsoredUntil': sponsoredUntil?.toIso8601String(), 'searchRankBoost': searchRankBoost,
+      'govtIdRequired': govtIdRequired,
     };
   }
 }

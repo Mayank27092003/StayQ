@@ -199,4 +199,113 @@ export class SubscriptionsService {
       },
     );
   }
+
+  /**
+   * Admin: List all subscribers with real-time stats and metrics
+   */
+  async getSubscribers() {
+    const now = new Date();
+    const users = await this.prisma.user.findMany({
+      where: {
+        OR: [
+          { isHostPro: true },
+          { hostProPlanId: { not: null } },
+          { hostProExpiresAt: { not: null } },
+        ],
+      },
+      include: {
+        properties: {
+          select: { id: true, title: true, status: true },
+        },
+      },
+      orderBy: { hostProExpiresAt: 'desc' },
+    });
+
+    const plans = await this.getPlansList();
+    const planMap = new Map(plans.map((p) => [p.id, p]));
+
+    const subscribers = users.map((u) => {
+      const plan = planMap.get(u.hostProPlanId || 'HOST_PRO_MONTHLY') || HOST_PLANS[0];
+      const isActive = Boolean(u.isHostPro && (!u.hostProExpiresAt || u.hostProExpiresAt > now));
+      return {
+        id: u.id,
+        fullName: u.displayName || 'Host Partner',
+        email: u.email || 'N/A',
+        phone: u.phone || 'N/A',
+        avatarUrl: u.photoUrl || null,
+        planId: u.hostProPlanId || plan.id,
+        planName: plan.name,
+        billingPeriod: plan.billingPeriod,
+        price: plan.price,
+        status: isActive ? 'ACTIVE' : 'EXPIRED',
+        isActive,
+        expiresAt: u.hostProExpiresAt ? u.hostProExpiresAt.toISOString() : null,
+        createdAt: u.createdAt.toISOString(),
+        propertiesCount: u.properties.length,
+      };
+    });
+
+    const activeCount = subscribers.filter((s) => s.isActive).length;
+    const monthlyCount = subscribers.filter((s) => s.isActive && s.billingPeriod === 'MONTHLY').length;
+    const annualCount = subscribers.filter((s) => s.isActive && s.billingPeriod === 'ANNUAL').length;
+    const estimatedMrr = subscribers
+      .filter((s) => s.isActive)
+      .reduce((sum, s) => sum + (s.billingPeriod === 'ANNUAL' ? Math.round(s.price / 12) : s.price), 0);
+
+    return {
+      success: true,
+      stats: {
+        totalSubscribers: subscribers.length,
+        activeSubscribers: activeCount,
+        expiredSubscribers: subscribers.length - activeCount,
+        monthlySubscribers: monthlyCount,
+        annualSubscribers: annualCount,
+        mrr: estimatedMrr,
+      },
+      subscribers,
+    };
+  }
+
+  /**
+   * Admin: Grant or extend subscription manually
+   */
+  async grantSubscription(params: {
+    userId: string;
+    planId: string;
+    durationDays?: number;
+    adminId?: string;
+  }) {
+    const plans = await this.getPlansList();
+    const plan = plans.find((p) => p.id === params.planId) || HOST_PLANS[0];
+    const user = await this.prisma.user.findUnique({
+      where: { id: params.userId },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const now = new Date();
+    const base = user.hostProExpiresAt && user.hostProExpiresAt > now ? user.hostProExpiresAt : now;
+    const days = params.durationDays || (plan.billingPeriod === 'ANNUAL' ? 365 : 30);
+    const expiresAt = new Date(base.getTime() + days * 86400000);
+
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isHostPro: true,
+        hostProPlanId: plan.id,
+        hostProExpiresAt: expiresAt,
+      },
+    });
+
+    return {
+      success: true,
+      message: `Granted ${plan.name} to ${updated.displayName || updated.email} for ${days} days`,
+      expiresAt: expiresAt.toISOString(),
+      user: {
+        id: updated.id,
+        isHostPro: updated.isHostPro,
+        hostProPlanId: updated.hostProPlanId,
+        hostProExpiresAt: updated.hostProExpiresAt,
+      },
+    };
+  }
 }

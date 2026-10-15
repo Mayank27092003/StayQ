@@ -43,6 +43,24 @@ export class SubscriptionsController {
     return this.subService.updatePlans(body.plans, user?.id);
   }
 
+  @Get('admin/subscribers')
+  @UseGuards(FirebaseAuthGuard)
+  getAdminSubscribers() {
+    return this.subService.getSubscribers();
+  }
+
+  @Post('admin/grant')
+  @UseGuards(FirebaseAuthGuard)
+  grantAdminSubscription(
+    @CurrentUser() user: any,
+    @Body() body: { userId: string; planId: string; durationDays?: number },
+  ) {
+    return this.subService.grantSubscription({
+      ...body,
+      adminId: user?.id,
+    });
+  }
+
   @Post('create-order')
   @UseGuards(FirebaseAuthGuard)
   createOrder(

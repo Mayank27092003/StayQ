@@ -55,6 +55,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
     _infants = provider.infantsCount;
     _pets = provider.petsCount;
     _dateRange = provider.selectedDateRange;
+    _selectedAmenities.addAll(provider.selectedAmenities);
     _destController.addListener(_onSearchChanged);
   }
 
@@ -123,8 +124,15 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
     FocusScope.of(context).unfocus();
   }
 
+  String _formatDate(DateTime dt) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.92,
       margin: const EdgeInsets.only(top: 24),
@@ -138,9 +146,9 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
           child: Container(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.85),
+              color: isDark ? const Color(0xFF141417).withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.85),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-              border: Border.all(color: Colors.white.withOpacity(0.5)),
+              border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.5)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,7 +159,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                     width: 48,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: AppColors.textMuted.withOpacity(0.3),
+                      color: AppColors.textMuted.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -161,9 +169,9 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Refine Search',
-                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.5),
+                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.text(context), letterSpacing: -0.5),
                     ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.2),
                     Row(
                       children: [
@@ -178,6 +186,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                               _pets = 0;
                               _priceRange = const RangeValues(500, 50000);
                               _isStayingWithHost = null;
+                              _selectedAmenities.clear();
                             });
                           },
                           child: const Text(
@@ -191,10 +200,10 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: AppColors.surfaceLight.withOpacity(0.7),
+                              color: isDark ? Colors.white.withValues(alpha: 0.08) : AppColors.surfaceLight.withValues(alpha: 0.7),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.close_rounded, size: 20),
+                            child: Icon(Icons.close_rounded, size: 20, color: AppColors.text(context)),
                           ),
                         ),
                       ],
@@ -212,11 +221,11 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                       height: 54,
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceLight.withOpacity(0.9),
+                        color: isDark ? const Color(0xFF222228) : AppColors.surfaceLight.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: Colors.white.withOpacity(0.8), width: 1.5),
+                        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.8), width: 1.5),
                         boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 4))
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 15, offset: const Offset(0, 4))
                         ],
                       ),
                       child: Stack(
@@ -238,7 +247,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                                   borderRadius: BorderRadius.circular(26),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: AppColors.primary.withOpacity(0.3),
+                                      color: AppColors.primary.withValues(alpha: 0.3),
                                       blurRadius: 8,
                                       offset: const Offset(0, 3),
                                     ),
@@ -258,7 +267,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                                       duration: const Duration(milliseconds: 250),
                                       style: TextStyle(
                                         fontWeight: !isExp ? FontWeight.w800 : FontWeight.w600,
-                                        color: !isExp ? Colors.white : AppColors.textPrimary.withOpacity(0.6),
+                                        color: !isExp ? Colors.white : (isDark ? Colors.white70 : AppColors.textPrimary.withValues(alpha: 0.6)),
                                         fontSize: 16,
                                         letterSpacing: -0.3,
                                       ),
@@ -276,7 +285,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                                       duration: const Duration(milliseconds: 250),
                                       style: TextStyle(
                                         fontWeight: isExp ? FontWeight.w800 : FontWeight.w600,
-                                        color: isExp ? Colors.white : AppColors.textPrimary.withOpacity(0.6),
+                                        color: isExp ? Colors.white : (isDark ? Colors.white70 : AppColors.textPrimary.withValues(alpha: 0.6)),
                                         fontSize: 16,
                                         letterSpacing: -0.3,
                                       ),
@@ -289,7 +298,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                           ),
                         ],
                       ),
-                    ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.2, curve: Curves.easeOutCirc);
+                    );
                   },
                 ),
 
@@ -307,15 +316,15 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                         Container(
                           decoration: BoxDecoration(
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5))
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5))
                             ]
                           ),
                           child: TextField(
                             controller: _destController,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.text(context)),
                             decoration: InputDecoration(
                               hintText: 'Search destinations',
-                              hintStyle: TextStyle(color: AppColors.textMuted.withOpacity(0.8), fontWeight: FontWeight.normal),
+                              hintStyle: TextStyle(color: AppColors.textSub(context), fontWeight: FontWeight.normal),
                               prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
                               suffixIcon: _isSearching 
                                   ? const Padding(
@@ -324,7 +333,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                                     ) 
                                   : _destController.text.isNotEmpty 
                                       ? IconButton(
-                                          icon: const Icon(Icons.clear_rounded, color: AppColors.textMuted),
+                                          icon: Icon(Icons.clear_rounded, color: AppColors.textSub(context)),
                                           onPressed: () {
                                             _destController.clear();
                                             setState(() => _predictions = []);
@@ -332,11 +341,15 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                                         )
                                       : null,
                               filled: true,
-                              fillColor: Colors.white,
+                              fillColor: AppColors.card(context),
                               contentPadding: const EdgeInsets.symmetric(vertical: 18),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(20),
-                                borderSide: BorderSide.none,
+                                borderSide: BorderSide(color: AppColors.border(context)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide(color: AppColors.border(context)),
                               ),
                             ),
                           ),
@@ -347,20 +360,23 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                           Container(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: AppColors.card(context),
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
-                                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+                                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
                               ]
                             ),
                             child: Column(
                               children: _predictions.map((p) => ListTile(
                                 leading: Container(
                                   padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(8)),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withValues(alpha: 0.08) : AppColors.surfaceLight, 
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                   child: const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 18),
                                 ),
-                                title: Text(p, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.textPrimary)),
+                                title: Text(p, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.text(context))),
                                 onTap: () => _selectDestination(p),
                               )).toList(),
                             ),
@@ -376,16 +392,16 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.7),
+                                    color: isDark ? const Color(0xFF222228) : Colors.white.withValues(alpha: 0.7),
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: AppColors.borderLight.withOpacity(0.5)),
+                                    border: Border.all(color: AppColors.border(context).withValues(alpha: 0.5)),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       const Icon(Icons.location_on_rounded, size: 14, color: AppColors.primary),
                                       const SizedBox(width: 6),
-                                      Text(dest, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                      Text(dest, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text(context))),
                                     ],
                                   ),
                                 ),
@@ -398,13 +414,37 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                         // Dates Calendar
                         const _SectionTitle('When?'),
                         const SizedBox(height: 12),
+                        if (_dateRange != null) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.date_range_rounded, size: 18, color: AppColors.primary),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${_dateRange!.duration.inDays} ${_dateRange!.duration.inDays == 1 ? 'night' : 'nights'} • ${_formatDate(_dateRange!.start)} – ${_formatDate(_dateRange!.end)}',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.card(context),
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5))
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5))
                             ]
                           ),
                           child: SfDateRangePicker(
@@ -417,24 +457,31 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                             onSelectionChanged: (DateRangePickerSelectionChangedArgs args) {
                               if (args.value is PickerDateRange) {
                                 final range = args.value as PickerDateRange;
-                                if (range.startDate != null && range.endDate != null) {
+                                if (range.startDate != null) {
+                                  final start = DateUtils.dateOnly(range.startDate!);
+                                  final rawEnd = range.endDate != null ? DateUtils.dateOnly(range.endDate!) : null;
+                                  final end = (rawEnd != null && rawEnd.isAfter(start))
+                                      ? rawEnd
+                                      : start.add(const Duration(days: 1));
                                   setState(() {
-                                    _dateRange = DateTimeRange(start: range.startDate!, end: range.endDate!);
+                                    _dateRange = DateTimeRange(start: start, end: end);
                                   });
                                 }
                               }
                             },
-                            monthCellStyle: const DateRangePickerMonthCellStyle(
-                              textStyle: TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary),
-                              todayTextStyle: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                            monthCellStyle: DateRangePickerMonthCellStyle(
+                              textStyle: TextStyle(fontWeight: FontWeight.w500, color: AppColors.text(context)),
+                              todayTextStyle: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                              leadingDatesTextStyle: TextStyle(color: AppColors.textSub(context).withValues(alpha: 0.5)),
+                              trailingDatesTextStyle: TextStyle(color: AppColors.textSub(context).withValues(alpha: 0.5)),
                             ),
-                            rangeSelectionColor: AppColors.primary.withOpacity(0.15),
+                            rangeSelectionColor: AppColors.primary.withValues(alpha: 0.15),
                             startRangeSelectionColor: AppColors.primary,
                             endRangeSelectionColor: AppColors.primary,
                             todayHighlightColor: AppColors.primary,
                             selectionTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                            headerStyle: const DateRangePickerHeaderStyle(
-                              textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                            headerStyle: DateRangePickerHeaderStyle(
+                              textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text(context)),
                             ),
                           ),
                         ),
@@ -447,10 +494,10 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.card(context),
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5))
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5))
                             ]
                           ),
                           child: Column(
@@ -466,9 +513,9 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                               SliderTheme(
                                 data: SliderTheme.of(context).copyWith(
                                   activeTrackColor: AppColors.primary,
-                                  inactiveTrackColor: AppColors.primary.withOpacity(0.1),
+                                  inactiveTrackColor: AppColors.primary.withValues(alpha: 0.1),
                                   thumbColor: AppColors.primary,
-                                  overlayColor: AppColors.primary.withOpacity(0.2),
+                                  overlayColor: AppColors.primary.withValues(alpha: 0.2),
                                   trackHeight: 6,
                                   thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 14, elevation: 4),
                                   overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
@@ -497,10 +544,10 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.card(context),
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5))
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5))
                             ]
                           ),
                           child: Column(
@@ -512,7 +559,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                                 onDecremented: () => setState(() => _adults = _adults > 1 ? _adults - 1 : 1),
                                 onIncremented: () => setState(() => _adults++),
                               ),
-                              Divider(height: 1, color: AppColors.borderLight.withOpacity(0.5)),
+                              Divider(height: 1, color: AppColors.border(context).withValues(alpha: 0.5)),
                               _GuestCounterRow(
                                 title: 'Children',
                                 subtitle: 'Ages 2–12',
@@ -520,7 +567,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                                 onDecremented: () => setState(() => _children = _children > 0 ? _children - 1 : 0),
                                 onIncremented: () => setState(() => _children++),
                               ),
-                              Divider(height: 1, color: AppColors.borderLight.withOpacity(0.5)),
+                              Divider(height: 1, color: AppColors.border(context).withValues(alpha: 0.5)),
                               _GuestCounterRow(
                                 title: 'Infants',
                                 subtitle: 'Under 2',
@@ -528,7 +575,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                                 onDecremented: () => setState(() => _infants = _infants > 0 ? _infants - 1 : 0),
                                 onIncremented: () => setState(() => _infants++),
                               ),
-                              Divider(height: 1, color: AppColors.borderLight.withOpacity(0.5)),
+                              Divider(height: 1, color: AppColors.border(context).withValues(alpha: 0.5)),
                               _GuestCounterRow(
                                 title: 'Pets',
                                 subtitle: 'Bringing a service animal?',
@@ -548,18 +595,18 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.card(context),
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5))
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5))
                             ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Choose your preferred stay style',
-                                style: TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                                style: TextStyle(fontSize: 13, color: AppColors.textSub(context), fontWeight: FontWeight.w500),
                               ),
                               const SizedBox(height: 14),
                               Row(
@@ -618,7 +665,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.card(context),
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5))
@@ -627,9 +674,9 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Filter stays having specific amenities',
-                                style: TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                                style: TextStyle(fontSize: 13, color: AppColors.textSub(context), fontWeight: FontWeight.w500),
                               ),
                               const SizedBox(height: 14),
                               Wrap(
@@ -652,24 +699,24 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                                       duration: const Duration(milliseconds: 150),
                                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                       decoration: BoxDecoration(
-                                        color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.surfaceLight,
+                                        color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : (isDark ? const Color(0xFF222228) : AppColors.surfaceLight),
                                         borderRadius: BorderRadius.circular(14),
                                         border: Border.all(
-                                          color: isSelected ? AppColors.primary : AppColors.borderLight,
+                                          color: isSelected ? AppColors.primary : AppColors.border(context),
                                           width: isSelected ? 1.5 : 1,
                                         ),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(item.icon, size: 16, color: isSelected ? AppColors.primary : AppColors.textSecondary),
+                                          Icon(item.icon, size: 16, color: isSelected ? AppColors.primary : AppColors.textSub(context)),
                                           const SizedBox(width: 6),
                                           Text(
                                             item.title,
                                             style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                              color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                              color: isSelected ? AppColors.primary : AppColors.text(context),
                                             ),
                                           ),
                                         ],
@@ -702,6 +749,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                       minPrice: _priceRange.start,
                       maxPrice: _priceRange.end,
                       isStayingWithHost: _isStayingWithHost,
+                      amenities: _selectedAmenities,
                     );
                     final nav = Navigator.of(context);
                     // Close modal first
@@ -725,7 +773,7 @@ class _SearchFilterModalState extends State<SearchFilterModal> {
                       ),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
-                        BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 6)),
+                        BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 6)),
                       ],
                     ),
                     child: Row(
@@ -762,7 +810,7 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title, 
-      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.3)
+      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.text(context), letterSpacing: -0.3)
     );
   }
 }
@@ -816,6 +864,8 @@ class _GuestCounterRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
@@ -824,9 +874,9 @@ class _GuestCounterRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text(context))),
               const SizedBox(height: 4),
-              Text(subtitle, style: TextStyle(fontSize: 13, color: AppColors.textSecondary.withOpacity(0.8), fontWeight: FontWeight.w500)),
+              Text(subtitle, style: TextStyle(fontSize: 13, color: AppColors.textSub(context).withValues(alpha: 0.8), fontWeight: FontWeight.w500)),
             ],
           ),
           Row(
@@ -836,9 +886,9 @@ class _GuestCounterRow extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: count > 0 ? AppColors.surfaceLight : AppColors.surfaceLight.withOpacity(0.3),
+                    color: count > 0 ? (isDark ? const Color(0xFF222228) : AppColors.surfaceLight) : (isDark ? Colors.white10 : AppColors.surfaceLight.withValues(alpha: 0.3)),
                     shape: BoxShape.circle,
-                    border: Border.all(color: count > 0 ? AppColors.primary.withOpacity(0.2) : Colors.transparent),
+                    border: Border.all(color: count > 0 ? AppColors.primary.withValues(alpha: 0.2) : Colors.transparent),
                   ),
                   child: Icon(
                     Icons.remove_rounded,
@@ -852,7 +902,7 @@ class _GuestCounterRow extends StatelessWidget {
                 child: Center(
                   child: Text(
                     '$count', 
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.text(context))
                   ),
                 ),
               ),
@@ -861,9 +911,9 @@ class _GuestCounterRow extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
                   ),
                   child: const Icon(
                     Icons.add_rounded,
@@ -897,16 +947,18 @@ class _HostOptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return _BouncyButton(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.08) : AppColors.surfaceLight,
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : (isDark ? const Color(0xFF222228) : AppColors.surfaceLight),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.borderLight,
+            color: isSelected ? AppColors.primary : AppColors.border(context),
             width: isSelected ? 1.5 : 1.0,
           ),
         ),
@@ -915,7 +967,7 @@ class _HostOptionCard extends StatelessWidget {
             Icon(
               icon,
               size: 22,
-              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+              color: isSelected ? AppColors.primary : AppColors.textSub(context),
             ),
             const SizedBox(height: 6),
             Text(
@@ -923,16 +975,16 @@ class _HostOptionCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                color: isSelected ? AppColors.primary : AppColors.text(context),
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 2),
             Text(
               subtitle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
-                color: AppColors.textMuted,
+                color: AppColors.textSub(context),
               ),
               textAlign: TextAlign.center,
               maxLines: 1,

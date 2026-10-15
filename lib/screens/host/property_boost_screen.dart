@@ -138,10 +138,12 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
   }
 
   void _showSuccessDialog(Map<String, dynamic> tier) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E1C2A) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         contentPadding: const EdgeInsets.all(24),
         content: Column(
@@ -170,13 +172,13 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
             const SizedBox(height: 20),
             Text(
               '${tier['name']} Activated!',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : const Color(0xFF1E293B)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'Your property "${widget.property.title}" is now ranked higher in search with the ${tier['badgeText']} badge for ${tier['durationDays']} days.',
-              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
+              style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : const Color(0xFF64748B), height: 1.4),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -203,22 +205,23 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final selectedTier = _tiers[_selectedTierIndex];
     final isAlreadyActive = _boostStatus?['isActive'] == true;
     final daysRemaining = _boostStatus?['daysRemaining'] ?? 0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: isDark ? const Color(0xFF0F0E17) : const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E1C2A) : Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1E293B), size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : const Color(0xFF1E293B), size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
+        title: Text(
           'Boost & Promote Property',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: isDark ? Colors.white : const Color(0xFF0F172A)),
         ),
         centerTitle: true,
         bottom: _isLoading
@@ -237,12 +240,12 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF1E1C2A) : Colors.white,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
                   ),
@@ -259,7 +262,7 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
                           ? (widget.property.firstImage.startsWith('http')
                               ? Image.network(widget.property.firstImage, fit: BoxFit.cover)
                               : Image.asset(widget.property.firstImage, fit: BoxFit.cover))
-                          : Container(color: AppColors.surfaceLight),
+                          : Container(color: isDark ? Colors.white10 : AppColors.surfaceLight),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -269,14 +272,14 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
                       children: [
                         Text(
                           widget.property.title,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 3),
                         Text(
                           '${widget.property.city}, ${widget.property.state}',
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                          style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : const Color(0xFF64748B), fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 6),
                         // Live Badge Preview
@@ -343,14 +346,14 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
             ],
 
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Select Promotion Plan',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: isDark ? Colors.white : const Color(0xFF0F172A)),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Boosted properties get up to 5x more clicks and instant bookings.',
-              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : const Color(0xFF64748B)),
             ),
             const SizedBox(height: 16),
 
@@ -365,10 +368,10 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
                   margin: const EdgeInsets.only(bottom: 14),
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? const Color(0xFF1E1C2A) : Colors.white,
                     borderRadius: BorderRadius.circular(22),
                     border: Border.all(
-                      color: isSelected ? (tier['colors'] as List<Color>)[0] : const Color(0xFFE2E8F0),
+                      color: isSelected ? (tier['colors'] as List<Color>)[0] : (isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
                       width: isSelected ? 2.5 : 1,
                     ),
                     boxShadow: [
@@ -408,7 +411,7 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
                                   children: [
                                     Text(
                                       tier['name'] as String,
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                                     ),
                                     if (tier['isPopular'] == true) ...[
                                       const SizedBox(width: 8),
@@ -429,7 +432,7 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
                                 const SizedBox(height: 2),
                                 Text(
                                   tier['tagline'] as String,
-                                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : const Color(0xFF64748B), fontWeight: FontWeight.w500),
                                 ),
                               ],
                             ),
@@ -439,7 +442,7 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
                             children: [
                               Text(
                                 '₹${tier['price']}',
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                               ),
                               Text(
                                 '${tier['durationDays']} Days',
@@ -450,9 +453,9 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
                         ],
                       ),
                       if (isSelected) ...[
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Divider(color: Color(0xFFF1F5F9), height: 1),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Divider(color: isDark ? Colors.white12 : const Color(0xFFF1F5F9), height: 1),
                         ),
                         ...(tier['features'] as List<String>).map(
                           (f) => Padding(
@@ -464,7 +467,7 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
                                 Expanded(
                                   child: Text(
                                     f,
-                                    style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w600),
+                                    style: TextStyle(fontSize: 12, color: isDark ? Colors.white : const Color(0xFF334155), fontWeight: FontWeight.w600),
                                   ),
                                 ),
                               ],
@@ -483,17 +486,18 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
+                color: isDark ? const Color(0xFF1E1C2A) : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: isDark ? Colors.white12 : Colors.transparent),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.verified_user_rounded, color: Color(0xFF475569), size: 20),
-                  SizedBox(width: 10),
+                  Icon(Icons.verified_user_rounded, color: isDark ? Colors.white70 : const Color(0xFF475569), size: 20),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Zero hidden fees. Instant search boost activation via Cashfree PG & 100% verified badges.',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF475569), fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : const Color(0xFF475569), fontWeight: FontWeight.w500),
                     ),
                   ),
                 ],
@@ -506,11 +510,11 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
       bottomSheet: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: const Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+          color: isDark ? const Color(0xFF1E1C2A) : Colors.white,
+          border: Border(top: BorderSide(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0))),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
               blurRadius: 10,
               offset: const Offset(0, -4),
             ),
@@ -525,11 +529,11 @@ class _PropertyBoostScreenState extends State<PropertyBoostScreen> {
                 children: [
                   Text(
                     '₹${selectedTier['price']}',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                   ),
                   Text(
                     'For ${selectedTier['durationDays']} Days (${selectedTier['rankMultiplier']} Visibility)',
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : const Color(0xFF64748B), fontWeight: FontWeight.w600),
                   ),
                 ],
               ),

@@ -138,19 +138,19 @@ class _RvLivingComfortScreenState extends State<RvLivingComfortScreen> {
           ).animate().fadeIn(),
           const SizedBox(height: 8),
 
-          const Text(
+          Text(
             'Living Comfort & Onboard Amenities',
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
               letterSpacing: -0.5,
             ),
           ).animate().fadeIn(delay: 50.ms).slideX(),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Detail the sleeping berths, galley kitchen, washroom, and off-grid equipment.',
-            style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary, height: 1.4),
+            style: TextStyle(fontSize: 13.5, color: isDark ? Colors.white70 : AppColors.textSecondary, height: 1.4),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 24),
 
@@ -163,14 +163,14 @@ class _RvLivingComfortScreenState extends State<RvLivingComfortScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Sleeping Capacity (Berths) *',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'How many travelers can comfortably sleep?',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary),
                     ),
                   ],
                 ),
@@ -254,14 +254,14 @@ class _RvLivingComfortScreenState extends State<RvLivingComfortScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Washroom & Shower Setup *',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Select your rig toilet and shower arrangement',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary),
               ),
               const SizedBox(height: 10),
               Column(
@@ -288,7 +288,7 @@ class _RvLivingComfortScreenState extends State<RvLivingComfortScreen> {
                         children: [
                           Icon(
                             isSel ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-                            color: isSel ? AppColors.primary : AppColors.textSecondary,
+                            color: isSel ? AppColors.primary : (isDark ? Colors.white60 : AppColors.textSecondary),
                             size: 20,
                           ),
                           const SizedBox(width: 12),
@@ -298,7 +298,7 @@ class _RvLivingComfortScreenState extends State<RvLivingComfortScreen> {
                               style: TextStyle(
                                 fontSize: 13.5,
                                 fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
-                                color: isSel ? AppColors.primary : AppColors.textPrimary,
+                                color: isSel ? AppColors.primary : (isDark ? Colors.white : AppColors.textPrimary),
                               ),
                             ),
                           ),
@@ -394,9 +394,9 @@ class _RvLivingComfortScreenState extends State<RvLivingComfortScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+        Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary)),
         const SizedBox(height: 4),
-        Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        Text(subtitle, style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary)),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
@@ -407,7 +407,7 @@ class _RvLivingComfortScreenState extends State<RvLivingComfortScreen> {
               label: Text(
                 opt,
                 style: TextStyle(
-                  color: isSel ? Colors.white : AppColors.textPrimary,
+                  color: isSel ? Colors.white : (isDark ? Colors.white70 : AppColors.textPrimary),
                   fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
                   fontSize: 12.5,
                 ),
@@ -416,7 +416,7 @@ class _RvLivingComfortScreenState extends State<RvLivingComfortScreen> {
               selectedColor: AppColors.primary,
               backgroundColor: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              side: BorderSide(color: isSel ? AppColors.primary : AppColors.borderLight),
+              side: BorderSide(color: isSel ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight)),
               onSelected: (_) {
                 AppMotion.tapSelection();
                 onToggle(opt);

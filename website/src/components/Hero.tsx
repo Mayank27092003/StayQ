@@ -361,22 +361,22 @@ export function Hero() {
               <div className="hero-clean__avatar-stack">
                 <img
                   src="/images/avatar_rohan.jpg"
-                  alt="Rohan"
+                  alt="Stay Q Verified Guest Rohan Sharma"
                   className="hero-clean__avatar"
                 />
                 <img
                   src="/images/avatar_sophia.jpg"
-                  alt="Sophia"
+                  alt="Stay Q Superhost Sophia Patel"
                   className="hero-clean__avatar"
                 />
                 <img
                   src="/images/avatar_alex.jpg"
-                  alt="Alex"
+                  alt="Stay Q Verified Traveler Alex Wright"
                   className="hero-clean__avatar"
                 />
                 <img
                   src="/images/avatar_elena.jpg"
-                  alt="Elena"
+                  alt="Stay Q Premier Host Elena D'Souza"
                   className="hero-clean__avatar"
                 />
                 <div className="hero-clean__rating-badge">

@@ -51,5 +51,8 @@ __pycache__/
 /rename_brand.js
 /test_conv.js
 /tools/
+/export_database_code.py
+/generate_app_store_headers.py
+/StayQ_Full_Database_Code.txt
 
 

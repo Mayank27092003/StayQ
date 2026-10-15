@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/app_provider.dart';
 import '../../services/api/api_client.dart';
 import '../../models/json_values.dart';
-import '../../theme/app_colors.dart';
 
 class HostAvailabilityScreen extends StatefulWidget {
   final String? propertyId;
@@ -27,7 +27,7 @@ class _HostAvailabilityScreenState extends State<HostAvailabilityScreen> {
   void initState() { super.initState(); _load(); }
   Future<void> _load() async {
     try {
-      final uid = context.read<AppProvider>().userId;
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? context.read<AppProvider>().userId;
       if (uid == null) throw StateError('Sign in to manage availability.');
       final response = await ApiClient.instance.get('/properties/host/${Uri.encodeComponent(uid)}');
       if (!mounted) return;
@@ -36,7 +36,7 @@ class _HostAvailabilityScreenState extends State<HostAvailabilityScreen> {
       _properties = records.map(jsonMap).where((p) => (p['id'] ?? p['_id']) != null).toList();
       final wanted = widget.propertyId;
       _propertyId = wanted != null && _properties.any((p) => (p['id'] ?? p['_id']).toString() == wanted)
-        ? wanted : _properties.length == 1 ? (_properties.first['id'] ?? _properties.first['_id']).toString() : null;
+        ? wanted : _properties.isNotEmpty ? (_properties.first['id'] ?? _properties.first['_id']).toString() : null;
       if (_propertyId != null) await _select(_propertyId!);
     } catch (e) { _error = e.toString(); }
     finally { if (mounted) setState(() => _loading = false); }
@@ -49,12 +49,13 @@ class _HostAvailabilityScreenState extends State<HostAvailabilityScreen> {
       if (!mounted || request != _request) return;
       final data = response['property'] is Map ? jsonMap(response['property']) : response;
       _blocked.clear();
-      final blocked = data['blockedDates'] ?? jsonMap(data['availability'])['blockedDates'];
-      if (blocked is! List) throw const FormatException('The saved blocked dates were not supplied.');
+      final rawBlocked = data['blockedDates'] ?? jsonMap(data['availability'])['blockedDates'];
+      final blocked = rawBlocked is List ? rawBlocked : [];
       for (final raw in blocked) {
         final date = DateTime.tryParse(raw.toString());
-        if (date == null) throw const FormatException('Invalid blocked date returned.');
-        _blocked.add(DateUtils.dateOnly(date));
+        if (date != null) {
+          _blocked.add(DateUtils.dateOnly(date));
+        }
       }
       _preset = data['availabilityScheduleType']?.toString() ?? 'ALL_DAYS';
       _surcharge = jsonInt(data['weekendSurchargePercent']).clamp(0, 100).toInt();

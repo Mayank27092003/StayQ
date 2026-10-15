@@ -1,10 +1,11 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../models/booking_model.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
@@ -352,7 +353,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                 try {
                   if (_tierOrderKey != tierKey) { _tierOrder = null; _tierOrderKey = tierKey; }
                   _tierOrder ??= PaymentOrder.fromJson(jsonMap(await ApiClient.instance.post('/loyalty/upgrade-tier/create-order',
-                    body: {'tier': tierKey}, idempotencyKey: '$_purchaseKey:${tierKey}')));
+                    body: {'tier': tierKey}, idempotencyKey: '$_purchaseKey:$tierKey')));
                   if (!mounted) return;
                   final payment = await CashfreePaymentSheet.show(this.context, bookingId: _tierOrder!.id,
                     existingOrder: _tierOrder, totalAmount: _tierOrder!.amount, propertyTitle: 'StayQ Club - $tierTitle',
@@ -415,10 +416,25 @@ class _RewardsScreenState extends State<RewardsScreen> {
             // 1. HERO POINTS & TIER CARD
             // ══════════════════════════════════════════════════
             _buildHeroCard(context, provider, isDark),
+            const SizedBox(height: 16),
+            _buildCheckoutCapNotice(isDark),
             const SizedBox(height: 24),
 
             // ══════════════════════════════════════════════════
-            // 2. WAYS TO EARN POINTS
+            // 2. TRAVELER MILESTONES
+            // ══════════════════════════════════════════════════
+            _buildSectionHeader('Traveler Milestones', isDark),
+            const SizedBox(height: 4),
+            Text(
+              'Unlock bonus StayQ points as you explore new destinations',
+              style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            _buildMilestoneCards(provider, isDark),
+            const SizedBox(height: 28),
+
+            // ══════════════════════════════════════════════════
+            // 3. WAYS TO EARN POINTS
             // ══════════════════════════════════════════════════
             _buildSectionHeader('Ways to Earn Points', isDark),
             const SizedBox(height: 12),
@@ -622,9 +638,11 @@ class _RewardsScreenState extends State<RewardsScreen> {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
         } else {
           final accepted = await provider.claimProfileCompletionBonus();
-          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(accepted ? 'Profile reward claim confirmed. Your balance has been refreshed.' :
-              'The server did not confirm a new profile reward.')));
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(accepted ? 'Profile reward claim confirmed. Your balance has been refreshed.' :
+                'The server did not confirm a new profile reward.')));
+          }
         }
         break;
       case 'repeat': Navigator.pop(context); provider.setTabIndex(2); break;
@@ -723,9 +741,244 @@ class _RewardsScreenState extends State<RewardsScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF25D366),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 0,
+                ),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _shareToWhatsApp(code);
+                },
+                icon: const Icon(Icons.share_rounded, size: 18),
+                label: const Text('Share on WhatsApp', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              ),
+            ),
             const SizedBox(height: 16),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _shareToWhatsApp(String code) async {
+    final message = Uri.encodeComponent(
+      'Hey! Join me on StayQ for unique stays, camping & RV road trips! Use my invite code: $code to get bonus reward points on your first booking.\nDownload StayQ: https://stayq.in',
+    );
+    final uri = Uri.parse('https://wa.me/?text=$message');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('WhatsApp share error: $e');
+    }
+  }
+
+  Widget _buildCheckoutCapNotice(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF231C10) : const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF78350F) : const Color(0xFFFDE68A),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Color(0xFFD97706), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '10% Checkout Redemption Cap',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'StayQ reward coins can be redeemed for up to a maximum 10% discount off the booking subtotal at checkout. The remaining balance remains banked in your rewards wallet.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    height: 1.4,
+                    color: isDark ? const Color(0xFFFDE68A).withValues(alpha: 0.8) : const Color(0xFFB45309),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMilestoneCards(AppProvider provider, bool isDark) {
+    final bookings = provider.bookings;
+    final completedStays = bookings.where((b) => b.status == BookingStatus.completed || b.isPaid).length;
+    final hasRvCamp = bookings.any((b) => b.stay.isRv || b.stay.category.toLowerCase().contains('camp') || b.stay.category.toLowerCase().contains('rv'));
+
+    final milestones = [
+      {
+        'title': 'First Stay Pioneer',
+        'desc': 'Complete your 1st verified stay on StayQ',
+        'reward': '+50 pts',
+        'progress': completedStays >= 1 ? 1.0 : 0.0,
+        'isCompleted': completedStays >= 1,
+        'progressText': completedStays >= 1 ? 'Completed' : '0/1 Stays',
+        'icon': Icons.luggage_rounded,
+        'color': const Color(0xFF3B82F6),
+      },
+      {
+        'title': 'Overland Adventurer',
+        'desc': 'Book an RV, Campervan or Campsite escape',
+        'reward': '+100 pts',
+        'progress': hasRvCamp ? 1.0 : 0.0,
+        'isCompleted': hasRvCamp,
+        'progressText': hasRvCamp ? 'Completed' : '0/1 Booked',
+        'icon': Icons.terrain_rounded,
+        'color': const Color(0xFF10B981),
+      },
+      {
+        'title': 'Trip Master',
+        'desc': 'Explore 5 unique destinations across India',
+        'reward': '+250 pts',
+        'progress': (completedStays / 5.0).clamp(0.0, 1.0),
+        'isCompleted': completedStays >= 5,
+        'progressText': completedStays >= 5 ? 'Completed' : '$completedStays/5 Stays',
+        'icon': Icons.workspace_premium_rounded,
+        'color': const Color(0xFFF59E0B),
+      },
+    ];
+
+    return SizedBox(
+      height: 155,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: milestones.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (context, i) {
+          final m = milestones[i];
+          final isDone = m['isCompleted'] as bool;
+          final color = m['color'] as Color;
+          final progress = m['progress'] as double;
+
+          return Container(
+            width: 250,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1A1828) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDone ? color.withValues(alpha: 0.6) : (isDark ? Colors.white10 : AppColors.borderLight),
+                width: isDone ? 1.5 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(m['icon'] as IconData, color: color, size: 18),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isDone ? const Color(0xFF10B981).withValues(alpha: 0.15) : AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        isDone ? 'Claimed ✓' : m['reward'] as String,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: isDone ? const Color(0xFF10B981) : AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  m['title'] as String,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  m['desc'] as String,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isDark ? Colors.white60 : AppColors.textSecondary,
+                  ),
+                ),
+                const Spacer(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      m['progressText'] as String,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white54 : AppColors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      '${(progress * 100).toInt()}%',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 5,
+                    backgroundColor: isDark ? Colors.white12 : Colors.grey.withValues(alpha: 0.15),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

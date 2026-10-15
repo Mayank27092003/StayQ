@@ -6,7 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../theme/app_colors.dart';
 
 class RvDetailsScreen extends StatefulWidget {
-  const RvDetailsScreen({Key? key}) : super(key: key);
+  const RvDetailsScreen({super.key});
 
   @override
   State<RvDetailsScreen> createState() => _RvDetailsScreenState();
@@ -39,7 +39,6 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
     'Front View', 'Rear View', 'Driver Area', 'Living Area',
     'Kitchen', 'Bathroom', 'Bedroom', 'Exterior Side'
   ];
-  final Set<int> _uploadedPhotos = {};
 
   // 5. Pickup & Drop Locations
   final _pickupController = TextEditingController();
@@ -222,7 +221,7 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: AppColors.primary, size: 20),
@@ -279,7 +278,7 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
         duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: value ? AppColors.primary.withOpacity(0.1) : AppColors.surfaceLight,
+          color: value ? AppColors.primary.withValues(alpha: 0.1) : AppColors.surfaceLight,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: value ? AppColors.primary : AppColors.borderLight),
         ),
@@ -299,7 +298,7 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
             Switch(
               value: value,
               onChanged: onChanged,
-              activeColor: AppColors.primary,
+              activeThumbColor: AppColors.primary,
             ),
           ],
         ),
@@ -396,7 +395,7 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
                                     const Text('Fuel Type', style: TextStyle(fontWeight: FontWeight.w600)),
                                     const SizedBox(height: 8),
                                     DropdownButtonFormField<String>(
-                                      value: _fuelType,
+                                      initialValue: _fuelType,
                                       decoration: InputDecoration(
                                         filled: true,
                                         fillColor: AppColors.surfaceLight,
@@ -480,7 +479,7 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
                                 color: isSelected ? AppColors.primary : AppColors.surfaceLight,
                                 borderRadius: BorderRadius.circular(24),
                                 border: Border.all(color: isSelected ? AppColors.primary : AppColors.borderLight),
-                                boxShadow: isSelected ? [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
+                                boxShadow: isSelected ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
                               ),
                               child: Text(
                                 item,
@@ -521,7 +520,7 @@ class _RvDetailsScreenState extends State<RvDetailsScreen> {
                             onTap: () => _editState(() { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add RV photos in the Photos step.'))); }),
                             child: Container(
                               decoration: BoxDecoration(
-                                color: isUploaded ? AppColors.primary.withOpacity(0.1) : AppColors.surfaceLight,
+                                color: isUploaded ? AppColors.primary.withValues(alpha: 0.1) : AppColors.surfaceLight,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color: isUploaded ? AppColors.primary : AppColors.borderLight,

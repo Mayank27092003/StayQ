@@ -62,7 +62,7 @@ export function Experiences() {
                   onClick={() => setActiveIndex(index)}
                   onMouseEnter={() => setActiveIndex(index)}
                 ></div>
-                <img className="exp__img" src={`/images/${e.img}`} alt="" loading="lazy" aria-hidden="true" />
+                <img className="exp__img" src={`/images/${e.img}`} alt={`${e.name} — Curated Luxury Travel Experience by Stay Q India`} loading="lazy" />
                 <div className="exp__glass"></div>
                 <div className="exp__overlay">
                   <h3 className="exp__name">{e.name}</h3>

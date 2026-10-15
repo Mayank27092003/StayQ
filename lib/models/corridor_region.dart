@@ -19,6 +19,19 @@ enum CorridorRegion {
     }
   }
 
+  String get displayName {
+    switch (this) {
+      case CorridorRegion.northIndia:
+        return 'North India';
+      case CorridorRegion.southIndia:
+        return 'South India';
+      case CorridorRegion.gujaratRajasthan:
+        return 'Gujarat & Rajasthan';
+      case CorridorRegion.northEast:
+        return 'North East';
+    }
+  }
+
   String get apiKey {
     switch (this) {
       case CorridorRegion.northIndia:

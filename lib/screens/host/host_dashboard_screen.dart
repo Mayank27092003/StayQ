@@ -15,7 +15,7 @@ import 'manage_listings_screen.dart';
 import 'host_reservations_screen.dart';
 import 'onboarding/screens/bank_details_screen.dart';
 import 'widgets/host_pro_paywall_sheet.dart';
-import '../profile/security_screen.dart';
+import '../profile/kyc_verification_screen.dart';
 import '../profile/support_screen.dart';
 
 class HostDashboardScreen extends StatefulWidget {
@@ -1094,7 +1094,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
               badgeColor: dashboard.isPayoutVerified ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
               isDark: isDark,
               isLocked: false,
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BankDetailsScreen())),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BankDetailsScreen(isStandalone: true))),
             ),
             _buildActionTile(
               icon: Icons.bolt_rounded,
@@ -1429,11 +1429,18 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                         children: [
                           Text(
                             '${booking.guestName.isNotEmpty ? booking.guestName : "Guest"} requested booking',
-                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.textPrimary),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                              color: isDark ? Colors.white : AppColors.textPrimary,
+                            ),
                           ),
                           Text(
                             booking.stay.title.isNotEmpty ? booking.stay.title : 'Your Property',
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? Colors.white70 : AppColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -1444,12 +1451,42 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                     ),
                   ],
                 ),
+                if (!booking.isPaid) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF332A15) : const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFF59E0B)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.schedule_rounded, size: 14, color: Color(0xFFF59E0B)),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Payment Pending: Can be confirmed once guest completes checkout.',
+                            style: TextStyle(fontSize: 11, color: Color(0xFFF59E0B), fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () async { try { await dashboard.updateBookingStatus(booking.id, 'cancelled'); if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking declined.'))); } catch (e) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); } },
+                        onPressed: () async {
+                          try {
+                            await dashboard.updateBookingStatus(booking.id, 'cancelled');
+                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking declined.')));
+                          } catch (e) {
+                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                          }
+                        },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.redAccent,
                           side: const BorderSide(color: Colors.redAccent),
@@ -1462,15 +1499,34 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () async { try { await dashboard.updateBookingStatus(booking.id, 'confirmed'); if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking confirmed.'))); } catch (e) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); } },
+                        onPressed: () async {
+                          if (!booking.isPaid) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Guest has not completed payment yet. Bookings can be confirmed once payment is verified.'),
+                                backgroundColor: Color(0xFFF59E0B),
+                              ),
+                            );
+                            return;
+                          }
+                          try {
+                            await dashboard.updateBookingStatus(booking.id, 'confirmed');
+                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking confirmed.')));
+                          } catch (e) {
+                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                          }
+                        },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
+                          backgroundColor: booking.isPaid ? AppColors.primary : (isDark ? Colors.white24 : Colors.grey.shade400),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           elevation: 2,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('Approve & Confirm', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text(
+                          booking.isPaid ? 'Approve & Confirm' : 'Awaiting Payment',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   ],
@@ -1500,16 +1556,16 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
               subtitle: const Text('Manage IFSC, PAN and UPI Payouts'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const BankDetailsScreen()));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const BankDetailsScreen(isStandalone: true)));
               },
             ),
             ListTile(
-              leading: const Icon(Icons.security_rounded, color: AppColors.primary),
+              leading: const Icon(Icons.verified_user_rounded, color: AppColors.primary),
               title: const Text('Host Security & Verification', style: TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Two-factor authentication & KYC'),
+              subtitle: const Text('Government ID, Aadhaar & KYC Verification'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const SecurityScreen()));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const KycVerificationScreen(initialIsHost: true)));
               },
             ),
             ListTile(

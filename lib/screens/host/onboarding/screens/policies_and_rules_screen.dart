@@ -169,33 +169,33 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Policies & House Rules',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
               letterSpacing: -0.5,
             ),
           ).animate().fadeIn().slideX(),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Configure cancellation flexibility, standard guest expectations, and security deposit.',
-            style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 13.5, color: isDark ? Colors.white70 : AppColors.textSecondary),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 24),
 
           // ══════════════════════════════════════════════════════════════
           // SECTION 0: GUEST CHECK-IN METHOD
           // ══════════════════════════════════════════════════════════════
-          const Text(
+          Text(
             'Guest Check-in Method',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'How will guests access the property upon arrival?',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
 
@@ -235,14 +235,14 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
           // ══════════════════════════════════════════════════════════════
           // SECTION 1: CANCELLATION POLICY CARDS
           // ══════════════════════════════════════════════════════════════
-          const Text(
+          Text(
             'Cancellation Policy',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Choose terms that align with your hosting style and seasonal demand:',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
 
@@ -310,7 +310,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w900,
-                                    color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                    color: isSelected ? AppColors.primary : (isDark ? Colors.white : AppColors.textPrimary),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -327,7 +327,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                                     style: TextStyle(
                                       fontSize: 9.5,
                                       fontWeight: FontWeight.w800,
-                                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                                      color: isSelected ? AppColors.primary : (isDark ? Colors.white70 : AppColors.textSecondary),
                                       letterSpacing: 0.5,
                                     ),
                                   ),
@@ -337,12 +337,12 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                             const SizedBox(height: 2),
                             Text(
                               tier['refund'] as String,
-                              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
                             ),
                             const SizedBox(height: 3),
                             Text(
                               tier['desc'] as String,
-                              style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary, height: 1.3),
+                              style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white70 : AppColors.textSecondary, height: 1.3),
                             ),
                           ],
                         ),
@@ -350,7 +350,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                       const SizedBox(width: 8),
                       Icon(
                         isSelected ? Icons.check_circle_rounded : Icons.radio_button_off_rounded,
-                        color: isSelected ? AppColors.primary : AppColors.textSecondary.withValues(alpha: 0.5),
+                        color: isSelected ? AppColors.primary : (isDark ? Colors.white38 : AppColors.textSecondary.withValues(alpha: 0.5)),
                         size: 22,
                       ),
                     ],
@@ -368,9 +368,9 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 '10 House Rule Policies',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -386,9 +386,9 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Guests must agree to these terms before confirming reservations:',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary),
           ),
           const SizedBox(height: 14),
 
@@ -400,7 +400,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
               border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -416,7 +416,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                   value: provider.petsAllowed,
                   onChanged: (val) => provider.updatePolicies(pets: val),
                 ),
-                const Divider(height: 1),
+                Divider(height: 1, color: isDark ? Colors.white12 : AppColors.borderLight),
 
                 // 2. Smoking Policy
                 _buildRuleSwitchRow(
@@ -426,7 +426,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                   value: provider.smokingAllowed,
                   onChanged: (val) => provider.updatePolicies(smoking: val),
                 ),
-                const Divider(height: 1),
+                Divider(height: 1, color: isDark ? Colors.white12 : AppColors.borderLight),
 
                 // 3. Parties & Events
                 _buildRuleSwitchRow(
@@ -436,7 +436,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                   value: provider.partiesAllowed,
                   onChanged: (val) => provider.updatePolicies(parties: val),
                 ),
-                const Divider(height: 1),
+                Divider(height: 1, color: isDark ? Colors.white12 : AppColors.borderLight),
 
                 // 4. Quiet Hours
                 _buildRuleSwitchRow(
@@ -459,16 +459,17 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                                   decoration: BoxDecoration(
                                     color: isDark ? Colors.black26 : AppColors.surfaceLight,
                                     borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: AppColors.borderLight),
+                                    border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
                                   ),
                                   child: TextField(
                                     controller: _quietHoursController,
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                                    decoration: const InputDecoration(
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
+                                    decoration: InputDecoration(
                                       isDense: true,
                                       border: InputBorder.none,
                                       contentPadding: EdgeInsets.zero,
                                       hintText: 'e.g. 10:00 PM – 07:00 AM',
+                                      hintStyle: TextStyle(color: isDark ? Colors.white38 : AppColors.textSecondary),
                                     ),
                                   ),
                                 ),
@@ -478,7 +479,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                         )
                       : null,
                 ),
-                const Divider(height: 1),
+                Divider(height: 1, color: isDark ? Colors.white12 : AppColors.borderLight),
 
                 // 5. Mandatory Government ID
                 _buildRuleSwitchRow(
@@ -488,7 +489,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                   value: provider.govtIdRequired,
                   onChanged: (val) => provider.updatePolicies(govtIdRequired: val),
                 ),
-                const Divider(height: 1),
+                Divider(height: 1, color: isDark ? Colors.white12 : AppColors.borderLight),
 
                 // 6. Unregistered Outside Visitors
                 _buildRuleSwitchRow(
@@ -498,7 +499,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                   value: provider.unregisteredGuestsAllowed,
                   onChanged: (val) => provider.updatePolicies(unregisteredGuestsAllowed: val),
                 ),
-                const Divider(height: 1),
+                Divider(height: 1, color: isDark ? Colors.white12 : AppColors.borderLight),
 
                 // 7. Pool Usage & Rules
                 _buildRuleSwitchRow(
@@ -508,7 +509,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                   value: provider.poolRulesEnabled,
                   onChanged: (val) => provider.updatePolicies(poolRulesEnabled: val),
                 ),
-                const Divider(height: 1),
+                Divider(height: 1, color: isDark ? Colors.white12 : AppColors.borderLight),
 
                 // 8. Kitchen & Cooking Guidelines
                 _buildRuleSwitchRow(
@@ -518,7 +519,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                   value: provider.kitchenUsageAllowed,
                   onChanged: (val) => provider.updatePolicies(kitchenUsageAllowed: val),
                 ),
-                const Divider(height: 1),
+                Divider(height: 1, color: isDark ? Colors.white12 : AppColors.borderLight),
 
                 // 9. Child & Infant Friendly
                 _buildRuleSwitchRow(
@@ -528,7 +529,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                   value: provider.childFriendly,
                   onChanged: (val) => provider.updatePolicies(childFriendly: val),
                 ),
-                const Divider(height: 1),
+                Divider(height: 1, color: isDark ? Colors.white12 : AppColors.borderLight),
 
                 // 10. Commercial Shoots / Filmography
                 _buildRuleSwitchRow(
@@ -560,7 +561,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -581,7 +582,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                       ),
                       child: Icon(
                         Icons.account_balance_wallet_outlined,
-                        color: provider.securityDepositEnabled ? Colors.white : AppColors.textSecondary,
+                        color: provider.securityDepositEnabled ? Colors.white : (isDark ? Colors.white70 : AppColors.textSecondary),
                         size: 22,
                       ),
                     ),
@@ -589,33 +590,33 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
                             'Refundable Security Deposit',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Text(
                             'Collected upon check-in and 100% refunded after checkout inspection.',
-                            style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                            style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white60 : AppColors.textSecondary),
                           ),
                         ],
                       ),
                     ),
                     Switch(
                       value: provider.securityDepositEnabled,
-                      activeColor: AppColors.primary,
+                      activeThumbColor: AppColors.primary,
                       onChanged: (val) => provider.updatePolicies(securityDepositEnabled: val),
                     ),
                   ],
                 ),
                 if (provider.securityDepositEnabled) ...[
-                  const Divider(height: 24),
+                  Divider(height: 24, color: isDark ? Colors.white12 : AppColors.borderLight),
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         'Deposit Amount: ',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
                       ),
                       const Spacer(),
                       Container(
@@ -634,12 +635,13 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                               child: TextField(
                                 controller: _depositController,
                                 keyboardType: TextInputType.number,
-                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                                decoration: const InputDecoration(
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
+                                decoration: InputDecoration(
                                   isDense: true,
                                   border: InputBorder.none,
                                   contentPadding: EdgeInsets.zero,
                                   hintText: '2000',
+                                  hintStyle: TextStyle(color: isDark ? Colors.white38 : AppColors.textSecondary),
                                 ),
                               ),
                             ),
@@ -658,14 +660,14 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
           // ══════════════════════════════════════════════════════════════
           // SECTION 4: CUSTOM HOUSE RULES & QUICK PILLS
           // ══════════════════════════════════════════════════════════════
-          const Text(
+          Text(
             'Custom Rules & Special Instructions',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Add property-specific instructions or tap quick recommendations below:',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
 
@@ -712,12 +714,12 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
             child: TextField(
               controller: _rulesController,
               maxLines: 5,
-              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.4),
-              decoration: const InputDecoration(
+              style: TextStyle(fontSize: 14, color: isDark ? Colors.white : AppColors.textPrimary, height: 1.4),
+              decoration: InputDecoration(
                 hintText: 'e.g. • Please wash dishes after using the kitchen\n• Switch off AC when going to the beach...',
-                hintStyle: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : AppColors.textSecondary),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.all(16),
+                contentPadding: const EdgeInsets.all(16),
               ),
             ),
           ).animate().fadeIn(delay: 350.ms),
@@ -762,14 +764,14 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
           ),
           child: Column(
             children: [
-              Icon(icon, color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 22),
+              Icon(icon, color: isSelected ? AppColors.primary : (isDark ? Colors.white70 : AppColors.textSecondary), size: 22),
               const SizedBox(height: 6),
               Text(
                 title,
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                  color: isSelected ? AppColors.primary : (isDark ? Colors.white : AppColors.textPrimary),
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 1,
@@ -778,7 +780,7 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(fontSize: 9, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 9, color: isDark ? Colors.white60 : AppColors.textSecondary),
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -798,6 +800,8 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
     required Function(bool) onChanged,
     Widget? extraWidget,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Column(
@@ -813,19 +817,19 @@ class _PoliciesAndRulesScreenState extends State<PoliciesAndRulesScreen> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                      style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white60 : AppColors.textSecondary),
                     ),
                   ],
                 ),
               ),
               Switch(
                 value: value,
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
                 onChanged: (val) {
                   AppMotion.tapLight();
                   onChanged(val);

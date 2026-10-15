@@ -9,6 +9,7 @@ import '../../widgets/price_breakdown_accordion.dart';
 import '../../widgets/animated_calendar_picker.dart';
 import 'booking_confirmation_screen.dart';
 import '../profile/kyc_verification_screen.dart';
+import '../../navigation/app_router.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final StayModel stay;
@@ -44,8 +45,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final stay = widget.stay;
     final int nights = _tripDates.end.difference(_tripDates.start).inDays;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.chevron_left_rounded, size: 28),
@@ -84,9 +87,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.card(context),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.borderLight),
+                  border: Border.all(color: AppColors.border(context)),
                 ),
                 child: Column(
                   children: [
@@ -100,7 +103,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   width: 84,
                                   height: 84,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(width: 84, height: 84, color: AppColors.surfaceLight),
+                                  errorBuilder: (_, _, _) => Container(width: 84, height: 84, color: AppColors.card(context)),
                                 )
                               : stay.imageUrls.isNotEmpty
                                   ? Image.asset(
@@ -108,9 +111,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                       width: 84,
                                       height: 84,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(width: 84, height: 84, color: AppColors.surfaceLight),
+                                      errorBuilder: (_, _, _) => Container(width: 84, height: 84, color: AppColors.card(context)),
                                     )
-                                  : Container(width: 84, height: 84, color: AppColors.surfaceLight),
+                                  : Container(width: 84, height: 84, color: AppColors.card(context)),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -119,12 +122,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             children: [
                               Text(
                                 stay.category,
-                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                style: TextStyle(fontSize: 12, color: AppColors.textSub(context)),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 stay.title,
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -135,7 +138,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   const SizedBox(width: 4),
                                   Text(
                                     '${stay.rating} (${stay.reviewCount} reviews)',
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                                   ),
                                 ],
                               ),
@@ -148,7 +151,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: stay.isStayingWithHost ? const Color(0xFFEFF6FF) : const Color(0xFFECFDF5),
+                        color: stay.isStayingWithHost
+                            ? (isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.3) : const Color(0xFFEFF6FF))
+                            : (isDark ? const Color(0xFF064E3B).withValues(alpha: 0.3) : const Color(0xFFECFDF5)),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
@@ -167,7 +172,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: stay.isStayingWithHost ? const Color(0xFF1E40AF) : const Color(0xFF047857),
+                                color: stay.isStayingWithHost
+                                    ? (isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF))
+                                    : (isDark ? const Color(0xFF6EE7B7) : const Color(0xFF047857)),
                               ),
                             ),
                           ),
@@ -184,8 +191,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               if (provider.referralBalance > 0)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
-                  child: Text('Referral balance: ₹${provider.referralBalance.toStringAsFixed(0)}. '
-                    'Credit redemption is currently unavailable at checkout.'),
+                  child: Text(
+                    'Referral balance: ₹${provider.referralBalance.toStringAsFixed(0)}. '
+                    'Credit redemption is currently unavailable at checkout.',
+                    style: TextStyle(color: AppColors.textSub(context), fontSize: 13),
+                  ),
                 ),
 
               // Interactive Price Accordion with Number Roll-Up Counter
@@ -212,7 +222,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Your trip', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Your trip', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context))),
                   TextButton(
                     onPressed: () {
                       AppMotion.tapSelection();
@@ -231,9 +241,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.card(context),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.borderLight),
+                    border: Border.all(color: AppColors.border(context)),
                   ),
                   child: AnimatedCalendarPicker(blockedDates: widget.blockedDates ?? widget.stay.blockedDates, 
                     initialRange: _tripDates,
@@ -251,22 +261,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Dates', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Text('Dates', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.text(context))),
                       const SizedBox(height: 2),
                       Text(
                         '${_tripDates.start.day} ${_getMonthName(_tripDates.start.month)} – ${_tripDates.end.day} ${_getMonthName(_tripDates.end.month)}',
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        style: TextStyle(color: AppColors.textSub(context), fontSize: 13),
                       ),
                     ],
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text('Guests', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Text('Guests', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.text(context))),
                       const SizedBox(height: 2),
                       Text(
                         '${provider.adultsCount + provider.childrenCount} guests',
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        style: TextStyle(color: AppColors.textSub(context), fontSize: 13),
                       ),
                     ],
                   ),
@@ -278,7 +288,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Payment Methods', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Payment Methods', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context))),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -303,9 +313,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.card(context),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.borderLight),
+                  border: Border.all(color: AppColors.border(context)),
                 ),
                 child: Column(
                   children: [
@@ -314,24 +324,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF111111).withValues(alpha: 0.05),
+                            color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFF111111).withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.flash_on_rounded, color: Color(0xFF111111), size: 20),
+                          child: Icon(Icons.flash_on_rounded, color: AppColors.text(context), size: 20),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               Text(
                                 'Instant UPI & QR Code',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.text(context)),
                               ),
-                              SizedBox(height: 2),
+                              const SizedBox(height: 2),
                               Text(
                                 'Google Pay, PhonePe, Paytm, CRED & BHIM',
-                                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                style: TextStyle(color: AppColors.textSub(context), fontSize: 12),
                               ),
                             ],
                           ),
@@ -339,45 +349,48 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
+                            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text('0% Fee', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+                          child: Text(
+                            '0% Fee',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569)),
+                          ),
                         ),
                       ],
                     ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Divider(height: 1, color: AppColors.borderLight),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Divider(height: 1, color: AppColors.border(context)),
                     ),
                     Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF111111).withValues(alpha: 0.05),
+                            color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFF111111).withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.credit_card_rounded, color: Color(0xFF111111), size: 20),
+                          child: Icon(Icons.credit_card_rounded, color: AppColors.text(context), size: 20),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               Text(
                                 'Cards & Net Banking',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.text(context)),
                               ),
-                              SizedBox(height: 2),
+                              const SizedBox(height: 2),
                               Text(
                                 'Visa, Mastercard, RuPay & 50+ Banks',
-                                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                style: TextStyle(color: AppColors.textSub(context), fontSize: 12),
                               ),
                             ],
                           ),
                         ),
-                        const Icon(Icons.lock_outline_rounded, size: 16, color: AppColors.textSecondary),
+                        Icon(Icons.lock_outline_rounded, size: 16, color: AppColors.textSub(context)),
                       ],
                     ),
                   ],
@@ -385,23 +398,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
               const SizedBox(height: 12),
               Row(
-                children: const [
-                  Icon(Icons.lock_rounded, size: 14, color: Color(0xFF10B981)),
-                  SizedBox(width: 6),
+                children: [
+                  const Icon(Icons.lock_rounded, size: 14, color: Color(0xFF10B981)),
+                  const SizedBox(width: 6),
                   Text(
                     '256-bit encrypted checkout powered by Cashfree Payments',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 12, color: AppColors.textSub(context), fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
               const SizedBox(height: 24),
 
               // Cancellation Policy
-              const Text('Cancellation policy', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text('Cancellation policy', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.text(context))),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Free cancellation up to 48 hours before check-in. Partial refund applies after.',
-                style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textSub(context)),
               ),
 
               const SizedBox(height: 32),
@@ -411,26 +424,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   margin: const EdgeInsets.only(bottom: 20),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFEF2F2),
+                    color: isDark ? const Color(0xFF450A0A).withValues(alpha: 0.3) : const Color(0xFFFEF2F2),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFFECACA)),
+                    border: Border.all(color: isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFECACA)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.shield_outlined, color: Color(0xFFDC2626)),
+                      const Icon(Icons.shield_outlined, color: Color(0xFFEF4444)),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
+                          children: [
                             Text(
                               'Aadhaar Verification Required',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF991B1B), fontSize: 14),
+                              style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B), fontSize: 14),
                             ),
-                            SizedBox(height: 2),
+                            const SizedBox(height: 2),
                             Text(
                               'UIDAI verification is mandatory before booking.',
-                              style: TextStyle(color: Color(0xFFB91C1C), fontSize: 12),
+                              style: TextStyle(color: isDark ? const Color(0xFFF87171) : const Color(0xFFB91C1C), fontSize: 12),
                             ),
                           ],
                         ),
@@ -442,7 +455,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             MaterialPageRoute(builder: (_) => const KycVerificationScreen(initialTabIndex: 1)),
                           );
                         },
-                        child: const Text('Verify Now', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                        child: const Text('Verify Now', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFEF4444))),
                       ),
                     ],
                   ),
@@ -453,7 +466,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 height: 56,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF111111),
+                    backgroundColor: isDark ? AppColors.primary : const Color(0xFF111111),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -462,13 +475,30 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                   onPressed: () async {
                     if (_checkout.busy) return;
+                    if (!provider.isLoggedIn) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please log in or sign up to continue booking.')),
+                      );
+                      Navigator.pushNamed(context, AppRoutes.login);
+                      return;
+                    }
                     if (!provider.isAadhaarVerified) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const KycVerificationScreen(initialTabIndex: 1)),
                       );
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please verify your Aadhaar with OTP before booking.')),
+                        const SnackBar(content: Text('UIDAI Aadhaar verification is mandatory before booking.')),
+                      );
+                      return;
+                    }
+                    if (stay.govtIdRequired && !provider.isGovIdVerified) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const KycVerificationScreen(initialTabIndex: 1)),
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('This host requires ID verification before booking. Please complete quick KYC.')),
                       );
                       return;
                     }
@@ -480,14 +510,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     final booking = await _checkout.run(context, provider, stay, _tripDates, guests,
                       estimate: estimate, blockedDates: widget.blockedDates ?? widget.stay.blockedDates, options: {'children': provider.childrenCount,
                         'infants': provider.infantsCount, 'pets': provider.petsCount});
-                    if (booking == null || !mounted) return;
+                    if (booking == null || !mounted || !context.mounted) return;
                     Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => BookingConfirmationScreen(
                       booking: booking, stay: booking.stay, totalAmount: booking.totalAmount,
                       selectedDates: DateTimeRange(start: booking.checkIn, end: booking.checkOut),
                       guests: booking.adults + booking.children,
                       paymentMethod: _checkout.payment?.paymentMethod ?? 'Server confirmed')));
                   },
-                  child: Text(provider.isAadhaarVerified ? 'Pay & Confirm Booking' : 'Verify Aadhaar to Pay & Confirm', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    (!stay.govtIdRequired || provider.isGovIdVerified) ? 'Pay & Confirm Booking' : 'Verify ID to Pay & Confirm',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),

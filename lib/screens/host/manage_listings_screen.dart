@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:ui' as ui;
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/host_listings_provider.dart';
@@ -40,11 +38,11 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final appProvider = context.watch<AppProvider>();
     final provider = context.watch<HostListingsProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? const Color(0xFF0F0E17) : AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -430,10 +428,10 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
                 Row(
                   children: [
                     _buildActionButton(Icons.calendar_month_rounded, 'Calendar', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const HostAvailabilityScreen()));
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => HostAvailabilityScreen(propertyId: stay.id)));
                     }),
                     _buildActionButton(Icons.inbox_rounded, 'Reservations', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const HostReservationsScreen()));
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => HostReservationsScreen(propertyId: stay.id)));
                     }),
                     _buildActionButton(Icons.bolt_rounded, 'Boost ⚡', () async {
                       final res = await Navigator.push(
@@ -559,7 +557,7 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
                           'title': titleController.text.trim(), 'pricePerNight': price, 'description': descController.text.trim(),
                         });
                         if (!ctx.mounted || !context.mounted) return;
-                        final hostId = context.read<AppProvider>().userId;
+                        final hostId = _getHostId(context);
                         if (hostId != null) await context.read<HostListingsProvider>().fetchHostListings(hostId);
                         if (!ctx.mounted || !context.mounted) return;
                         Navigator.pop(ctx);

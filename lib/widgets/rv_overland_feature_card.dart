@@ -12,6 +12,8 @@ class RvOverlandFeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return BouncingWidget(
       onTap: () {
         AppMotion.tapSelection();
@@ -24,12 +26,12 @@ class RvOverlandFeatureCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card(context),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 1.5),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.08),
+              color: AppColors.primary.withValues(alpha: isDark ? 0.2 : 0.08),
               blurRadius: 20,
               offset: const Offset(0, 6),
             ),

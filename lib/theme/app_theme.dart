@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
@@ -110,6 +111,9 @@ class AppTheme {
       brightness: Brightness.dark,
       primaryColor: AppColors.primaryLight,
       scaffoldBackgroundColor: AppColors.darkBackground,
+      cardColor: const Color(0xFF121215),
+      canvasColor: AppColors.darkBackground,
+      dialogBackgroundColor: const Color(0xFF121215),
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primaryLight,
         primary: AppColors.primaryLight,
@@ -124,14 +128,30 @@ class AppTheme {
           fontWeight: FontWeight.w900,
           letterSpacing: -1.0,
         ),
+        headlineMedium: baseText.headlineMedium?.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.5,
+        ),
         titleLarge: baseText.titleLarge?.copyWith(
           color: Colors.white,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.3,
         ),
+        titleMedium: baseText.titleMedium?.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+        ),
+        bodyLarge: baseText.bodyLarge?.copyWith(
+          color: Colors.white,
+          letterSpacing: 0.1,
+        ),
         bodyMedium: baseText.bodyMedium?.copyWith(
           color: Colors.white70,
           letterSpacing: 0.1,
+        ),
+        bodySmall: baseText.bodySmall?.copyWith(
+          color: const Color(0xFFA1A1AA),
         ),
       ),
       cardTheme: CardThemeData(
@@ -148,11 +168,52 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
         titleTextStyle: GoogleFonts.urbanist(
           color: Colors.white,
           fontSize: 20,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.4,
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Color(0xFF121215),
+        modalBackgroundColor: Color(0xFF121215),
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: const Color(0xFF121215),
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: Color(0xFF27272A),
+        thickness: 1,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        fillColor: const Color(0xFF18181C),
+        filled: true,
+        hintStyle: const TextStyle(color: Color(0xFF71717A)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF27272A)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF27272A)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.primary),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

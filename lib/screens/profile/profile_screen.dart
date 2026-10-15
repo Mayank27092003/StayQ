@@ -16,7 +16,8 @@ import 'wishlist_screen.dart';
 import 'kyc_verification_screen.dart';
 import 'payments_screen.dart';
 import 'notifications_screen.dart';
-import 'security_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'about_us_screen.dart';
 import 'support_screen.dart';
 import '../rewards/rewards_screen.dart';
 import '../host/onboarding/host_onboarding_screen.dart';
@@ -212,7 +213,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               const SizedBox(height: 6),
               const Text(
-                'Select camera or gallery to update your StayQ VIP pass',
+                'Select camera or gallery to update your StayQ profile photo',
                 style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 24),
@@ -394,7 +395,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                               ),
                               SizedBox(height: 2),
                               Text(
-                                'StayQ Verified Profile & VIP Pass',
+                                'StayQ Verified Profile & Club Pass',
                                 style: TextStyle(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w600,
@@ -430,13 +431,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    Icons.qr_code_rounded,
+                                    Icons.group_add_rounded,
                                     size: 18,
                                     color: Color(0xFF7C3AED),
                                   ),
                                   SizedBox(width: 6),
                                   Text(
-                                    'VIP Pass',
+                                    'Referral',
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w800,
@@ -1209,7 +1210,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             ),
                             const SizedBox(width: 10),
                             const Text(
-                              'STAYQ VIP PASS',
+                              'STAYQ CLUB PASS',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w900,
@@ -1685,13 +1686,20 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
             _AppleBentoItem(
-              icon: Icons.lock_rounded,
-              iconColor: const Color(0xFF64748B),
-              title: 'Security & Privacy',
-              subtitle: 'Biometrics, passwords, session protection',
+              icon: Icons.key_rounded,
+              iconColor: const Color(0xFF7C3AED),
+              title: 'Change Password',
+              subtitle: 'Send secure email link to reset or update password',
+              onTap: () => _handlePasswordReset(context, provider),
+            ),
+            _AppleBentoItem(
+              icon: Icons.info_outline_rounded,
+              iconColor: const Color(0xFF007AFF),
+              title: 'About StayQ & Company',
+              subtitle: 'Quatalyst Tech, 4 verticals, desks & privacy',
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const SecurityScreen()),
+                MaterialPageRoute(builder: (_) => const AboutUsScreen()),
               ),
             ),
           ],
@@ -1827,6 +1835,79 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   // ── Helper Dialogs ──
+  void _handlePasswordReset(BuildContext context, AppProvider provider) {
+    AppMotion.tapSelection();
+    final user = FirebaseAuth.instance.currentUser;
+    final email = user?.email ?? provider.userEmail;
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No email address registered with this session. Please sign in with email.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    showCupertinoDialog(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Change Password'),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Text(
+            'We will send a secure password reset link to your registered email address:\n\n$email\n\nClick the link in your inbox to reset your password instantly.',
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: const Text('Send Reset Link'),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text('Password reset link sent to $email!'),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: const Color(0xFF10B981),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to send reset email: ${e.toString()}'),
+                      backgroundColor: Colors.red.shade800,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   void _confirmDeleteAccount(BuildContext context, AppProvider provider) {
     showCupertinoDialog(
       context: context,

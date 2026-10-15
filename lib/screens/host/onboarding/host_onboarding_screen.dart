@@ -39,6 +39,7 @@ class HostOnboardingScreen extends StatefulWidget {
 
 class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
   int _currentIndex = 0;
+  bool _isSubmitting = false;
 
   List<Widget> _getScreens(HostOnboardingProvider provider) {
     List<Widget> base = [];
@@ -168,18 +169,15 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
       }
     }
     if (screen is PropertyPhotosScreen) {
-      if (!provider.allRequiredCategoriesFilled) {
-        return 'Please upload all required photos';
+      final totalPhotos = provider.totalPhotoCount + provider.photoUrls.length;
+      if (totalPhotos < 1) {
+        return 'Please upload at least 1 photo of your property';
       }
     }
     if (screen is BankDetailsScreen) {
       final hasPayout = (provider.accountNumber.isNotEmpty && provider.ifscCode.isNotEmpty) || provider.upiId.isNotEmpty || provider.payoutVerified;
       if (!hasPayout) {
         return 'Please enter your bank account or UPI ID for payouts';
-      }
-      final hasSelfie = provider.selfieFaceProofDocPath.isNotEmpty || provider.selfieFaceProofDocUrl.isNotEmpty || provider.faceVerified;
-      if (!hasSelfie) {
-        return 'Please upload your selfie photo to continue';
       }
     }
     if (screen is HostVerificationScreen) {
@@ -207,28 +205,34 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
 
     // If on review screen, attempt to submit and finish!
     if (currentScreens[safeIdx] is PropertyReviewAndSubmitScreen) {
-      final success = await provider.submitProperty();
-      if (!success) {
+      if (_isSubmitting) return;
+      setState(() => _isSubmitting = true);
+      try {
+        final success = await provider.submitProperty();
+        if (!success) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(provider.lastError ?? 'Submission failed. Your draft is preserved.')),
+            );
+          }
+          return;
+        }
+
+        await provider.clearDraftPrefs();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(provider.lastError ?? 'Submission failed. Your draft is preserved.')),
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => HostSuccessPassportScreen(
+                propertyTitle: provider.title,
+                city: provider.city,
+                pricePerNight: provider.pricePerNight,
+              ),
+            ),
           );
         }
-        return;
-      }
-
-      await provider.clearDraftPrefs();
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => HostSuccessPassportScreen(
-              propertyTitle: provider.title,
-              city: provider.city,
-              pricePerNight: provider.pricePerNight,
-            ),
-          ),
-        );
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
       }
       return;
     }
@@ -440,25 +444,25 @@ class _HostOnboardingScreenState extends State<HostOnboardingScreen> {
                           // Next / Submit Button
                           if (!isWelcomeScreen)
                             ElevatedButton(
-                              onPressed: isNextDisabled || provider.isUploading ? null : () => _nextPage(provider, currentScreens),
+                              onPressed: isNextDisabled || provider.isUploading || _isSubmitting ? null : () => _nextPage(provider, currentScreens),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: isNextDisabled || provider.isUploading ? Colors.grey : AppColors.primary,
+                                backgroundColor: isNextDisabled || provider.isUploading || _isSubmitting ? Colors.grey : AppColors.primary,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 elevation: 0,
                                 minimumSize: const Size(120, 48),
                               ),
-                              child: provider.isUploading 
+                              child: (provider.isUploading || _isSubmitting)
                                 ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                                 : Text(
-                                    safeIndex == currentScreens.length - 2 
-                                        ? 'Submit' 
-                                        : safeIndex == currentScreens.length - 1 
-                                            ? (provider.isAddingSubsequentProperty || widget.isAddingNewProperty
-                                                ? 'Submit for Property Application'
-                                                : 'Apply for Host Application') 
-                                            : 'Next', 
+                                    safeIndex == currentScreens.length - 1 
+                                        ? (provider.isAddingSubsequentProperty || widget.isAddingNewProperty
+                                            ? 'Submit for Property Application'
+                                            : 'Apply for Host Application') 
+                                        : (safeIndex == currentScreens.length - 2
+                                            ? 'Review & Submit'
+                                            : 'Next'), 
                                     style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold),
                                   ),
                             ),

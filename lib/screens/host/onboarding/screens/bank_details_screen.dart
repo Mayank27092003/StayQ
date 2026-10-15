@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../providers/host_onboarding_provider.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_motion.dart';
@@ -19,7 +16,8 @@ import '../../../../services/api/verification_api.dart';
 import '../../../../widgets/media_upload_sheet.dart';
 
 class BankDetailsScreen extends StatefulWidget {
-  const BankDetailsScreen({Key? key}) : super(key: key);
+  final bool isStandalone;
+  const BankDetailsScreen({super.key, this.isStandalone = false});
 
   @override
   State<BankDetailsScreen> createState() => _BankDetailsScreenState();
@@ -63,9 +61,6 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
   // Photo extraction state
   String _govIdPath = '';
   bool _isExtractingId = false;
-  String? _extractedId;
-  String? _extractedName;
-  String? _idType;
 
   Timer? _ifscDebounce;
   bool _isLoadingIfsc = false;
@@ -77,12 +72,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
   String _selfiePath = '';
   bool _isVerifyingFace = false;
   bool _isFaceVerified = false;
-  String? _faceMatchMessage;
-  double _faceMatchScore = 0;
-  String? _aadhaarPhotoUrl;
   String _bankFingerprint = '';
-  String _upiFingerprint = '';
-  String _idFingerprint = '';
   String? _challengeAadhaar;
   void _recordChecks() {
     if (!mounted) return;
@@ -116,9 +106,6 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
     _panNumberController = TextEditingController(text: provider.idType == 'PAN' ? (provider.idNumber ?? '') : '');
     _aadhaarNumberController = TextEditingController(text: provider.idType == 'Aadhaar' ? (provider.idNumber ?? '') : '');
 
-    _extractedId = provider.idNumber;
-    _extractedName = provider.idName;
-    _idType = provider.idType;
     _govIdPath = provider.ownerIdProofDocPath;
 
     if (provider.upiId.isNotEmpty && provider.accountNumber.isEmpty) {
@@ -128,7 +115,6 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
     if (provider.selfieFaceProofDocPath.isNotEmpty) {
       _selfiePath = provider.selfieFaceProofDocPath;
       _isFaceVerified = provider.faceVerified;
-      _faceMatchMessage = _isFaceVerified ? 'Face verified by the server' : 'Face verification required';
     }
 
     _isBankPennyDropVerified = provider.payoutVerified && provider.accountNumber.isNotEmpty;
@@ -136,8 +122,6 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
     _isPanVerified = provider.isHostIdentityVerified && provider.idType == 'PAN';
     _isAadhaarVerified = provider.isHostIdentityVerified && provider.idType == 'Aadhaar';
     _bankFingerprint = '${_accountController.text.trim()}|${_ifscController.text.trim().toUpperCase()}';
-    _upiFingerprint = _upiController.text.trim().toLowerCase();
-    _idFingerprint = '${_panNumberController.text.trim().toUpperCase()}|${_aadhaarNumberController.text.trim()}';
     _holderController.addListener(_updateProvider);
     _accountController.addListener(_updateProvider);
     _ifscController.addListener(_updateProvider);
@@ -254,18 +238,28 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
       _safeSetState(() { _isBankPennyDropVerified = true; _verifiedBeneficiaryName = (res['nameAtBank'] ?? res['name'])?.toString(); });
       if (_holderController.text.isEmpty && _verifiedBeneficiaryName != null) _holderController.text = _verifiedBeneficiaryName!;
       _updateProvider();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✓ Bank Account Verified (${_verifiedBeneficiaryName ?? "Verified"})'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         _safeSetState(() {
-          _isBankPennyDropVerified = true;
-          _verifiedBeneficiaryName = _holderController.text.trim().isNotEmpty ? _holderController.text.trim() : 'Account Verified';
+          _isBankPennyDropVerified = false;
+          _verifiedBeneficiaryName = null;
         });
         _updateProvider();
+        final rawMsg = e.toString().replaceFirst('Exception: ', '').replaceFirst('Bad state: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Bank account saved for payout ✓'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text(rawMsg.isNotEmpty ? rawMsg : 'Bank verification failed. Please check account details.'),
+            backgroundColor: AppColors.errorRed,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -281,20 +275,30 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
       final res = await VerificationApi(ApiClient.instance).verifyUpi(vpa: upi, name: _holderController.text.trim());
       if (!mounted || _upiController.text.trim().toLowerCase() != upi) return;
       if (res['vpaStatus'] != 'VALID' && res['valid'] != true && res['verified'] != true) throw StateError('This UPI account was not verified.');
-      _safeSetState(() { _isUpiVerifiedWithCashfree = true; _verifiedUpiAccountName = (res['nameAtBank'] ?? res['name'])?.toString(); });
+      _safeSetState(() { _isUpiVerifiedWithCashfree = true; _verifiedUpiAccountName = (res['nameAtBank'] ?? res['name'] ?? res['nameAtVpa'])?.toString(); });
       _updateProvider();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✓ UPI ID Verified (${_verifiedUpiAccountName ?? "Verified"})'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         _safeSetState(() {
-          _isUpiVerifiedWithCashfree = true;
-          _verifiedUpiAccountName = _holderController.text.trim().isNotEmpty ? _holderController.text.trim() : 'UPI Verified';
+          _isUpiVerifiedWithCashfree = false;
+          _verifiedUpiAccountName = null;
         });
         _updateProvider();
+        final rawMsg = e.toString().replaceFirst('Exception: ', '').replaceFirst('Bad state: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('UPI ID saved for payout ✓'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text(rawMsg.isNotEmpty ? rawMsg : 'UPI verification failed. Please check your UPI ID.'),
+            backgroundColor: AppColors.errorRed,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -310,20 +314,30 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
       final res = await VerificationApi(ApiClient.instance).verifyPan(pan: pan, name: _holderController.text.trim());
       if (!mounted || _panNumberController.text.trim().toUpperCase() != pan) return;
       if (res['valid'] != true && res['verified'] != true && res['panStatus'] != 'VALID' && res['status'] != 'VALID') throw StateError('This PAN was not verified.');
-      _safeSetState(() { _isPanVerified = true; _verifiedPanHolderName = (res['name'] ?? res['registeredName'])?.toString(); });
+      _safeSetState(() { _isPanVerified = true; _verifiedPanHolderName = (res['registeredName'] ?? res['name'])?.toString(); });
       _updateKycProvider();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✓ PAN Verified with NSDL (${_verifiedPanHolderName ?? "Verified"})'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         _safeSetState(() {
-          _isPanVerified = true;
-          _verifiedPanHolderName = _holderController.text.trim().isNotEmpty ? _holderController.text.trim() : 'PAN Verified';
+          _isPanVerified = false;
+          _verifiedPanHolderName = null;
         });
         _updateKycProvider();
+        final rawMsg = e.toString().replaceFirst('Exception: ', '').replaceFirst('Bad state: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('PAN ID saved for verification ✓'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text(rawMsg.isNotEmpty ? rawMsg : 'PAN verification failed. Please check your PAN number.'),
+            backgroundColor: AppColors.errorRed,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -352,7 +366,6 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
     _safeSetState(() {
       _selfiePath = path;
       _isFaceVerified = true;
-      _faceMatchMessage = 'Selfie uploaded successfully ✓';
     });
     provider.updatePropertyDocuments(selfieFaceProof: path);
     provider.selfieFaceProofDocPath = path;
@@ -456,7 +469,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
       final res = await VerificationApi(ApiClient.instance).verifyAadhaarOtp(referenceId: reference, otp: otp);
       if (!mounted || _challengeAadhaar != aadhaar || _aadhaarRefId != reference) return;
       if (res['valid'] != true && res['verified'] != true && res['status'] != 'VALID' && res['status'] != 'VERIFIED') throw StateError('Aadhaar verification failed.');
-      _safeSetState(() { _isAadhaarVerified = true; _aadhaarPhotoUrl = res['photoUrl']?.toString(); });
+      _safeSetState(() { _isAadhaarVerified = true; });
       _updateKycProvider(); _updateProvider();
     } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
     finally { _safeSetState(() => _isVerifyingAadhaarOtp = false); }
@@ -534,9 +547,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Material(
-      type: MaterialType.transparency,
-      child: SingleChildScrollView(
+    final content = SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -1464,7 +1475,74 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
           const SizedBox(height: 40),
         ],
       ),
-    ),
-  );
-}
+    );
+
+    if (widget.isStandalone) {
+      return Scaffold(
+        backgroundColor: isDark ? const Color(0xFF0F0E17) : AppColors.surfaceLight,
+        appBar: AppBar(
+          backgroundColor: isDark ? const Color(0xFF1E1C2A) : Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : AppColors.textPrimary),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'Payouts & Bank Account',
+            style: TextStyle(
+              color: isDark ? Colors.white : AppColors.textPrimary,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _updateProvider();
+                _updateKycProvider();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Payout and verification details saved.'),
+                    backgroundColor: Color(0xFF10B981),
+                  ),
+                );
+                Navigator.pop(context);
+              },
+              child: const Text('Done', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+            ),
+          ],
+        ),
+        body: SafeArea(child: content),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: ElevatedButton(
+              onPressed: () {
+                _updateProvider();
+                _updateKycProvider();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Payout and verification details saved.'),
+                    backgroundColor: Color(0xFF10B981),
+                  ),
+                );
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: const Text('Save & Return to Dashboard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Material(
+      type: MaterialType.transparency,
+      child: content,
+    );
+  }
 }

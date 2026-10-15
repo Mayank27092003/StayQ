@@ -368,19 +368,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             _buildLocationField(isDark),
             const SizedBox(height: 16),
 
-            // Gender & DOB Row
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _buildGenderDropdown(isDark),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildDobField(isDark),
-                ),
-              ],
-            ),
+            // Gender Identity
+            _buildGenderDropdown(isDark),
+            const SizedBox(height: 18),
+
+            // Date of Birth Calendar
+            _buildDobField(isDark),
             const SizedBox(height: 32),
 
             // Save Button
@@ -630,57 +623,90 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildGenderDropdown(bool isDark) {
-    const options = ['Male', 'Female', 'Prefer not to say'];
-    final currentVal = options.contains(_selectedGender) ? _selectedGender : null;
+    const options = [
+      {'key': 'Male', 'label': 'Male', 'icon': Icons.male_rounded, 'emoji': '👨'},
+      {'key': 'Female', 'label': 'Female', 'icon': Icons.female_rounded, 'emoji': '👩'},
+      {'key': 'Prefer not to say', 'label': 'Other / Private', 'icon': Icons.person_outline_rounded, 'emoji': '👤'},
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Gender',
-          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 13),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Gender Identity',
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 13),
+            ),
+            if (_selectedGender != null && _selectedGender!.isNotEmpty)
+              Text(
+                _selectedGender!,
+                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: AppColors.primary),
+              ),
+          ],
         ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          value: currentVal,
-          isExpanded: true,
-          dropdownColor: isDark ? const Color(0xFF1A1828) : Colors.white,
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.wc_rounded, color: AppColors.primary, size: 20),
-            filled: true,
-            fillColor: isDark ? const Color(0xFF1A1828) : Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppColors.primary, width: 2),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-          ),
-          hint: const Text('Select', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
-          items: options
-              .map((g) => DropdownMenuItem(
-                    value: g,
-                    child: Text(
-                      g,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
+        const SizedBox(height: 8),
+        Row(
+          children: options.map((opt) {
+            final key = opt['key'] as String;
+            final label = opt['label'] as String;
+            final emoji = opt['emoji'] as String;
+            final isSelected = _selectedGender == key;
+
+            return Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  AppMotion.tapSelection();
+                  setState(() {
+                    _selectedGender = key;
+                    _genderController.text = key;
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primary.withValues(alpha: isDark ? 0.25 : 0.1)
+                        : (isDark ? const Color(0xFF1A1828) : Colors.white),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isSelected ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight),
+                      width: isSelected ? 2 : 1,
                     ),
-                  ))
-              .toList(),
-          onChanged: (val) {
-            setState(() {
-              _selectedGender = val;
-              _genderController.text = val ?? '';
-            });
-          },
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Column(
+                    children: [
+                      Text(emoji, style: const TextStyle(fontSize: 18)),
+                      const SizedBox(height: 4),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                          color: isSelected ? AppColors.primary : (isDark ? Colors.white70 : AppColors.textPrimary),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         ),
       ],
     );
@@ -690,38 +716,67 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Date of Birth',
-          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 13),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Date of Birth',
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 13),
+            ),
+            const Text(
+              'Interactive Calendar',
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+          ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         GestureDetector(
-          onTap: _selectDateOfBirth,
-          child: AbsorbPointer(
-            child: TextField(
-              controller: _dobController,
-              readOnly: true,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-              decoration: InputDecoration(
-                hintText: 'DD | MM | YYYY',
-                hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-                prefixIcon: const Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 20),
-                filled: true,
-                fillColor: isDark ? const Color(0xFF1A1828) : Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
+          onTap: () {
+            AppMotion.tapLight();
+            _selectDateOfBirth();
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1A1828) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? Colors.white10 : AppColors.borderLight),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 20),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: isDark ? Colors.white10 : AppColors.borderLight),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _dobController.text.isNotEmpty ? _dobController.text : 'DD | MM | YYYY',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: _dobController.text.isNotEmpty ? FontWeight.bold : FontWeight.w500,
+                          color: _dobController.text.isNotEmpty
+                              ? (isDark ? Colors.white : AppColors.textPrimary)
+                              : AppColors.textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Tap to select date from calendar',
+                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-              ),
+                const Icon(Icons.edit_calendar_rounded, size: 18, color: AppColors.primary),
+              ],
             ),
           ),
         ),

@@ -520,12 +520,12 @@ class _LocationSearchBottomSheetState extends State<LocationSearchBottomSheet> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Search Location / Area',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
                     ),
                   ),
                   IconButton(
@@ -552,10 +552,17 @@ class _LocationSearchBottomSheetState extends State<LocationSearchBottomSheet> {
                 child: TextField(
                   controller: _searchController,
                   autofocus: true,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'e.g. Candolim, Goa or Connaught Place...',
-                    hintStyle: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    hintStyle: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? Colors.white38 : AppColors.textSecondary,
+                    ),
                     prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
                     suffixIcon: _isLoading
                         ? const SizedBox(
@@ -655,13 +662,20 @@ class _LocationSearchBottomSheetState extends State<LocationSearchBottomSheet> {
                       ),
                       title: Text(
                         item.title,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : AppColors.textPrimary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
                         item.subtitle.isNotEmpty ? item.subtitle : item.displayName,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white60 : AppColors.textSecondary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -674,13 +688,20 @@ class _LocationSearchBottomSheetState extends State<LocationSearchBottomSheet> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 child: Row(
-                  children: const [
-                    Icon(Icons.info_outline_rounded, size: 18, color: AppColors.textSecondary),
-                    SizedBox(width: 8),
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 18,
+                      color: isDark ? Colors.white54 : AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Type at least 3 letters to search towns, cities & landmarks across India.',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white54 : AppColors.textSecondary,
+                        ),
                       ),
                     ),
                   ],

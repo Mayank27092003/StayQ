@@ -1,6 +1,5 @@
 import '../../services/booking_checkout.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -11,8 +10,9 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
 import '../../widgets/bouncing_widget.dart';
 import '../../widgets/animated_calendar_picker.dart';
-import '../../widgets/cashfree_payment_sheet.dart';
 import 'booking_confirmation_screen.dart';
+import '../../navigation/app_router.dart';
+import '../profile/kyc_verification_screen.dart';
 
 class CampingCheckoutScreen extends StatefulWidget {
   final StayModel stay;
@@ -20,11 +20,11 @@ class CampingCheckoutScreen extends StatefulWidget {
   final List<DateTime>? blockedDates;
 
   const CampingCheckoutScreen({
-    Key? key,
+    super.key,
     required this.stay,
     required this.selectedDates,
     this.blockedDates,
-  }) : super(key: key);
+  });
 
   @override
   State<CampingCheckoutScreen> createState() => _CampingCheckoutScreenState();
@@ -45,7 +45,7 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
     {
       'title': '⛺ Basic Tent (2-person)',
       'price': 0,
-      'subtitle': 'Included',
+      'subtitle': 'Included in site price',
     },
     {
       'title': '🏕️ Dome Tent (4-person)',
@@ -127,25 +127,83 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
   Future<void> _confirmBooking() async {
     if (_checkout.busy) return;
     final provider = context.read<AppProvider>();
-    final booking = await _checkout.run(context, provider, widget.stay, _selectedDates, _campersCount,
-      estimate: _total, blockedDates: widget.blockedDates ?? widget.stay.blockedDates, options: {'category': 'CAMPING', 'tentType': _tentTypes[_selectedTentType]['title'],
-        'addOns': _selectedAddOns.map((i) => _addOns[i]['title']).toList(), 'campers': _campersCount});
-    if (booking == null || !mounted) return;
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => BookingConfirmationScreen(
-      booking: booking, stay: booking.stay, totalAmount: booking.totalAmount,
-      selectedDates: DateTimeRange(start: booking.checkIn, end: booking.checkOut),
-      guests: booking.adults + booking.children, paymentMethod: _checkout.payment?.paymentMethod ?? 'Server confirmed')));
+    if (!provider.isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in or sign up to continue booking.')),
+      );
+      Navigator.pushNamed(context, AppRoutes.login);
+      return;
+    }
+    if (!provider.isAadhaarVerified) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const KycVerificationScreen(initialTabIndex: 1)),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('UIDAI Aadhaar verification is mandatory before booking a campsite.')),
+      );
+      return;
+    }
+    if (widget.stay.govtIdRequired && !provider.isGovIdVerified) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const KycVerificationScreen(initialTabIndex: 1)),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This host requires ID verification before booking.')),
+      );
+      return;
+    }
+    final booking = await _checkout.run(
+      context,
+      provider,
+      widget.stay,
+      _selectedDates,
+      _campersCount,
+      estimate: _total,
+      blockedDates: widget.blockedDates ?? widget.stay.blockedDates,
+      options: {
+        'category': 'CAMPING',
+        'tentType': _tentTypes[_selectedTentType]['title'],
+        'addOns': _selectedAddOns.map((i) => _addOns[i]['title']).toList(),
+        'campers': _campersCount,
+      },
+    );
+    if (booking == null || !mounted || !context.mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BookingConfirmationScreen(
+          booking: booking,
+          stay: booking.stay,
+          totalAmount: booking.totalAmount,
+          selectedDates: DateTimeRange(start: booking.checkIn, end: booking.checkOut),
+          guests: booking.adults + booking.children,
+          paymentMethod: _checkout.payment?.paymentMethod ?? 'Server confirmed',
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
-        title: const Text('Campsite Booking', style: TextStyle(color: AppColors.textPrimary)),
-        backgroundColor: AppColors.surfaceLight,
+        title: Text(
+          'Campsite Booking',
+          style: TextStyle(
+            color: AppColors.text(context),
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        backgroundColor: AppColors.bg(context),
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        leading: IconButton(
+          icon: Icon(Icons.chevron_left_rounded, size: 28, color: AppColors.text(context)),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Stack(
         children: [
@@ -177,9 +235,9 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: Row(
         children: [
@@ -194,15 +252,15 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                     errorBuilder: (context, error, stackTrace) => Container(
                       width: 80,
                       height: 80,
-                      color: Colors.grey.shade300,
-                      child: const Icon(Icons.terrain, color: Colors.grey),
+                      color: AppColors.card(context),
+                      child: const Icon(Icons.terrain_rounded, color: AppColors.primary),
                     ),
                   )
                 : Container(
                     width: 80,
                     height: 80,
-                    color: Colors.grey.shade300,
-                    child: const Icon(Icons.terrain, color: Colors.grey),
+                    color: AppColors.card(context),
+                    child: const Icon(Icons.terrain_rounded, color: AppColors.primary),
                   ),
           ),
           const SizedBox(width: 16),
@@ -212,25 +270,36 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
               children: [
                 Text(
                   widget.stay.title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.text(context),
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   widget.stay.location,
-                  style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSub(context),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.star, color: AppColors.starYellow, size: 16),
+                    const Icon(Icons.star_rounded, color: AppColors.starYellow, size: 16),
                     const SizedBox(width: 4),
                     Text(
                       widget.stay.rating.toStringAsFixed(1),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.text(context),
+                      ),
                     ),
                   ],
                 ),
@@ -249,14 +318,17 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Trip Dates', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          Text(
+            'Trip Dates',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
+          ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
+              color: AppColors.card(context),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: AppColors.border(context)),
             ),
             child: Column(
               children: [
@@ -265,18 +337,18 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.calendar_month, color: AppColors.primary, size: 24),
+                        const Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 24),
                         const SizedBox(width: 12),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               '${dateFormat.format(_selectedDates.start)} - ${dateFormat.format(_selectedDates.end)}',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.text(context)),
                             ),
                             Text(
                               '$_nights night${_nights > 1 ? 's' : ''}',
-                              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                              style: TextStyle(fontSize: 14, color: AppColors.textSub(context)),
                             ),
                           ],
                         ),
@@ -289,13 +361,14 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                           _isCalendarVisible = !_isCalendarVisible;
                         });
                       },
-                      child: Text(_isCalendarVisible ? 'Done' : 'Change', style: const TextStyle(color: AppColors.primary)),
+                      child: Text(_isCalendarVisible ? 'Done' : 'Change', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
                     ),
                   ],
                 ),
                 if (_isCalendarVisible) ...[
-                  const Divider(height: 24),
-                  AnimatedCalendarPicker(blockedDates: widget.blockedDates ?? widget.stay.blockedDates, 
+                  Divider(color: AppColors.border(context), height: 24),
+                  AnimatedCalendarPicker(
+                    blockedDates: widget.blockedDates ?? widget.stay.blockedDates, 
                     initialRange: _selectedDates,
                     onRangeSelected: (range) {
                       setState(() {
@@ -313,28 +386,32 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
   }
 
   Widget _buildCampersCounter() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Number of Campers', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          Text(
+            'Number of Campers',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
+          ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
+              color: AppColors.card(context),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: AppColors.border(context)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.group, color: AppColors.textSecondary),
-                    SizedBox(width: 12),
-                    Text('Campers', style: TextStyle(fontSize: 16, color: AppColors.textPrimary)),
+                    Icon(Icons.group_rounded, color: AppColors.textSub(context)),
+                    const SizedBox(width: 12),
+                    Text('Campers', style: TextStyle(fontSize: 16, color: AppColors.text(context), fontWeight: FontWeight.w500)),
                   ],
                 ),
                 Row(
@@ -350,8 +427,8 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: _campersCount > 1 ? AppColors.surfaceLight : Colors.grey.shade200,
-                          border: Border.all(color: _campersCount > 1 ? AppColors.primary : AppColors.borderLight),
+                          color: _campersCount > 1 ? AppColors.card(context) : (isDark ? Colors.white10 : Colors.grey.shade200),
+                          border: Border.all(color: _campersCount > 1 ? AppColors.primary : AppColors.border(context)),
                         ),
                         child: Icon(Icons.remove, size: 20, color: _campersCount > 1 ? AppColors.primary : AppColors.textMuted),
                       ),
@@ -359,7 +436,7 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                     const SizedBox(width: 16),
                     Text(
                       '$_campersCount',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                     ),
                     const SizedBox(width: 16),
                     BouncingWidget(
@@ -373,8 +450,8 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: _campersCount < 10 ? AppColors.surfaceLight : Colors.grey.shade200,
-                          border: Border.all(color: _campersCount < 10 ? AppColors.primary : AppColors.borderLight),
+                          color: _campersCount < 10 ? AppColors.card(context) : (isDark ? Colors.white10 : Colors.grey.shade200),
+                          border: Border.all(color: _campersCount < 10 ? AppColors.primary : AppColors.border(context)),
                         ),
                         child: Icon(Icons.add, size: 20, color: _campersCount < 10 ? AppColors.primary : AppColors.textMuted),
                       ),
@@ -395,7 +472,10 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Tent Type', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          Text(
+            'Tent Type',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
+          ),
           const SizedBox(height: 12),
           Column(
             children: List.generate(_tentTypes.length, (index) {
@@ -410,9 +490,12 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary.withOpacity(0.05) : AppColors.surfaceLight,
+                    color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : AppColors.card(context),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isSelected ? AppColors.primary : AppColors.borderLight, width: isSelected ? 2 : 1),
+                    border: Border.all(
+                      color: isSelected ? AppColors.primary : AppColors.border(context),
+                      width: isSelected ? 1.5 : 1,
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -421,15 +504,28 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(tent['title'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                            Text(
+                              tent['title'],
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected ? AppColors.primary : AppColors.text(context),
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            Text(tent['subtitle'], style: TextStyle(fontSize: 14, color: isSelected ? AppColors.primary : AppColors.textSecondary)),
+                            Text(
+                              tent['subtitle'],
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: isSelected ? AppColors.primary.withValues(alpha: 0.8) : AppColors.textSub(context),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                       Icon(
                         isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                        color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                        color: isSelected ? AppColors.primary : AppColors.textSub(context),
                       ),
                     ],
                   ),
@@ -444,11 +540,14 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
 
   Widget _buildAddOnsSection() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Add-ons', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          Text(
+            'Camp Add-ons',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
+          ),
           const SizedBox(height: 12),
           Column(
             children: List.generate(_addOns.length, (index) {
@@ -469,26 +568,40 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary.withOpacity(0.05) : AppColors.surfaceLight,
+                    color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : AppColors.card(context),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isSelected ? AppColors.primary : AppColors.borderLight, width: isSelected ? 2 : 1),
+                    border: Border.all(
+                      color: isSelected ? AppColors.primary : AppColors.border(context),
+                      width: isSelected ? 1.5 : 1,
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text(addon['title'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+                        child: Text(
+                          addon['title'],
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: isSelected ? AppColors.primary : AppColors.text(context),
+                          ),
+                        ),
                       ),
                       Row(
                         children: [
                           Text(
                             '₹${addon['price']}${addon['perPerson'] ? '/person' : ''}',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? AppColors.primary : AppColors.text(context),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Icon(
-                            isSelected ? Icons.check_box : Icons.check_box_outline_blank,
-                            color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                            isSelected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                            color: isSelected ? AppColors.primary : AppColors.textSub(context),
                           ),
                         ],
                       ),
@@ -508,9 +621,9 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surfaceLight,
+          color: AppColors.card(context),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.borderLight),
+          border: Border.all(color: AppColors.border(context)),
         ),
         child: Column(
           children: [
@@ -525,8 +638,14 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Price Breakdown', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                    Icon(_isExpandedBreakdown ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: AppColors.textSecondary),
+                    Text(
+                      'Price Breakdown',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.text(context)),
+                    ),
+                    Icon(
+                      _isExpandedBreakdown ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.textSub(context),
+                    ),
                   ],
                 ),
               ),
@@ -536,23 +655,23 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                 padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
                 child: Column(
                   children: [
-                    const Divider(),
+                    Divider(color: AppColors.border(context)),
                     const SizedBox(height: 8),
-                    _buildPriceRow('Campsite (₹${widget.stay.pricePerNight} × $_nights nights)', _campsiteTotal),
+                    _buildPriceRow('Campsite (₹${widget.stay.pricePerNight.toStringAsFixed(0)} × $_nights nights)', _campsiteTotal),
                     const SizedBox(height: 8),
                     _buildPriceRow('Tent Charges', _tentTotal),
                     const SizedBox(height: 8),
                     _buildPriceRow('Add-ons', _addOnsTotal),
                     const SizedBox(height: 8),
-                    _buildPriceRow('Fee', _serviceFee),
+                    _buildPriceRow('Platform service fee (5%)', _serviceFee),
                     const SizedBox(height: 12),
-                    const Divider(),
+                    Divider(color: AppColors.border(context)),
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Total', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                        Text('₹${_total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                        Text('Total', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context))),
+                        Text('₹${_total.toStringAsFixed(0)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
                       ],
                     ),
                   ],
@@ -568,19 +687,19 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(child: Text(label, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary))),
-        Text('₹${amount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+        Expanded(child: Text(label, style: TextStyle(fontSize: 14, color: AppColors.textSub(context)))),
+        Text('₹${amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.text(context))),
       ],
     );
   }
 
   Widget _buildPaymentMethods() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Payment Method', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          Text('Payment Method', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context))),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -616,13 +735,16 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.05) : AppColors.surfaceLight,
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : AppColors.card(context),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isSelected ? AppColors.primary : AppColors.borderLight, width: isSelected ? 2 : 1),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border(context),
+            width: isSelected ? 1.5 : 1,
+          ),
         ),
         child: Column(
           children: [
-            Icon(icon, size: 32, color: isSelected ? AppColors.primary : AppColors.textSecondary),
+            Icon(icon, size: 32, color: isSelected ? AppColors.primary : AppColors.textSub(context)),
             const SizedBox(height: 8),
             Text(
               title,
@@ -630,7 +752,7 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                color: isSelected ? AppColors.primary : AppColors.text(context),
               ),
             ),
           ],
@@ -643,10 +765,11 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
+        color: AppColors.card(context),
+        border: Border(top: BorderSide(color: AppColors.border(context))),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, -4),
             blurRadius: 16,
           ),
@@ -665,6 +788,13 @@ class _CampingCheckoutScreenState extends State<CampingCheckoutScreen> {
                 end: Alignment.centerRight,
               ),
               borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Center(
               child: Text(

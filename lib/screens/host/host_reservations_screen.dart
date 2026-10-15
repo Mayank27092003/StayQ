@@ -10,8 +10,8 @@ import '../../widgets/bouncing_widget.dart';
 import '../inbox/chat_detail_screen.dart';
 
 class HostReservationsScreen extends StatefulWidget {
-
-  const HostReservationsScreen({super.key});
+  final String? propertyId;
+  const HostReservationsScreen({super.key, this.propertyId});
   @override
   State<HostReservationsScreen> createState() => _HostReservationsScreenState();
 }
@@ -27,19 +27,37 @@ class _HostReservationsScreenState extends State<HostReservationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: isDark ? const Color(0xFF0F0E17) : AppColors.background,
         appBar: AppBar(
-          title: const Text('Reservations', style: TextStyle(fontWeight: FontWeight.bold)),
-          actions: [IconButton(icon: const Icon(Icons.refresh),
-            onPressed: () => context.read<AppProvider>().fetchHostBookings())],
-          bottom: const TabBar(
+          backgroundColor: isDark ? const Color(0xFF1E1C2A) : Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : AppColors.textPrimary),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            widget.propertyId != null ? 'Property Reservations' : 'Reservations',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : AppColors.textPrimary,
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.refresh, color: isDark ? Colors.white : AppColors.textPrimary),
+              onPressed: () => context.read<AppProvider>().fetchHostBookings(),
+            ),
+          ],
+          bottom: TabBar(
             indicatorColor: AppColors.primary,
             labelColor: AppColors.primary,
-            unselectedLabelColor: AppColors.textSecondary,
-            tabs: [
+            unselectedLabelColor: isDark ? Colors.white54 : AppColors.textSecondary,
+            tabs: const [
               Tab(text: 'Pending'),
               Tab(text: 'Upcoming'),
               Tab(text: 'Completed'),
@@ -52,12 +70,28 @@ class _HostReservationsScreenState extends State<HostReservationsScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (provider.hostBookingsError != null) {
-              return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text(provider.hostBookingsError!), TextButton(onPressed: provider.fetchHostBookings, child: const Text('Retry'))]));
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      provider.hostBookingsError!,
+                      style: TextStyle(color: isDark ? Colors.white70 : AppColors.textPrimary),
+                    ),
+                    TextButton(
+                      onPressed: provider.fetchHostBookings,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              );
             }
-            final pending = provider.hostBookings.where((b) => b.status == BookingStatus.pending).toList();
-            final upcoming = provider.hostBookings.where((b) => b.status == BookingStatus.confirmed || b.status == BookingStatus.upcoming).toList();
-            final completed = provider.hostBookings.where((b) => b.status == BookingStatus.completed || b.status == BookingStatus.cancelled).toList();
+            final all = widget.propertyId != null
+                ? provider.hostBookings.where((b) => b.propertyId == widget.propertyId).toList()
+                : provider.hostBookings;
+            final pending = all.where((b) => b.status == BookingStatus.pending).toList();
+            final upcoming = all.where((b) => b.status == BookingStatus.confirmed || b.status == BookingStatus.upcoming).toList();
+            final completed = all.where((b) => b.status == BookingStatus.completed || b.status == BookingStatus.cancelled).toList();
 
             return TabBarView(
               children: [
@@ -81,8 +115,15 @@ class _BookingList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (bookings.isEmpty) {
-      return const Center(child: Text('No reservations here.', style: TextStyle(color: AppColors.textSecondary)));
+      return Center(
+        child: Text(
+          'No reservations here.',
+          style: TextStyle(color: isDark ? Colors.white54 : AppColors.textSecondary),
+        ),
+      );
     }
     
     return ListView.separated(
@@ -94,9 +135,9 @@ class _BookingList extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? const Color(0xFF1E1C2A) : Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.borderLight),
+            border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
           ),
           child: Column(
@@ -130,8 +171,18 @@ class _BookingList extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(b.guestName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text('Booking total: ₹${b.totalAmount.toInt()}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                        Text(
+                          b.guestName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: isDark ? Colors.white : AppColors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          'Booking total: ₹${b.totalAmount.toInt()}',
+                          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                        ),
                       ],
                     ),
                   ),
@@ -152,10 +203,18 @@ class _BookingList extends StatelessWidget {
                   ),
                 ],
               ),
-              const Divider(height: 24),
+              Divider(height: 24, color: isDark ? Colors.white12 : AppColors.borderLight),
               Row(
                 children: [
-                  Expanded(child: Text(b.stay.title, style: const TextStyle(fontWeight: FontWeight.bold))),
+                  Expanded(
+                    child: Text(
+                      b.stay.title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
                   if (b.stay.isStayingWithHost)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -178,37 +237,105 @@ class _BookingList extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              Text('${DateFormat('MMM d').format(b.checkIn)} - ${DateFormat('MMM d').format(b.checkOut)} • ${b.adults + b.children} Guests'),
-              if (b.options.isNotEmpty) Text('Options: ${b.options.entries.map((e) => "${e.key}: ${e.value}").join(", ")}'),
+              Text(
+                '${DateFormat('MMM d').format(b.checkIn)} - ${DateFormat('MMM d').format(b.checkOut)} • ${b.adults + b.children} Guests',
+                style: TextStyle(color: isDark ? Colors.white70 : AppColors.textSecondary),
+              ),
+              if (b.options.isNotEmpty)
+                Text(
+                  'Options: ${b.options.entries.map((e) => "${e.key}: ${e.value}").join(", ")}',
+                  style: TextStyle(color: isDark ? Colors.white60 : AppColors.textSecondary, fontSize: 12),
+                ),
               
               if (isPending) ...[
+                if (!b.isPaid) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF332A15) : const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFF59E0B)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.schedule_rounded, size: 16, color: Color(0xFFF59E0B)),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Payment Pending: Reservation can be confirmed once guest completes payment.',
+                            style: TextStyle(fontSize: 11.5, color: Color(0xFFF59E0B), fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
                       child: BouncingWidget(
-                        onTap: () async { try { await context.read<AppProvider>().updateBookingStatus(b.id, BookingStatus.cancelled); if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reservation declined.'))); } catch (e) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); } },
+                        onTap: () async {
+                          try {
+                            await context.read<AppProvider>().updateBookingStatus(b.id, BookingStatus.cancelled);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reservation declined.')));
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                            }
+                          }
+                        },
                         child: Container(
                           height: 44,
                           decoration: BoxDecoration(
                             border: Border.all(color: AppColors.errorRed),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Center(child: Text('Reject', style: TextStyle(color: AppColors.errorRed, fontWeight: FontWeight.bold))),
+                          child: const Center(
+                            child: Text('Reject', style: TextStyle(color: AppColors.errorRed, fontWeight: FontWeight.bold)),
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: BouncingWidget(
-                        onTap: () async { try { await context.read<AppProvider>().updateBookingStatus(b.id, BookingStatus.confirmed); if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reservation confirmed.'))); } catch (e) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); } },
+                        onTap: () async {
+                          if (!b.isPaid) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Guest payment is pending. Reservations can be confirmed once payment is completed.'),
+                                backgroundColor: Color(0xFFF59E0B),
+                              ),
+                            );
+                            return;
+                          }
+                          try {
+                            await context.read<AppProvider>().updateBookingStatus(b.id, BookingStatus.confirmed);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reservation confirmed.')));
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                            }
+                          }
+                        },
                         child: Container(
                           height: 44,
                           decoration: BoxDecoration(
-                            color: AppColors.primary,
+                            color: b.isPaid ? AppColors.primary : (isDark ? Colors.white24 : Colors.grey.shade400),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Center(child: Text('Accept', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                          child: Center(
+                            child: Text(
+                              b.isPaid ? 'Accept' : 'Awaiting Payment',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -230,10 +357,14 @@ class _BookingList extends StatelessWidget {
                       bookingId: b.id,
                     );
 
-                      if (convId == null) {
-                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(messaging.error ?? 'Conversation could not be opened.')));
-                        return;
+                    if (convId == null) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(messaging.error ?? 'Conversation could not be opened.')),
+                        );
                       }
+                      return;
+                    }
                     if (context.mounted) {
                       Navigator.push(
                         context,
@@ -248,7 +379,10 @@ class _BookingList extends StatelessWidget {
                     }
                   },
                   icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: AppColors.primary),
-                  label: Text('Message ${b.guestName.split(" ").first}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                  label: Text(
+                    'Message ${b.guestName.split(" ").first}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                  ),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppColors.primary),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

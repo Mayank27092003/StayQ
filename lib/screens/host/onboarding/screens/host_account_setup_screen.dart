@@ -74,6 +74,7 @@ class _HostAccountSetupScreenState extends State<HostAccountSetupScreen> {
   Widget _buildTextField(
     String label, 
     TextEditingController controller, 
+    bool isDark,
     {TextInputType type = TextInputType.text, String? Function(String?)? validator}
   ) {
     return Padding(
@@ -83,10 +84,10 @@ class _HostAccountSetupScreenState extends State<HostAccountSetupScreen> {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
@@ -95,16 +96,25 @@ class _HostAccountSetupScreenState extends State<HostAccountSetupScreen> {
             keyboardType: type,
             validator: validator,
             autovalidateMode: AutovalidateMode.onUserInteraction,
+            style: TextStyle(
+              color: isDark ? Colors.white : AppColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
             decoration: InputDecoration(
               filled: true,
-              fillColor: AppColors.surfaceLight,
+              fillColor: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.borderLight),
+                borderSide: BorderSide(color: isDark ? Colors.white12 : AppColors.borderLight),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.borderLight),
+                borderSide: BorderSide(color: isDark ? Colors.white12 : AppColors.borderLight),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.primary, width: 2),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
@@ -116,25 +126,27 @@ class _HostAccountSetupScreenState extends State<HostAccountSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Account Setup',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
             ),
           ).animate().fadeIn().slideX(),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Let\'s start with your basic information.',
             style: TextStyle(
               fontSize: 16,
-              color: AppColors.textSecondary,
+              color: isDark ? Colors.white70 : AppColors.textSecondary,
             ),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 32),
@@ -145,16 +157,19 @@ class _HostAccountSetupScreenState extends State<HostAccountSetupScreen> {
                 _buildTextField(
                   'First Name', 
                   _firstNameController,
+                  isDark,
                   validator: (value) => (value == null || value.trim().isEmpty) ? 'First name is required' : null,
                 ),
                 _buildTextField(
                   'Last Name', 
                   _lastNameController,
+                  isDark,
                   validator: (value) => (value == null || value.trim().isEmpty) ? 'Last name is required' : null,
                 ),
                 _buildTextField(
                   'Email', 
                   _emailController, 
+                  isDark,
                   type: TextInputType.emailAddress,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) return 'Email is required';
@@ -167,6 +182,7 @@ class _HostAccountSetupScreenState extends State<HostAccountSetupScreen> {
                 _buildTextField(
                   'Phone Number', 
                   _phoneController, 
+                  isDark,
                   type: TextInputType.phone,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) return 'Phone number is required';

@@ -10,9 +10,16 @@ class HostDashboardProvider extends ChangeNotifier {
   bool _disposed = false;
   int _generation = 0;
   HostDashboardProvider({String? userId}) : _ownerId = userId;
-  bool get _owned => !_disposed && _ownerId != null && FirebaseAuth.instance.currentUser?.uid == _ownerId;
+  bool get _owned {
+    if (_disposed) return false;
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUid != null) {
+      _ownerId = currentUid;
+      return true;
+    }
+    return _ownerId != null;
+  }
   void updateUserId(String? userId) {
-    if (_ownerId == userId) return;
     _ownerId = userId;
     if (userId != null) {
       fetchDashboardData(userId);

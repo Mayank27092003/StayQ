@@ -167,9 +167,13 @@ class _HostEarningsSimulatorWidgetState extends State<HostEarningsSimulatorWidge
           const SizedBox(height: 24),
 
           // City Selector Chips
-          const Text(
+          Text(
             'Select Destination',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 10),
           SingleChildScrollView(
@@ -194,7 +198,7 @@ class _HostEarningsSimulatorWidgetState extends State<HostEarningsSimulatorWidge
                     labelStyle: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                      color: isSelected ? Colors.white : (isDark ? Colors.white70 : AppColors.textSecondary),
                     ),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
@@ -206,9 +210,13 @@ class _HostEarningsSimulatorWidgetState extends State<HostEarningsSimulatorWidge
           const SizedBox(height: 18),
 
           // Property Type Selector Chips
-          const Text(
+          Text(
             'Property Category',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 10),
           SingleChildScrollView(
@@ -233,7 +241,7 @@ class _HostEarningsSimulatorWidgetState extends State<HostEarningsSimulatorWidge
                     labelStyle: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                      color: isSelected ? Colors.white : (isDark ? Colors.white70 : AppColors.textSecondary),
                     ),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
@@ -248,9 +256,13 @@ class _HostEarningsSimulatorWidgetState extends State<HostEarningsSimulatorWidge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Expected Occupancy / Month',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
               ),
               Text(
                 '${_occupancyNights.toInt()} nights',
@@ -290,7 +302,11 @@ class _HostEarningsSimulatorWidgetState extends State<HostEarningsSimulatorWidge
                 Expanded(
                   child: Text(
                     '$_selectedType listings in $_selectedCity average 82% weekend occupancy with StayQ instant book.',
-                    style: const TextStyle(fontSize: 11, height: 1.4, color: AppColors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 11,
+                      height: 1.4,
+                      color: isDark ? Colors.white70 : AppColors.textPrimary,
+                    ),
                   ),
                 ),
               ],

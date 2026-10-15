@@ -4,25 +4,28 @@ import 'package:provider/provider.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../navigation/app_router.dart';
-import 'dart:ui';
 
 class AuthGatewayScreen extends StatelessWidget {
-  const AuthGatewayScreen({Key? key}) : super(key: key);
+  const AuthGatewayScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
+    final isDark = AppColors.isDark(context);
     
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bg(context),
       body: Stack(
         children: [
           // Background Gradient / Image
           Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppColors.primaryDark, AppColors.background],
+                  colors: [
+                    isDark ? const Color(0xFF1E1035) : AppColors.primaryDark,
+                    AppColors.bg(context),
+                  ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -46,15 +49,15 @@ class AuthGatewayScreen extends StatelessWidget {
                     ).animate().fadeIn(duration: 800.ms).scale(delay: 200.ms),
                   ),
                   const SizedBox(height: 40),
-                  const Text(
+                  Text(
                     'Welcome to StayQ',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                     textAlign: TextAlign.center,
                   ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.5),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Discover premium stays & zero-broker rentals anywhere in India.',
-                    style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 14, color: AppColors.textSub(context)),
                     textAlign: TextAlign.center,
                   ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.5),
                   const Spacer(),
@@ -97,15 +100,15 @@ class AuthGatewayScreen extends StatelessWidget {
                       },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: AppColors.borderLight),
+                        side: BorderSide(color: AppColors.border(context)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.g_mobiledata, color: AppColors.textPrimary, size: 28),
-                          SizedBox(width: 8),
-                          Text('Continue with Google', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                          Icon(Icons.g_mobiledata, color: AppColors.text(context), size: 28),
+                          const SizedBox(width: 8),
+                          Text('Continue with Google', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.text(context))),
                         ],
                       ),
                     ).animate().fadeIn(delay: 900.ms).slideY(begin: 0.5),

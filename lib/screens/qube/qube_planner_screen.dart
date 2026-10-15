@@ -47,6 +47,10 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
   QubeMode _currentMode = QubeMode.chat;
   final ScrollController _scrollController = ScrollController();
 
+  // Budget slider state for itinerary planning
+  double _budget = 25000;
+  bool _showBudgetSlider = false;
+
   // Typing dots animation
   late AnimationController _dotsController;
   late Animation<double> _dotsAnimation;
@@ -141,10 +145,8 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
     });
   }
 
-  /// Extracts conversation history so Qube maintains context across turns
   List<Map<String, String>> _buildHistory() {
     final history = <Map<String, String>>[];
-    // Take the last 8 messages for context
     final recent = _messages.length > 8 ? _messages.sublist(_messages.length - 8) : _messages;
     for (final m in recent) {
       history.add({
@@ -168,7 +170,6 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
     });
     _scrollToBottom();
 
-    // Check if mode is itinerary or prompt explicitly asks for full itinerary
     final lower = prompt.toLowerCase();
     final isExplicitItinerary = _currentMode == QubeMode.itinerary ||
         lower.contains('generate itinerary') ||
@@ -179,7 +180,10 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
 
     try {
       if (isExplicitItinerary) {
-        final data = await QubeApiService.getPlan(prompt);
+        final data = await QubeApiService.getPlan(
+          prompt,
+          budget: _showBudgetSlider || _currentMode == QubeMode.itinerary ? _budget : null,
+        );
         if (!mounted) return;
         setState(() {
           _messages.add(QubeMessage(
@@ -189,7 +193,6 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
           ));
         });
       } else {
-        // Multi-turn conversational chat with history
         final history = _buildHistory();
         final reply = await QubeApiService.chat(prompt, history: history);
         if (!mounted) return;
@@ -200,7 +203,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
           ));
         });
       }
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       final fallbackReply = await QubeApiService.chat(prompt);
       setState(() {
@@ -219,6 +222,38 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
     }
   }
 
+  void _saveItineraryToTrips(Map<String, dynamic> planData) {
+    AppMotion.tapHeavy();
+    final title = planData['title'] ?? 'Custom Trip';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: AppColors.successGreen, size: 20),
+            const SizedBox(width: 10),
+            Expanded(child: Text('$title saved to your Trip Plans! 🎒')),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+        action: SnackBarAction(
+          label: 'View Trips',
+          textColor: AppColors.primary,
+          onPressed: () {
+            context.read<AppProvider>().setTabIndex(2);
+            Navigator.pop(context);
+          },
+        ),
+      ),
+    );
+  }
+
+  void _exploreStaysForDestination(String destination) {
+    AppMotion.tapSelection();
+    context.read<AppProvider>().setTabIndex(0);
+    Navigator.pop(context);
+  }
+
   Widget _buildQuickPromptChip(String emoji, String text) {
     return GestureDetector(
       onTap: () {
@@ -229,12 +264,14 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
+          color: AppColors.card(context),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+          border: Border.all(
+            color: AppColors.border(context),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Colors.black.withValues(alpha: AppColors.isDark(context) ? 0.2 : 0.03),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -247,10 +284,10 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
             const SizedBox(width: 6),
             Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: AppColors.text(context),
               ),
             ),
           ],
@@ -260,7 +297,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
   }
 
   Widget _buildRobotHeroBanner() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = AppColors.isDark(context);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -321,16 +358,20 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Meet Qube',
-                      style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.text(context),
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'StayQ AI travel intelligence with live property availability across India.',
+                      'StayQ AI travel companion with day-by-day itineraries and verified stays.',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Theme.of(context).textTheme.bodySmall?.color,
+                        color: AppColors.textSub(context),
                         height: 1.3,
                       ),
                     ),
@@ -340,7 +381,6 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
             ],
           ),
           const SizedBox(height: 14),
-          // 4 Capability Pills
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -360,13 +400,93 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
+        color: AppColors.surface(context).withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppColors.text(context),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBudgetSliderBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.card(context),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border(context)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: AppColors.isDark(context) ? 0.2 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.tune_rounded, color: AppColors.primary, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Trip Budget Filter',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.text(context)),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '₹${_budget.toInt()}',
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: AppColors.primary,
+              inactiveTrackColor: AppColors.border(context),
+              thumbColor: AppColors.primary,
+              overlayColor: AppColors.primary.withValues(alpha: 0.2),
+              trackHeight: 4,
+            ),
+            child: Slider(
+              value: _budget,
+              min: 5000,
+              max: 100000,
+              divisions: 19,
+              onChanged: (val) {
+                setState(() => _budget = val);
+              },
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('₹5k (Budget)', style: TextStyle(fontSize: 10.5, color: AppColors.textSub(context))),
+              Text('₹25k (Comfort)', style: TextStyle(fontSize: 10.5, color: AppColors.textSub(context))),
+              Text('₹100k+ (Luxury)', style: TextStyle(fontSize: 10.5, color: AppColors.textSub(context))),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -430,7 +550,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                         _formatTime(message.timestamp),
                         style: TextStyle(
                           fontSize: 10.5,
-                          color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.55),
+                          color: AppColors.textSub(context).withValues(alpha: 0.7),
                         ),
                       ),
                       const SizedBox(width: 3),
@@ -465,7 +585,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
+                      color: AppColors.card(context),
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(4),
                         topRight: Radius.circular(22),
@@ -473,13 +593,11 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                         bottomRight: Radius.circular(22),
                       ),
                       border: Border.all(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white10
-                            : AppColors.borderLight,
+                        color: AppColors.border(context),
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
+                          color: Colors.black.withValues(alpha: AppColors.isDark(context) ? 0.2 : 0.04),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -497,7 +615,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                                 child: Text(
                                   message.planData!['title'] ?? 'Custom Itinerary',
                                   style: const TextStyle(
-                                    fontSize: 17,
+                                    fontSize: 16.5,
                                     fontWeight: FontWeight.w900,
                                     color: AppColors.primary,
                                   ),
@@ -509,78 +627,75 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                           Text(
                             message.planData!['description'] ?? '',
                             style: TextStyle(
-                              fontSize: 14.5,
-                              color: Theme.of(context).textTheme.bodyMedium?.color,
+                              fontSize: 14,
+                              color: AppColors.text(context),
                               height: 1.4,
                             ),
                           ),
                           const SizedBox(height: 16),
-                          const Text(
-                            '🗓️ Day-by-Day Schedule',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                '🗓️ Day-by-Day Schedule',
+                                style: TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Tap day to expand',
+                                style: TextStyle(fontSize: 11, color: AppColors.textSub(context)),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 10),
+                          // Expandable Day-by-Day items
                           ...?((message.planData!['itineraryDays'] as List?)?.map((day) {
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.surface,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.borderLight),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          'Day ${day['day']}',
-                                          style: const TextStyle(
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          day['activity'] ?? '',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    day['details'] ?? '',
-                                    style: TextStyle(
-                                      color: Theme.of(context).textTheme.bodySmall?.color,
-                                      fontSize: 13,
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
+                            return _ExpandableDayTile(day: day as Map<String, dynamic>);
                           })),
+                          const SizedBox(height: 14),
+                          // Action buttons: "Add to Trip" & "Explore Stays"
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _saveItineraryToTrips(message.planData!),
+                                  icon: const Icon(Icons.bookmark_add_rounded, size: 16),
+                                  label: const Text('Add to Trip', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _exploreStaysForDestination(
+                                    message.planData!['destination']?.toString() ?? 'Stays',
+                                  ),
+                                  icon: const Icon(Icons.travel_explore_rounded, size: 16),
+                                  label: const Text('Explore Stays', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.text(context),
+                                    side: BorderSide(color: AppColors.border(context)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ] else ...[
                           Text(
                             message.text,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 14.5,
                               height: 1.45,
-                              color: Theme.of(context).textTheme.bodyLarge?.color,
+                              color: AppColors.text(context),
                             ),
                           ),
                         ],
@@ -638,7 +753,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                       _formatTime(message.timestamp),
                       style: TextStyle(
                         fontSize: 10.5,
-                        color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+                        color: AppColors.textSub(context).withValues(alpha: 0.7),
                       ),
                     ),
                   ),
@@ -656,6 +771,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
     return PopScope(
       canPop: true,
       child: Scaffold(
+        backgroundColor: AppColors.bg(context),
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
@@ -671,11 +787,11 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                 showBadge: true,
               ),
               const SizedBox(width: 10),
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
+                  const Row(
                     children: [
                       Text(
                         'Qube Travel Robot',
@@ -687,7 +803,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                   ),
                   Text(
                     'AI Concierge • Always Active',
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 11, color: AppColors.textSub(context)),
                   ),
                 ],
               ),
@@ -695,7 +811,18 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+              icon: Icon(
+                _showBudgetSlider ? Icons.tune_rounded : Icons.tune_outlined,
+                color: _showBudgetSlider ? AppColors.primary : AppColors.icon(context),
+              ),
+              tooltip: 'Budget Filter',
+              onPressed: () {
+                AppMotion.tapSelection();
+                setState(() => _showBudgetSlider = !_showBudgetSlider);
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.refresh_rounded, color: AppColors.icon(context)),
               tooltip: 'New Conversation',
               onPressed: () {
                 HapticFeedback.lightImpact();
@@ -710,7 +837,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
               },
             ),
           ],
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          backgroundColor: AppColors.bg(context),
           elevation: 0,
         ),
         body: Column(
@@ -720,9 +847,9 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
+                color: AppColors.card(context),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.borderLight),
+                border: Border.all(color: AppColors.border(context)),
               ),
               child: Row(
                 children: [
@@ -730,7 +857,10 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                     child: GestureDetector(
                       onTap: () {
                         AppMotion.tapSelection();
-                        setState(() => _currentMode = QubeMode.chat);
+                        setState(() {
+                          _currentMode = QubeMode.chat;
+                          _showBudgetSlider = false;
+                        });
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
@@ -745,7 +875,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                             Icon(
                               Icons.chat_bubble_outline_rounded,
                               size: 15,
-                              color: _currentMode == QubeMode.chat ? Colors.white : AppColors.textSecondary,
+                              color: _currentMode == QubeMode.chat ? Colors.white : AppColors.textSub(context),
                             ),
                             const SizedBox(width: 6),
                             Text(
@@ -753,7 +883,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                               style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.bold,
-                                color: _currentMode == QubeMode.chat ? Colors.white : AppColors.textSecondary,
+                                color: _currentMode == QubeMode.chat ? Colors.white : AppColors.textSub(context),
                               ),
                             ),
                           ],
@@ -765,7 +895,10 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                     child: GestureDetector(
                       onTap: () {
                         AppMotion.tapSelection();
-                        setState(() => _currentMode = QubeMode.itinerary);
+                        setState(() {
+                          _currentMode = QubeMode.itinerary;
+                          _showBudgetSlider = true;
+                        });
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
@@ -780,7 +913,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                             Icon(
                               Icons.route_rounded,
                               size: 15,
-                              color: _currentMode == QubeMode.itinerary ? Colors.white : AppColors.textSecondary,
+                              color: _currentMode == QubeMode.itinerary ? Colors.white : AppColors.textSub(context),
                             ),
                             const SizedBox(width: 6),
                             Text(
@@ -788,7 +921,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                               style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.bold,
-                                color: _currentMode == QubeMode.itinerary ? Colors.white : AppColors.textSecondary,
+                                color: _currentMode == QubeMode.itinerary ? Colors.white : AppColors.textSub(context),
                               ),
                             ),
                           ],
@@ -800,6 +933,10 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
               ),
             ),
 
+            // Budget Slider when active
+            if (_showBudgetSlider || _currentMode == QubeMode.itinerary)
+              _buildBudgetSliderBar(),
+
             // Messages List
             Expanded(
               child: ListView.builder(
@@ -807,7 +944,6 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: _messages.length + (_isLoading ? 1 : 0) + (_messages.length <= 1 ? 1 : 0),
                 itemBuilder: (context, index) {
-                  // Show Robot Hero Banner on top if fresh conversation
                   if (_messages.length <= 1 && index == 0) {
                     return _buildRobotHeroBanner();
                   }
@@ -826,7 +962,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
+                              color: AppColors.card(context),
                               borderRadius: const BorderRadius.only(
                                 topLeft: Radius.circular(4),
                                 topRight: Radius.circular(20),
@@ -838,7 +974,7 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
+                                  color: Colors.black.withValues(alpha: AppColors.isDark(context) ? 0.2 : 0.04),
                                   blurRadius: 8,
                                   offset: const Offset(0, 3),
                                 ),
@@ -875,7 +1011,6 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                     ).animate().fadeIn(duration: 200.ms);
                   }
 
-
                   return _buildMessage(_messages[msgIndex]);
                 },
               ),
@@ -901,10 +1036,13 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
+                color: AppColors.card(context),
+                border: Border(
+                  top: BorderSide(color: AppColors.border(context)),
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: Colors.black.withValues(alpha: AppColors.isDark(context) ? 0.2 : 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -4),
                   ),
@@ -916,17 +1054,32 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
                     Expanded(
                       child: TextField(
                         controller: _promptController,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.text(context),
+                        ),
                         decoration: InputDecoration(
                           hintText: _currentMode == QubeMode.itinerary
                               ? 'e.g. Plan a 3-day luxury trip to Goa...'
                               : 'Ask Qube: stays, campervans, rules, prices...',
-                          hintStyle: const TextStyle(fontSize: 13.5, color: AppColors.textMuted),
+                          hintStyle: TextStyle(
+                            fontSize: 13.5,
+                            color: AppColors.textSub(context).withValues(alpha: 0.7),
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide.none,
+                            borderSide: BorderSide(color: AppColors.border(context)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide(color: AppColors.border(context)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: const BorderSide(color: AppColors.primary),
                           ),
                           filled: true,
-                          fillColor: AppColors.surfaceLight,
+                          fillColor: AppColors.surface(context),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                         ),
                         onSubmitted: (_) => _sendPrompt(),
@@ -951,6 +1104,144 @@ class _QubePlannerScreenState extends State<QubePlannerScreen> with TickerProvid
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ExpandableDayTile extends StatefulWidget {
+  final Map<String, dynamic> day;
+
+  const _ExpandableDayTile({required this.day});
+
+  @override
+  State<_ExpandableDayTile> createState() => _ExpandableDayTileState();
+}
+
+class _ExpandableDayTileState extends State<_ExpandableDayTile> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final day = widget.day;
+    final dayNum = day['day'] ?? 1;
+    final activity = (day['activity'] ?? '').toString();
+    final details = (day['details'] ?? '').toString();
+    final morning = day['morning']?.toString();
+    final afternoon = day['afternoon']?.toString();
+    final evening = day['evening']?.toString();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface(context),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _expanded ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border(context),
+        ),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () {
+              AppMotion.tapLight();
+              setState(() => _expanded = !_expanded);
+            },
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Day $dayNum',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      activity,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: AppColors.text(context),
+                      ),
+                      maxLines: _expanded ? null : 1,
+                      overflow: _expanded ? null : TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Icon(
+                    _expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.textSub(context),
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_expanded) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Divider(height: 12, color: AppColors.border(context)),
+                  Text(
+                    details,
+                    style: TextStyle(
+                      color: AppColors.textSub(context),
+                      fontSize: 12.5,
+                      height: 1.35,
+                    ),
+                  ),
+                  if (morning != null || afternoon != null || evening != null) ...[
+                    const SizedBox(height: 10),
+                    if (morning != null)
+                      _buildTimeRow(context, '🌅 Morning', morning),
+                    if (afternoon != null)
+                      _buildTimeRow(context, '☀️ Afternoon', afternoon),
+                    if (evening != null)
+                      _buildTimeRow(context, '🌙 Evening', evening),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeRow(BuildContext context, String timeLabel, String content) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 85,
+            child: Text(
+              timeLabel,
+              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.primary),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              content,
+              style: TextStyle(fontSize: 12, color: AppColors.text(context)),
+            ),
+          ),
+        ],
       ),
     );
   }

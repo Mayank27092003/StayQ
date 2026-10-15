@@ -109,7 +109,7 @@ class _PropertyBasicInfoScreenState extends State<PropertyBasicInfoScreen> {
     }
   }
 
-  Widget _buildCounter(String label, int value, VoidCallback onDecrement, VoidCallback onIncrement) {
+  Widget _buildCounter(String label, int value, VoidCallback onDecrement, VoidCallback onIncrement, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
@@ -117,7 +117,7 @@ class _PropertyBasicInfoScreenState extends State<PropertyBasicInfoScreen> {
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
           ),
           Row(
             children: [
@@ -130,7 +130,7 @@ class _PropertyBasicInfoScreenState extends State<PropertyBasicInfoScreen> {
                 child: Text(
                   value.toString(),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary),
                 ),
               ),
               IconButton(
@@ -146,6 +146,7 @@ class _PropertyBasicInfoScreenState extends State<PropertyBasicInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final provider = Provider.of<HostOnboardingProvider>(context);
     final config = _getCategoryConfig(provider.propertyType);
 
@@ -171,42 +172,42 @@ class _PropertyBasicInfoScreenState extends State<PropertyBasicInfoScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             'Basic Info',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
               letterSpacing: -0.5,
             ),
           ).animate().fadeIn().slideX(),
           const SizedBox(height: 6),
           Text(
             'Provide the core details specific to your ${provider.propertyType.replaceAll('_', ' ').toLowerCase()}.',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: AppColors.textSecondary,
+              color: isDark ? Colors.white70 : AppColors.textSecondary,
             ),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 24),
 
           Text(
             config['titleLabel']!,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
+              color: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
             ),
             child: TextField(
               controller: _titleController,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? Colors.white : AppColors.textPrimary),
               decoration: InputDecoration(
                 hintText: config['titleHint'],
-                hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                hintStyle: TextStyle(color: isDark ? Colors.white38 : AppColors.textSecondary, fontSize: 14),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
@@ -214,24 +215,24 @@ class _PropertyBasicInfoScreenState extends State<PropertyBasicInfoScreen> {
           ),
           const SizedBox(height: 20),
 
-          const Text(
+          Text(
             'Detailed Description',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
+              color: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
             ),
             child: TextField(
               controller: _descController,
               maxLines: 5,
-              style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 14, height: 1.5, color: isDark ? Colors.white : AppColors.textPrimary),
               decoration: InputDecoration(
                 hintText: config['descHint'],
-                hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                hintStyle: TextStyle(color: isDark ? Colors.white38 : AppColors.textSecondary, fontSize: 13),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
@@ -242,12 +243,12 @@ class _PropertyBasicInfoScreenState extends State<PropertyBasicInfoScreen> {
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
+              color: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -261,23 +262,23 @@ class _PropertyBasicInfoScreenState extends State<PropertyBasicInfoScreen> {
                   }
                 }, () {
                   provider.updateBasicInfo(provider.title, provider.description, provider.bedrooms + 1, provider.bathrooms, provider.maxGuests);
-                }),
-                const Divider(color: AppColors.borderLight),
+                }, isDark),
+                Divider(color: isDark ? Colors.white12 : AppColors.borderLight),
                 _buildCounter(config['counter2']!, provider.bathrooms, () {
                   if (provider.bathrooms > 1) {
                     provider.updateBasicInfo(provider.title, provider.description, provider.bedrooms, provider.bathrooms - 1, provider.maxGuests);
                   }
                 }, () {
                   provider.updateBasicInfo(provider.title, provider.description, provider.bedrooms, provider.bathrooms + 1, provider.maxGuests);
-                }),
-                const Divider(color: AppColors.borderLight),
+                }, isDark),
+                Divider(color: isDark ? Colors.white12 : AppColors.borderLight),
                 _buildCounter(config['counter3']!, provider.maxGuests, () {
                   if (provider.maxGuests > 1) {
                     provider.updateBasicInfo(provider.title, provider.description, provider.bedrooms, provider.bathrooms, provider.maxGuests - 1);
                   }
                 }, () {
                   provider.updateBasicInfo(provider.title, provider.description, provider.bedrooms, provider.bathrooms, provider.maxGuests + 1);
-                }),
+                }, isDark),
               ],
             ),
           ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),

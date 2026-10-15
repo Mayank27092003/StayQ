@@ -23,12 +23,12 @@ class HomeBentoBox extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Explore StayQ',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
+                  color: AppColors.text(context),
                   letterSpacing: -0.5,
                 ),
               ),
@@ -82,7 +82,7 @@ class HomeBentoBox extends StatelessWidget {
                     Image.asset(
                       'assets/images/campervan_himalaya.jpg',
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Image.asset(
+                      errorBuilder: (_, _, _) => Image.asset(
                         'assets/images/campervan_wide_8k.jpg',
                         fit: BoxFit.cover,
                       ),
@@ -236,7 +236,7 @@ class HomeBentoBox extends StatelessWidget {
                           Image.asset(
                             'assets/images/real_camping.jpg',
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Image.asset(
+                            errorBuilder: (_, _, _) => Image.asset(
                               'assets/images/cabin_1.jpg',
                               fit: BoxFit.cover,
                             ),
@@ -464,7 +464,7 @@ class HomeBentoBox extends StatelessWidget {
                     Image.asset(
                       'assets/images/real_villa.jpg',
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Image.asset(
+                      errorBuilder: (_, _, _) => Image.asset(
                         'assets/images/villa_1.jpg',
                         fit: BoxFit.cover,
                       ),

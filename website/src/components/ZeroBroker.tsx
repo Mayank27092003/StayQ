@@ -83,7 +83,7 @@ export function ZeroBroker() {
                 <img
                   className="split__host-img"
                   src="/images/real_zero_broker_living.jpg"
-                  alt="Modern zero-brokerage designer apartment"
+                  alt="Modern Zero-Brokerage Designer Rental Apartment in India by Stay Q — 0% Commission"
                   loading="lazy"
                 />
                 <div className="split__host-gradient" aria-hidden="true" />

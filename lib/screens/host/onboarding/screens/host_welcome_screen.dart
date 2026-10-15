@@ -47,12 +47,12 @@ class HostWelcomeScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Host with StayQ',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
+                          color: isDark ? Colors.white : AppColors.textPrimary,
                           letterSpacing: -0.5,
                           height: 1.1,
                         ),
@@ -82,10 +82,10 @@ class HostWelcomeScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E1C2A) : Colors.white,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.borderLight.withValues(alpha: 0.8)),
+                  border: Border.all(color: isDark ? Colors.white12 : AppColors.borderLight.withValues(alpha: 0.8)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -95,32 +95,35 @@ class HostWelcomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    const Text(
+                    Text(
                       'Listing your space takes under 3 minutes',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
                       ),
                     ),
-                    const Divider(height: 1),
+                    Divider(height: 1, color: isDark ? Colors.white12 : AppColors.borderLight),
                     _buildStepItem(
                       '1',
                       'Pick Your Property Category',
                       'Villas, Boutique Stays, Campsites, RVs, or Homes.',
                       const Color(0xFF6366F1),
+                      isDark,
                     ),
                     _buildStepItem(
                       '2',
                       'Add Location & Nightly Rate',
                       'Interactive Google Maps pinpoint & pricing.',
                       const Color(0xFF10B981),
+                      isDark,
                     ),
                     _buildStepItem(
                       '3',
                       '1-Click Bank Verification',
                       'Instant Cashfree Secure ID validation.',
                       const Color(0xFFF59E0B),
+                      isDark,
                     ),
                   ],
                 ),
@@ -175,7 +178,7 @@ class HostWelcomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStepItem(String number, String title, String subtitle, Color color) {
+  Widget _buildStepItem(String number, String title, String subtitle, Color color, bool isDark) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -200,12 +203,12 @@ class HostWelcomeScreen extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.textPrimary),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary),
               ),
             ],
           ),

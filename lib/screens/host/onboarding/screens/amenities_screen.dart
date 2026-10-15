@@ -38,12 +38,12 @@ class AmenitiesScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Amenities & Vibe',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -65,9 +65,9 @@ class AmenitiesScreen extends StatelessWidget {
                 ],
               ).animate().fadeIn().slideX(),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Select all amenities available at your stay to give guests an accurate preview.',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : AppColors.textSecondary),
               ).animate().fadeIn(delay: 100.ms).slideX(),
               
               const SizedBox(height: 24),
@@ -76,7 +76,7 @@ class AmenitiesScreen extends StatelessWidget {
               for (final cat in categories) ...[
                 Text(
                   cat == 'Comfort' ? 'Comfort & Linen' : cat,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
                 ),
                 const SizedBox(height: 12),
                 Wrap(
@@ -131,7 +131,7 @@ class AmenitiesScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                color: isSelected ? AppColors.primary : (isDark ? Colors.white : AppColors.textPrimary),
                               ),
                             ),
                           ],
@@ -143,9 +143,9 @@ class AmenitiesScreen extends StatelessWidget {
                 const SizedBox(height: 24),
               ],
 
-              const Text(
+              Text(
                 'Property Experience Tags',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
               ),
               const SizedBox(height: 12),
 
@@ -183,7 +183,7 @@ class AmenitiesScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                              color: isSelected ? const Color(0xFF10B981) : AppColors.textPrimary,
+                              color: isSelected ? const Color(0xFF10B981) : (isDark ? Colors.white : AppColors.textPrimary),
                             ),
                           ),
                         ],

@@ -198,11 +198,11 @@ class _PropertyPhotosScreenState extends State<PropertyPhotosScreen> {
                             ),
                           ),
                           const SizedBox(height: 3),
-                          const Text(
+                          Text(
                             'Add photos for each area of your property.',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.textSecondary,
+                              color: isDark ? Colors.white60 : AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -415,7 +415,7 @@ class _PropertyPhotosScreenState extends State<PropertyPhotosScreen> {
                             : 'Tap + to add photos',
                         style: TextStyle(
                           fontSize: 11,
-                          color: hasPhotos ? AppColors.primary : AppColors.textSecondary,
+                          color: hasPhotos ? AppColors.primary : (isDark ? Colors.white60 : AppColors.textSecondary),
                           fontWeight: hasPhotos ? FontWeight.w600 : FontWeight.w400,
                         ),
                       ),
@@ -480,7 +480,7 @@ class _PropertyPhotosScreenState extends State<PropertyPhotosScreen> {
                     children: [
                       Icon(
                         Icons.add_photo_alternate_outlined,
-                        color: AppColors.textSecondary.withValues(alpha: 0.5),
+                        color: isDark ? Colors.white38 : AppColors.textSecondary.withValues(alpha: 0.5),
                         size: 28,
                       ),
                       const SizedBox(height: 4),
@@ -488,7 +488,7 @@ class _PropertyPhotosScreenState extends State<PropertyPhotosScreen> {
                         'Tap to add ${category.label.toLowerCase()} photos',
                         style: TextStyle(
                           fontSize: 11,
-                          color: AppColors.textSecondary.withValues(alpha: 0.6),
+                          color: isDark ? Colors.white60 : AppColors.textSecondary.withValues(alpha: 0.6),
                           fontWeight: FontWeight.w500,
                         ),
                       ),

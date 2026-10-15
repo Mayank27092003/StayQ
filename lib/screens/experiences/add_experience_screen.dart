@@ -192,11 +192,6 @@ class _AddExperienceScreenState extends State<AddExperienceScreen> with SingleTi
     );
   }
 
-  // Qube AI Assistance Engine for Experiences
-  Future<void> _invokeQubeMagic(int step) async {
-    _showQubeInterviewSheet(context, Theme.of(context).brightness == Brightness.dark);
-  }
-
   Future<void> _pickMedia() async {
     AppMotion.tapSelection();
     final ImagePicker picker = ImagePicker();

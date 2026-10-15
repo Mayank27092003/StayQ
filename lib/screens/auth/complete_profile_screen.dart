@@ -11,7 +11,7 @@ import '../../navigation/app_router.dart';
 import '../../services/email_verification_service.dart';
 
 class CompleteProfileScreen extends StatefulWidget {
-  const CompleteProfileScreen({Key? key}) : super(key: key);
+  const CompleteProfileScreen({super.key});
 
   @override
   State<CompleteProfileScreen> createState() => _CompleteProfileScreenState();
@@ -22,6 +22,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   
   late TextEditingController _nameController;
   late TextEditingController _emailController;
+  late TextEditingController _cityController;
   late TextEditingController _phoneController;
   
   bool _isEmailLocked = false;
@@ -37,6 +38,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     
     _nameController = TextEditingController(text: provider.userName);
     _emailController = TextEditingController(text: provider.userEmail);
+    _cityController = TextEditingController(text: provider.userLocation);
     
     // Auto-fill phone if available from provider (Firebase Auth)
     String rawPhone = provider.userPhone;
@@ -56,6 +58,15 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     if (_phoneController.text.isNotEmpty) {
       _isPhoneLocked = true;
     }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _cityController.dispose();
+    _phoneController.dispose();
+    super.dispose();
   }
 
   Future<void> _verifyEmail() async {
@@ -109,13 +120,16 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         _isEmailVerified = true;
       }
 
+      if (!mounted) return;
       final provider = context.read<AppProvider>();
       
       try {
         final cleanName = _nameController.text.trim();
+        final cleanCity = _cityController.text.trim();
         await provider.saveProfileDetails(
           name: cleanName.isNotEmpty ? cleanName : 'Stay Q Traveler',
           email: email,
+          location: cleanCity.isNotEmpty ? cleanCity : null,
           phone: _fullNumber.isNotEmpty ? _fullNumber : _phoneController.text.trim(),
           profileImage: _pickedImage,
           isEmailVerified: _isEmailVerified,
@@ -147,14 +161,16 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) {
+    final isDark = AppColors.isDark(context);
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: isDark ? const Color(0xFF1A1828) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.border(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
             blurRadius: 10,
             spreadRadius: 1,
           )
@@ -171,11 +187,11 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
             style: TextStyle(
               fontSize: 16, 
               fontWeight: FontWeight.bold, 
-              color: isLocked ? AppColors.textSecondary : AppColors.textPrimary
+              color: isLocked ? AppColors.textSub(context) : AppColors.text(context),
             ),
             decoration: InputDecoration(
               labelText: label,
-              labelStyle: TextStyle(fontSize: 14, color: AppColors.textSecondary.withValues(alpha: 0.8)),
+              labelStyle: TextStyle(fontSize: 14, color: AppColors.textSub(context)),
               prefixIcon: Icon(icon, color: isLocked ? Colors.green.shade400 : AppColors.primary),
               suffixIcon: customSuffix ?? (isLocked ? Icon(Icons.verified_user, color: Colors.green.shade400) : null),
               filled: true,
@@ -193,6 +209,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -206,12 +223,15 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
           // Background Gradient matching gateway & OTP
           Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppColors.primaryDark, AppColors.background],
+                  colors: [
+                    isDark ? const Color(0xFF1E1035) : AppColors.primaryDark,
+                    AppColors.bg(context),
+                  ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  stops: [0.0, 0.4], // Blend gracefully into background
+                  stops: const [0.0, 0.4], // Blend gracefully into background
                 ),
               ),
             ),
@@ -276,14 +296,14 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                           ),
                           const SizedBox(height: 40),
                           
-                          const Text(
+                          Text(
                             "Just one more step!",
-                            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.textPrimary, height: 1.2),
+                            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.text(context), height: 1.2),
                           ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
                           const SizedBox(height: 12),
-                          const Text(
+                          Text(
                             "Complete your basic details to start exploring premium stays and experiences.",
-                            style: TextStyle(fontSize: 16, color: AppColors.textSecondary, height: 1.5),
+                            style: TextStyle(fontSize: 16, color: AppColors.textSub(context), height: 1.5),
                           ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
                           const SizedBox(height: 40),
                           
@@ -291,7 +311,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                             controller: _nameController,
                             label: "Full Name",
                             icon: Icons.person_rounded,
-                            validator: (val) => val == null || val.isEmpty ? "Please enter your name" : null,
+                            validator: (val) => val == null || val.trim().isEmpty ? "Please enter your name" : null,
                           ),
                           const SizedBox(height: 20),
                           
@@ -334,6 +354,14 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                             },
                           ),
                           const SizedBox(height: 20),
+
+                          _buildTextField(
+                            controller: _cityController,
+                            label: "City / Location",
+                            icon: Icons.location_city_rounded,
+                            validator: (val) => val == null || val.trim().isEmpty ? "Please enter your city" : null,
+                          ),
+                          const SizedBox(height: 20),
                           
                           if (_isPhoneLocked) 
                             _buildTextField(
@@ -345,12 +373,12 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                           else
                             Container(
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.1),
+                                color: isDark ? const Color(0xFF1A1828) : Colors.white,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                border: Border.all(color: AppColors.border(context)),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.05),
+                                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                                     blurRadius: 10,
                                     spreadRadius: 1,
                                   )
@@ -366,14 +394,15 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                                       controller: _phoneController,
                                       decoration: InputDecoration(
                                         labelText: 'Phone Number',
-                                        labelStyle: TextStyle(fontSize: 14, color: AppColors.textSecondary.withValues(alpha: 0.8)),
+                                        labelStyle: TextStyle(fontSize: 14, color: AppColors.textSub(context).withValues(alpha: 0.8)),
                                         border: InputBorder.none,
                                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                                       ),
                                       initialCountryCode: 'IN',
                                       dropdownIconPosition: IconPosition.trailing,
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary, letterSpacing: 2),
-                                      dropdownTextStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                      dropdownIcon: Icon(Icons.arrow_drop_down, color: AppColors.text(context)),
+                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.text(context), letterSpacing: 2),
+                                      dropdownTextStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                                       onChanged: (phone) {
                                         _fullNumber = phone.completeNumber;
                                       },

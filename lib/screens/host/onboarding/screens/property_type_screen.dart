@@ -123,13 +123,13 @@ class PropertyTypeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'How will guests experience your RV?',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
                         letterSpacing: -0.3,
                       ),
                     ),
@@ -137,9 +137,9 @@ class PropertyTypeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Select your vehicle rental or stay format:',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : AppColors.textSecondary),
               ),
               const SizedBox(height: 20),
 
@@ -255,13 +255,13 @@ class PropertyTypeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'What type of campsite are you hosting?',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
                         letterSpacing: -0.3,
                       ),
                     ),
@@ -269,9 +269,9 @@ class PropertyTypeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Select your campsite format:',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : AppColors.textSecondary),
               ),
               const SizedBox(height: 20),
 
@@ -390,10 +390,10 @@ class PropertyTypeScreen extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'How will guests experience your ${category['title']}?',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
                         letterSpacing: -0.3,
                       ),
                     ),
@@ -401,9 +401,9 @@ class PropertyTypeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Select the accommodation type you are offering:',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : AppColors.textSecondary),
               ),
               const SizedBox(height: 20),
 
@@ -468,7 +468,7 @@ class PropertyTypeScreen extends StatelessWidget {
               : (isDark ? const Color(0xFF222033) : AppColors.surfaceLight),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.borderLight,
+            color: isSelected ? AppColors.primary : (isDark ? Colors.white12 : AppColors.borderLight),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -496,13 +496,13 @@ class PropertyTypeScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                      color: isSelected ? AppColors.primary : (isDark ? Colors.white : AppColors.textPrimary),
                     ),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3),
+                    style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.textSecondary, height: 1.3),
                   ),
                 ],
               ),
@@ -526,21 +526,21 @@ class PropertyTypeScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'What are you listing?',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
               letterSpacing: -0.5,
             ),
           ).animate().fadeIn().slideX(),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Select the category that best describes your accommodation.',
             style: TextStyle(
               fontSize: 14,
-              color: AppColors.textSecondary,
+              color: isDark ? Colors.white70 : AppColors.textSecondary,
             ),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 24),

@@ -14,7 +14,7 @@ class WishlistScreen extends StatelessWidget {
     final wishlisted = provider.wishlistedStays;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         title: const Text('Wishlist', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
@@ -23,16 +23,16 @@ class WishlistScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.favorite_outline_rounded, size: 64, color: AppColors.textMuted.withValues(alpha: 0.5)),
+                  Icon(Icons.favorite_outline_rounded, size: 64, color: AppColors.textSub(context).withValues(alpha: 0.5)),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Your wishlist is empty',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Save your favorite stays for later',
-                    style: TextStyle(color: AppColors.textSecondary),
+                    style: TextStyle(color: AppColors.textSub(context)),
                   ),
                 ],
               ),

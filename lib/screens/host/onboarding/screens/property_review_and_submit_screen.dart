@@ -118,10 +118,10 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
           const SizedBox(height: 6),
           Text(
             provider.isAddingSubsequentProperty ? 'Submit for Property Application' : 'Apply for Host Application',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
               letterSpacing: -0.5,
             ),
           ).animate().fadeIn().slideX(),
@@ -130,7 +130,7 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
             provider.isAddingSubsequentProperty
                 ? 'Review your listing specifications before submitting for property verification and activation.'
                 : 'Welcome to Stay Q! Please review your credentials and property details to apply for host partnership:',
-            style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 13.5, color: isDark ? Colors.white70 : AppColors.textSecondary),
           ).animate().fadeIn(delay: 100.ms).slideX(),
           const SizedBox(height: 24),
 
@@ -225,7 +225,7 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
                       const SizedBox(height: 12),
                       Text(
                         provider.title.isNotEmpty ? provider.title : 'Untitled StayQ Listing',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppColors.textPrimary),
                       ),
                       const SizedBox(height: 6),
                       Row(
@@ -237,14 +237,14 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
                               provider.city.isNotEmpty
                                   ? '${provider.landmark.isNotEmpty ? "${provider.landmark}, " : ""}${provider.city}, ${provider.state} ${provider.pincode.isNotEmpty ? "(${provider.pincode})" : ""}'
                                   : 'Location Pending',
-                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                              style: TextStyle(fontSize: 13, color: isDark ? Colors.white60 : AppColors.textSecondary, fontWeight: FontWeight.w600),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      const Divider(height: 24),
+                      Divider(height: 24, color: isDark ? Colors.white12 : null),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -261,7 +261,7 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
                                           : provider.propertyType == 'CAMPING_SITE'
                                               ? 'Starting Pitch Rate'
                                               : 'Starting Rate',
-                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                  style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : AppColors.textSecondary),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
@@ -289,7 +289,7 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
                                           : provider.propertyType == 'CAMPING_SITE'
                                               ? 'Campsite Capacity'
                                               : 'Capacity',
-                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                  style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : AppColors.textSecondary),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
@@ -301,7 +301,7 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
                                               ? '${provider.maxGuests} Campers • ${provider.roomCategories.isNotEmpty ? provider.roomCategories.length : 1} Pitches'
                                               : '${provider.maxGuests} Guests • ${provider.bedrooms} Rooms',
                                   textAlign: TextAlign.right,
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: isDark ? Colors.white : AppColors.textPrimary),
                                 ),
                               ],
                             ),
@@ -387,11 +387,18 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
                                 children: [
                                   Text(
                                     r.categoryName,
-                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                      color: isDark ? Colors.white : AppColors.textPrimary,
+                                    ),
                                   ),
                                   Text(
                                     '${r.quantity} Unit • ${r.bedType} • ₹${r.pricePerNight.toInt()}/night',
-                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark ? Colors.white60 : AppColors.textSecondary,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -496,11 +503,18 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
                             children: [
                               Text(
                                 r.categoryName,
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? Colors.white : AppColors.textPrimary,
+                                ),
                               ),
                               Text(
                                 '${r.quantity} Unit • ${r.bedType} • ₹${r.pricePerNight.toInt()}/night',
-                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? Colors.white60 : AppColors.textSecondary,
+                                ),
                               ),
                             ],
                           ),
@@ -728,11 +742,18 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
                     children: [
                       Text(
                         provider.upiId.isNotEmpty ? 'UPI ID: ${provider.upiId}' : 'Bank A/C: ${_maskAccount(provider.accountNumber)}',
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : AppColors.textPrimary,
+                        ),
                       ),
                       Text(
                         provider.ifscCode.isNotEmpty ? 'IFSC: ${provider.ifscCode}' : 'Direct Bank Payout',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white60 : AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -802,6 +823,48 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
 
           const SizedBox(height: 20),
 
+          // Legal Declaration Confirmation Tile
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1C2A) : AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: provider.isLegalDeclarationAccepted
+                    ? const Color(0xFF10B981)
+                    : (isDark ? Colors.white24 : AppColors.borderLight),
+                width: provider.isLegalDeclarationAccepted ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Checkbox(
+                  value: provider.isLegalDeclarationAccepted,
+                  activeColor: AppColors.primary,
+                  onChanged: (val) {
+                    provider.updatePropertyDocuments(declarationAccepted: val ?? true);
+                  },
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'I certify that I am authorized under Indian Law to host guests at this property, and all listing specifications and submitted credentials are accurate.',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: isDark ? Colors.white70 : AppColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ).animate().fadeIn(delay: 390.ms),
+
+          const SizedBox(height: 20),
+
           // ══════════════════════════════════════════════════════════════
           // SUBMIT LISTING BUTTON
           // ══════════════════════════════════════════════════════════════
@@ -864,19 +927,25 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
   }
 
   Widget _buildSectionHeader(String title, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         Icon(icon, size: 18, color: AppColors.primary),
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white : AppColors.textPrimary,
+          ),
         ),
       ],
     );
   }
 
   Widget _buildInfoRow(String label, String value, {bool isHighlighted = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.5),
       child: Row(
@@ -886,7 +955,11 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
             flex: 4,
             child: Text(
               label,
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? Colors.white60 : AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -898,7 +971,9 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: isHighlighted ? AppColors.primary : AppColors.textPrimary,
+                color: isHighlighted
+                    ? AppColors.primary
+                    : (isDark ? Colors.white : AppColors.textPrimary),
               ),
             ),
           ),
@@ -908,6 +983,7 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
   }
 
   Widget _buildDocRow(String label, bool isAttached) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.5),
       child: Row(
@@ -915,7 +991,11 @@ class _PropertyReviewAndSubmitScreenState extends State<PropertyReviewAndSubmitS
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : AppColors.textPrimary,
+              ),
             ),
           ),
           const SizedBox(width: 8),

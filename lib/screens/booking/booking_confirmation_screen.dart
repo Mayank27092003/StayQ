@@ -60,6 +60,8 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
   Widget build(BuildContext context) {
     final stay = widget.stay;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -69,7 +71,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.bg(context),
         body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -84,26 +86,26 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
 
               const SizedBox(height: 16),
 
-              const Text(
+              Text(
                 'Your escape is\nbooked!',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 28,
                   height: 1.15,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color: AppColors.text(context),
                 ),
               ).animate().fade(duration: AppMotion.extended).slideY(begin: 0.2, end: 0),
 
               const SizedBox(height: 10),
 
-              const Text(
+              Text(
                 'Your booking is confirmed. Keep this booking reference for your stay.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.5,
-                  color: AppColors.textSecondary,
+                  color: AppColors.textSub(context),
                 ),
               ),
 
@@ -112,9 +114,9 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
               // Summary Card
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.card(context),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.borderLight),
+                  border: Border.all(color: AppColors.border(context)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,7 +131,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                                 height: 180,
                                 width: double.infinity,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(height: 180, color: AppColors.surfaceLight),
+                                errorBuilder: (_, _, _) => Container(height: 180, color: AppColors.card(context)),
                               )
                             : stay.imageUrls.isNotEmpty 
                                 ? Image.asset(
@@ -137,9 +139,9 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                                     height: 180,
                                     width: double.infinity,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(height: 180, color: AppColors.surfaceLight),
+                                    errorBuilder: (_, _, _) => Container(height: 180, color: AppColors.card(context)),
                                   )
-                                : Container(height: 180, color: AppColors.surfaceLight),
+                                : Container(height: 180, color: AppColors.card(context)),
                       ),
                     ),
                     Padding(
@@ -162,7 +164,9 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: stay.isStayingWithHost ? const Color(0xFFEFF6FF) : const Color(0xFFECFDF5),
+                                  color: stay.isStayingWithHost
+                                      ? (isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.3) : const Color(0xFFEFF6FF))
+                                      : (isDark ? const Color(0xFF064E3B).withValues(alpha: 0.3) : const Color(0xFFECFDF5)),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -170,7 +174,9 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: stay.isStayingWithHost ? const Color(0xFF2563EB) : const Color(0xFF059669),
+                                    color: stay.isStayingWithHost
+                                        ? (isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB))
+                                        : (isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669)),
                                   ),
                                 ),
                               ),
@@ -179,31 +185,37 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                           const SizedBox(height: 4),
                           Text(
                             stay.title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
+                              color: AppColors.text(context),
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             stay.location,
-                            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            style: TextStyle(fontSize: 13, color: AppColors.textSub(context)),
                           ),
                           const SizedBox(height: 16),
                           Row(
                             children: [
-                              const Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.textSecondary),
+                              Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.textSub(context)),
                               const SizedBox(width: 10),
-                              Text('${DateFormat('MMM d').format(widget.selectedDates.start)} — ${DateFormat('MMM d, yyyy').format(widget.selectedDates.end)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                              Text(
+                                '${DateFormat('MMM d').format(widget.selectedDates.start)} — ${DateFormat('MMM d, yyyy').format(widget.selectedDates.end)}',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text(context)),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 10),
                           Row(
                             children: [
-                              const Icon(Icons.people_outline_rounded, size: 18, color: AppColors.textSecondary),
+                              Icon(Icons.people_outline_rounded, size: 18, color: AppColors.textSub(context)),
                               const SizedBox(width: 10),
-                              Text('${widget.guests} Guests', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                              Text(
+                                '${widget.guests} Guests',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text(context)),
+                              ),
                             ],
                           ),
                         ],
@@ -228,15 +240,15 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.card(context),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.borderLight),
+                    border: Border.all(color: AppColors.border(context)),
                   ),
                   child: Column(
                     children: [
-                      const Text(
+                      Text(
                         'CONFIRMATION CODE',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textMuted, letterSpacing: 1.2),
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSub(context), letterSpacing: 1.2),
                       ),
                       const SizedBox(height: 6),
                       Text(
@@ -244,7 +256,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary, letterSpacing: 2.0),
                       ),
                       const SizedBox(height: 4),
-                      const Text('Tap to copy code', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                      Text('Tap to copy code', style: TextStyle(fontSize: 11, color: AppColors.textSub(context))),
                     ],
                   ),
                 ),
@@ -282,9 +294,9 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
+                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                  border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,14 +314,14 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                     const SizedBox(height: 10),
                     Text(
                       stay.location,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       stay.isStayingWithHost
                           ? 'Host In-Person Check-in • Hosted by ${stay.hostName.isNotEmpty ? stay.hostName : "Host"}'
                           : (widget.booking.accessPin?.isNotEmpty == true ? 'Access PIN: ${widget.booking.accessPin}' : 'Access instructions will be provided by your host.'),
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
                     ),
                   ],
                 ),
@@ -355,6 +367,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                 label: const Text('View in My Trips'),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 54),
+                  side: BorderSide(color: AppColors.border(context)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 onPressed: () {
@@ -364,8 +377,8 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
               ),
               const SizedBox(height: 12),
               TextButton.icon(
-                icon: const Icon(Icons.home_rounded, size: 18, color: AppColors.textSecondary),
-                label: const Text('Back to Explore', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
+                icon: Icon(Icons.home_rounded, size: 18, color: AppColors.textSub(context)),
+                label: Text('Back to Explore', style: TextStyle(color: AppColors.textSub(context), fontWeight: FontWeight.bold)),
                 onPressed: () {
                   context.read<AppProvider>().setTabIndex(0);
                   Navigator.pushNamedAndRemoveUntil(context, AppRoutes.mainShell, (route) => false);

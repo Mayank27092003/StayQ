@@ -43,6 +43,7 @@ class BookingModel {
   });
 
   int get totalNights => checkOut.difference(checkIn).inDays;
+  String get propertyId => stay.id;
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
     final raw = (json['status']?.toString() ?? 'pending_payment').toLowerCase();

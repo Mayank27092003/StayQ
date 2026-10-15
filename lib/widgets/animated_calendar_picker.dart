@@ -116,12 +116,12 @@ class _AnimatedCalendarPickerState extends State<AnimatedCalendarPicker> with Si
           children: [
             Text(
               '${_getMonthName(_displayedMonth.month)} ${_displayedMonth.year}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.text(context)),
             ),
             Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.chevron_left_rounded),
+                  icon: Icon(Icons.chevron_left_rounded, color: AppColors.text(context)),
                   onPressed: () {
                     setState(() {
                       _displayedMonth = DateTime(_displayedMonth.year, _displayedMonth.month - 1);
@@ -129,7 +129,7 @@ class _AnimatedCalendarPickerState extends State<AnimatedCalendarPicker> with Si
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.chevron_right_rounded),
+                  icon: Icon(Icons.chevron_right_rounded, color: AppColors.text(context)),
                   onPressed: () {
                     setState(() {
                       _displayedMonth = DateTime(_displayedMonth.year, _displayedMonth.month + 1);
@@ -217,10 +217,10 @@ class _AnimatedCalendarPickerState extends State<AnimatedCalendarPicker> with Si
                         fontSize: 13,
                         fontWeight: (isStart || isEnd || isInRange) ? FontWeight.bold : FontWeight.w500,
                         color: isBlocked 
-                            ? AppColors.borderLight // Grey out blocked dates
+                            ? AppColors.border(context) // Grey out blocked dates
                             : (isStart || isEnd)
                                 ? Colors.white
-                                : (isInRange ? AppColors.primary : AppColors.textPrimary),
+                                : (isInRange ? AppColors.primary : AppColors.text(context)),
                         decoration: isBlocked ? TextDecoration.lineThrough : null,
                       ),
                     ),
@@ -252,7 +252,7 @@ class _WeekdayLabel extends StatelessWidget {
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textMuted),
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSub(context)),
       ),
     );
   }

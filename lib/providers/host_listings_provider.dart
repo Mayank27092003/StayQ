@@ -12,9 +12,17 @@ class HostListingsProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   List<StayModel> _listings = [];
-  bool get _owned => !_disposed && _ownerId != null && FirebaseAuth.instance.currentUser?.uid == _ownerId;
+  bool get _owned {
+    if (_disposed) return false;
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUid != null) {
+      _ownerId = currentUid;
+      return true;
+    }
+    return _ownerId != null;
+  }
   void updateUserId(String? userId) {
-    if (_ownerId == userId) return;
+    if (_ownerId == userId && _listings.isNotEmpty) return;
     _ownerId = userId;
     if (userId != null) {
       fetchHostListings(userId);
@@ -31,14 +39,16 @@ class HostListingsProvider extends ChangeNotifier {
   @override
   void dispose() { _disposed = true; super.dispose(); }
   void _requireOwner(String hostId) {
-    if (!_owned || hostId != _ownerId) throw ApiException(401, 'Sign in to manage your listings.');
+    if (!_owned) throw ApiException(401, 'Sign in to manage your listings.');
   }
-  Future<void> fetchHostListings(String hostId) async {
-    if (!_owned || hostId != _ownerId) return;
+  Future<void> fetchHostListings([String? hostId]) async {
+    final effectiveHostId = hostId ?? _ownerId ?? FirebaseAuth.instance.currentUser?.uid;
+    if (effectiveHostId == null) return;
+    _ownerId = effectiveHostId;
     final request = ++_generation;
     _isLoading = true; _error = null; notifyListeners();
     try {
-      final response = await ApiClient.instance.get('/properties/host/${Uri.encodeComponent(hostId)}');
+      final response = await ApiClient.instance.get('/properties/host/${Uri.encodeComponent(effectiveHostId)}');
       if (!_owned || request != _generation) return;
       final records = response is List ? response : jsonMap(response)['properties'];
       if (records is! List) throw const FormatException('Invalid listings response.');
