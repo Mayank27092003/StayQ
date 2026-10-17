@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
+import EntityDetail360Drawer from "@/components/EntityDetail360Drawer";
 
 export default function HostManagement() {
   const [summary, setSummary] = useState<any>(null);
@@ -11,6 +12,8 @@ export default function HostManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('asc');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const getAdminConfig = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem("stayq_admin_token") : null;
@@ -171,12 +174,21 @@ export default function HostManagement() {
                 displayedHosts.map((host: any, i: number) => (
                   <tr key={i} className="hover:bg-surface-container-low transition-colors group h-[56px]">
                     <td className="px-md py-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center font-bold text-on-surface-variant text-xs uppercase">
+                      <div 
+                        onClick={() => {
+                          setSelectedEntityId(host.id);
+                          setDrawerOpen(true);
+                        }}
+                        className="flex items-center gap-3 cursor-pointer group/host"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center font-bold text-on-surface-variant text-xs uppercase group-hover/host:bg-purple-100 group-hover/host:text-[#5A31F4] transition-colors">
                           {host.displayName?.[0] || host.payoutAccountName?.[0] || host.email?.[0] || "?"}
                         </div>
                         <div>
-                          <div className="font-headline-md text-headline-md !text-[14px] !leading-snug">{host.displayName || host.payoutAccountName || "Unknown"}</div>
+                          <div className="font-headline-md text-headline-md !text-[14px] !leading-snug group-hover/host:text-[#5A31F4] transition-colors flex items-center gap-1">
+                            <span>{host.displayName || host.payoutAccountName || "Unknown"}</span>
+                            <span className="material-symbols-outlined text-[12px] opacity-0 group-hover/host:opacity-100">open_in_new</span>
+                          </div>
                           <div className="text-on-surface-variant text-[12px]">{host.email}</div>
                         </div>
                       </div>
@@ -187,7 +199,7 @@ export default function HostManagement() {
                       </span>
                     </td>
                     <td className="px-md py-2 text-right font-data-mono text-data-mono">{host._count?.properties || 0}</td>
-                    <td className="px-md py-2 text-right font-data-mono text-data-mono">${host.ytdRevenue || "0"}</td>
+                    <td className="px-md py-2 text-right font-data-mono text-data-mono">₹{host.ytdRevenue || "0"}</td>
                     <td className="px-md py-2">
                       <div className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-sm text-[#F59E0B]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
@@ -209,10 +221,20 @@ export default function HostManagement() {
                             <span className="material-symbols-outlined text-sm">more_vert</span>
                           </button>
                           {openMenuId === host.id && (
-                            <div className="absolute right-0 top-full mt-1 w-32 bg-surface rounded-md shadow-lg border border-outline-variant z-10 py-1">
-                              <button onClick={() => setOpenMenuId(null)} className="w-full text-left px-3 py-1.5 text-sm text-on-surface hover:bg-surface-container">View Profile</button>
-                              <button onClick={() => setOpenMenuId(null)} className="w-full text-left px-3 py-1.5 text-sm text-on-surface hover:bg-surface-container">Edit</button>
-                              <button onClick={() => setOpenMenuId(null)} className="w-full text-left px-3 py-1.5 text-sm text-error hover:bg-error/10">Suspend</button>
+                            <div className="absolute right-0 top-full mt-1 w-36 bg-surface rounded-md shadow-lg border border-outline-variant z-10 py-1">
+                              <button 
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setSelectedEntityId(host.id);
+                                  setDrawerOpen(true);
+                                }} 
+                                className="w-full text-left px-3 py-1.5 text-xs text-on-surface hover:bg-surface-container font-semibold text-[#5A31F4] flex items-center gap-1.5"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">visibility</span>
+                                <span>Inspect 360</span>
+                              </button>
+                              <button onClick={() => setOpenMenuId(null)} className="w-full text-left px-3 py-1.5 text-xs text-on-surface hover:bg-surface-container">Edit</button>
+                              <button onClick={() => setOpenMenuId(null)} className="w-full text-left px-3 py-1.5 text-xs text-error hover:bg-error/10">Suspend</button>
                             </div>
                           )}
                         </div>
@@ -242,6 +264,13 @@ export default function HostManagement() {
           </div>
         </div>
       </div>
+
+      {/* Host 360 Drawer */}
+      <EntityDetail360Drawer
+        entityId={selectedEntityId}
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
     </>
   );
 }

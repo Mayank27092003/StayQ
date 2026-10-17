@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
+import EntityDetail360Drawer from "@/components/EntityDetail360Drawer";
 
 interface RegisteredUser {
   id: string;
@@ -36,6 +37,8 @@ export default function RegisteredUsersPage() {
   const [sortField, setSortField] = useState<"createdAt" | "displayName" | "loyaltyPoints">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const getAdminConfig = () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("stayq_admin_token") : null;
@@ -372,12 +375,13 @@ export default function RegisteredUsersPage() {
                 <th className="py-3 px-4">Referral Code</th>
                 <th className="py-3 px-4">Loyalty</th>
                 <th className="py-3 px-4">Joined On</th>
+                <th className="py-3 px-4 text-right">360 Audit</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs text-slate-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <span className="material-symbols-outlined animate-spin text-2xl text-[#5A31F4]">
                         progress_activity
@@ -388,7 +392,7 @@ export default function RegisteredUsersPage() {
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-1">
                       <span className="material-symbols-outlined text-3xl text-slate-300">
                         person_search
@@ -491,6 +495,19 @@ export default function RegisteredUsersPage() {
                       <td className="py-3 px-4 text-slate-500 text-[11px]">
                         {formatDate(u.createdAt)}
                       </td>
+
+                      {/* 360 Audit */}
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => {
+                            setSelectedEntityId(u.id);
+                            setDrawerOpen(true);
+                          }}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#5A31F4] bg-[#5A31F4]/8 hover:bg-[#5A31F4]/15 transition-colors cursor-pointer"
+                        >
+                          Inspect 360
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
@@ -499,6 +516,13 @@ export default function RegisteredUsersPage() {
           </table>
         </div>
       </div>
+
+      {/* 360 Detail Drawer */}
+      <EntityDetail360Drawer
+        entityId={selectedEntityId}
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
     </div>
   );
 }

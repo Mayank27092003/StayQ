@@ -198,7 +198,21 @@ export default function Sidebar() {
               {canSeeRevenue && (
                 <Link className={getLinkClasses("/revenue")} href="/revenue">
                   <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/revenue") ? "'FILL' 1" : "normal" }}>payments</span>
-                  <span className="flex-1">Revenue &amp; Payouts</span>
+                  <span className="flex-1">Revenue Overview</span>
+                </Link>
+              )}
+              {canSeeRevenue && (
+                <Link className={getLinkClasses("/transactions")} href="/transactions">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/transactions") ? "'FILL' 1" : "normal" }}>receipt_long</span>
+                  <span className="flex-1">Transactions &amp; Premiums</span>
+                  <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-purple-50 text-[#5A31F4] border border-purple-200">Ledger</span>
+                </Link>
+              )}
+              {canSeeRevenue && (
+                <Link className={getLinkClasses("/payouts")} href="/payouts">
+                  <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: isActive("/payouts") ? "'FILL' 1" : "normal" }}>account_balance_wallet</span>
+                  <span className="flex-1">Escrow Payouts</span>
+                  <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">24h</span>
                 </Link>
               )}
               {canSeeRevenue && (

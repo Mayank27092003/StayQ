@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAdminAuth } from "@/context/AdminAuthContext";
+import GlobalSearchPalette from "./GlobalSearchPalette";
 
 interface AdminProfile {
   name: string;
@@ -21,6 +22,7 @@ const DEFAULT_ADMIN_PROFILE: AdminProfile = {
 export default function Header() {
   const { adminUser, logout } = useAdminAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchPaletteOpen, setIsSearchPaletteOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
@@ -85,21 +87,36 @@ export default function Header() {
     }, 900);
   };
 
+  // Keyboard shortcut for Cmd+K / Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsSearchPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
     <>
       <header className="h-14 w-full sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex justify-between items-center px-6">
         {/* Search Bar */}
         <div className="flex-1 max-w-md">
-          <div className="relative flex items-center w-full h-9 rounded-xl bg-slate-50 border border-slate-200/80 focus-within:bg-white focus-within:border-[#5A31F4]/50 focus-within:ring-2 focus-within:ring-[#5A31F4]/10 transition-all">
-            <span className="material-symbols-outlined absolute left-2.5 text-slate-400 text-[18px]">search</span>
-            <input 
-              className="w-full h-full bg-transparent border-none focus:outline-none pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 font-medium" 
-              placeholder="Search listings, bookings, hosts, tickets..." 
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsSearchPaletteOpen(true)}
+            className="w-full text-left relative flex items-center h-9 rounded-xl bg-slate-50 border border-slate-200/80 hover:bg-white hover:border-[#5A31F4]/50 hover:shadow-xs transition-all px-3 cursor-pointer group"
+          >
+            <span className="material-symbols-outlined text-slate-400 text-[18px] mr-2.5 group-hover:text-[#5A31F4] transition-colors">search</span>
+            <span className="text-xs text-slate-400 font-medium flex-1">
+              Search by phone, email, name, order ID...
+            </span>
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 px-2 py-0.5 text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 rounded-md">
+              <span className="text-[11px]">⌘</span>K
+            </kbd>
+          </button>
         </div>
         
         {/* Trailing Actions */}
@@ -340,6 +357,12 @@ export default function Header() {
           </div>
         </div>
       )}
+
+      {/* Global Search & 360 Command Palette */}
+      <GlobalSearchPalette
+        isOpen={isSearchPaletteOpen}
+        onClose={() => setIsSearchPaletteOpen(false)}
+      />
     </>
   );
 }

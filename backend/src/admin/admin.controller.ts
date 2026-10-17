@@ -118,4 +118,39 @@ export class AdminController {
   getAllBookings() {
     return this.adminService.getAllBookings();
   }
+
+  @Get('users/:id/360')
+  getUser360(@Param('id') id: string) {
+    return this.adminService.getUser360(id);
+  }
+
+  @Get('hosts/:id/360')
+  getHost360(@Param('id') id: string) {
+    return this.adminService.getHost360(id);
+  }
+
+  @Post('users/:id/grant-pro')
+  grantHostPro(
+    @Param('id') id: string,
+    @Body('days') days: number,
+    @Body('planId') planId: string,
+    @CurrentUser('id') adminId: string,
+  ) {
+    return this.adminService.grantHostPro(id, days, planId, adminId);
+  }
+
+  @Post('users/:id/freeze')
+  freezeAccount(
+    @Param('id') id: string,
+    @Body('freeze') freeze: boolean,
+    @Body('reason') reason: string,
+    @CurrentUser('id') adminId: string,
+  ) {
+    return this.adminService.freezeAccount(id, freeze, reason, adminId);
+  }
+
+  @Get('live-activity')
+  getLiveActivity() {
+    return this.adminService.getLiveActivity();
+  }
 }

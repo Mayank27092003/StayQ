@@ -57,11 +57,20 @@ import { AdminExportController } from './export/admin-export.controller';
 import { AdminExportService } from './export/admin-export.service';
 import { AdminConversationsController } from './conversations/admin-conversations.controller';
 import { AdminConversationsService } from './conversations/admin-conversations.service';
+import { AdminSearchController } from './search/admin-search.controller';
+import { AdminSearchService } from './search/admin-search.service';
+import { AdminTransactionsController } from './transactions/admin-transactions.controller';
+import { AdminTransactionsService } from './transactions/admin-transactions.service';
+import { AdminPayoutsController } from './payouts/admin-payouts.controller';
+import { AdminPayoutsService } from './payouts/admin-payouts.service';
 
 @Module({
   imports: [PrismaModule, NotificationsModule, PaymentsModule],
   controllers: [
     AdminController,
+    AdminSearchController,
+    AdminTransactionsController,
+    AdminPayoutsController,
     AdminStaffController,
     AdminPromotionsController,
     AdminSupportController,
@@ -102,6 +111,9 @@ import { AdminConversationsService } from './conversations/admin-conversations.s
     AdminQubeService,
     AdminExportService,
     AdminConversationsService,
+    AdminSearchService,
+    AdminTransactionsService,
+    AdminPayoutsService,
   ],
   exports: [AdminStaffService, AdminExportService],
 })
