@@ -65,6 +65,7 @@ export default function NotificationsCenter() {
   const [audience, setAudience] = useState("All Active Users (Hosts & Guests)");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
   const fetchBroadcasts = async () => {
@@ -96,6 +97,7 @@ export default function NotificationsCenter() {
     setTitle(tmpl.title);
     setMessage(tmpl.message);
     setAudience(tmpl.audience);
+    setImageUrl("");
     setChannels({
       push: tmpl.channel.includes("push"),
       sms: tmpl.channel.includes("sms"),
@@ -135,6 +137,7 @@ export default function NotificationsCenter() {
         audience: audienceKey,
         title: title.trim(),
         message: message.trim(),
+        imageUrl: imageUrl.trim() || undefined,
         channels: selectedChannels,
       });
 
@@ -144,6 +147,7 @@ export default function NotificationsCenter() {
       });
       setTitle("");
       setMessage("");
+      setImageUrl("");
       fetchBroadcasts();
     } catch (err: any) {
       console.error(err);
@@ -374,6 +378,23 @@ export default function NotificationsCenter() {
                   </div>
                 </div>
 
+                {/* Banner / Image URL */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    5. Banner / Image URL (Optional Rich Push)
+                  </label>
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="https://... (JPG/PNG promotional banner)"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-none focus:border-primary focus:bg-white transition-all placeholder:text-slate-400"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Adds an expanded rich image card to Android/iOS notification drawers.
+                  </p>
+                </div>
+
                 <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                   <div className="text-[11px] text-slate-400 font-medium">
                     ⚡ Instant delivery via Google Cloud &amp; Hostinger relays.
@@ -408,8 +429,8 @@ export default function NotificationsCenter() {
               </div>
 
               {/* Push Bubble */}
-              <div className="bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 border border-slate-700/80 shadow-lg">
-                <div className="flex items-center justify-between mb-2">
+              <div className="bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 border border-slate-700/80 shadow-lg space-y-2">
+                <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded-md bg-primary flex items-center justify-center text-white font-black text-[10px]">
                       Q
@@ -421,9 +442,21 @@ export default function NotificationsCenter() {
                 <div className="font-bold text-xs text-white">
                   {title || "Special Announcement from Stay Q"}
                 </div>
-                <div className="text-[11px] text-slate-300 mt-1 leading-relaxed line-clamp-3">
+                <div className="text-[11px] text-slate-300 leading-relaxed line-clamp-3">
                   {message || "Your broadcast announcement preview will render here in real time as you compose..."}
                 </div>
+                {imageUrl && (
+                  <div className="mt-2 rounded-xl overflow-hidden border border-slate-700 max-h-36">
+                    <img
+                      src={imageUrl}
+                      alt="Banner Preview"
+                      className="w-full h-36 object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Email Newsletter Card Preview */}

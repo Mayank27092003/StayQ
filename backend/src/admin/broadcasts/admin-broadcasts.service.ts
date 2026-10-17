@@ -10,6 +10,7 @@ import { NotificationsService } from '../../notifications/notifications.service'
 import { toSkipTake } from '../dto/pagination.dto';
 import { BroadcastQueryDto } from './dto/broadcast.dto';
 import { text } from '../../common/utils/input.util';
+import { getMessaging } from 'firebase-admin/messaging';
 @Injectable()
 export class AdminBroadcastsService {
   constructor(
@@ -45,7 +46,7 @@ export class AdminBroadcastsService {
           delivered + failed
             ? `${((100 * delivered) / (delivered + failed)).toFixed(1)}%`
             : null,
-        deliveryMetric: 'IN_APP_NOTIFICATION_CREATED',
+        deliveryMetric: 'REAL_FCM_PUSH_DELIVERED',
         dispatchedCount: delivered,
         activeUsers,
       },
@@ -54,6 +55,7 @@ export class AdminBroadcastsService {
   async createAndDispatch(payload: any, adminId: string) {
     const title = text(payload.title || payload.messageTitle, 'Title', 200),
       body = text(payload.message || payload.body, 'Message', 4000);
+    const imageUrl = payload.imageUrl ? String(payload.imageUrl).trim() : undefined;
     let rawAudience = String(
       payload.audience || payload.targetAudience || 'all',
     ).toLowerCase().trim();
@@ -79,9 +81,9 @@ export class AdminBroadcastsService {
         details: { targetAudience },
       }),
     );
-    return this.send(created.id, adminId);
+    return this.send(created.id, adminId, imageUrl);
   }
-  async send(id: string, adminId: string) {
+  async send(id: string, adminId: string, imageUrl?: string) {
     return this.audit.runWithAudit(
       async (tx) => {
         await tx.$queryRaw`SELECT id FROM "Broadcast" WHERE id=${id} FOR UPDATE`;
@@ -96,41 +98,122 @@ export class AdminBroadcastsService {
           where.roles = { has: UserRole.HOST };
         else if (broadcast.targetAudience === 'guests')
           where.roles = { has: UserRole.GUEST };
+
         const recipients = await tx.user.findMany({
           where,
-          select: { id: true },
+          select: {
+            id: true,
+            firebaseUid: true,
+            deviceTokens: { select: { token: true } },
+          },
           take: 5001,
         });
+
         if (recipients.length > 5000)
           throw new BadRequestException(
             'This audience exceeds the 5,000-recipient batch limit',
           );
-        if (recipients.length)
-          await tx.domainJob.createMany({
+
+        // 1. Create in-app notifications in DB
+        if (recipients.length) {
+          await tx.notification.createMany({
             data: recipients.map((u) => ({
-              key: `broadcast:${id}:${u.id}`,
-              type: 'BROADCAST_MESSAGE',
-              referenceId: `${id}:${u.id}`,
+              userId: u.id,
+              type: 'PROMOTION',
+              title: broadcast.title,
+              body: broadcast.body,
+              data: { broadcastId: id, imageUrl: imageUrl || undefined },
             })),
-            skipDuplicates: true,
           });
+        }
+
+        // 2. Real FCM Multicast Push Dispatch
+        const allTokens = recipients.flatMap((u) => u.deviceTokens.map((dt) => dt.token));
+        let deliveredCount = 0;
+        let failedCount = 0;
+        const deadTokens: string[] = [];
+
+        if (allTokens.length) {
+          const uniqueTokens = Array.from(new Set(allTokens));
+          for (let offset = 0; offset < uniqueTokens.length; offset += 500) {
+            const batch = uniqueTokens.slice(offset, offset + 500);
+            try {
+              const res = await getMessaging().sendEachForMulticast({
+                tokens: batch,
+                notification: {
+                  title: broadcast.title,
+                  body: broadcast.body.slice(0, 1000),
+                  imageUrl: imageUrl || undefined,
+                },
+                data: {
+                  click_action: 'FLUTTER_NOTIFICATION_CLICK',
+                  type: 'PROMOTION',
+                  broadcastId: id,
+                  ...(imageUrl ? { imageUrl } : {}),
+                },
+                android: {
+                  priority: 'high',
+                  notification: {
+                    channelId: 'stayq_high_importance',
+                    sound: 'default',
+                    imageUrl: imageUrl || undefined,
+                  },
+                },
+                apns: {
+                  payload: { aps: { sound: 'default', 'mutable-content': 1 } },
+                  fcmOptions: imageUrl ? { imageUrl } : undefined,
+                },
+              });
+
+              res.responses.forEach((r, idx) => {
+                if (r.success) {
+                  deliveredCount++;
+                } else {
+                  failedCount++;
+                  if (
+                    [
+                      'messaging/registration-token-not-registered',
+                      'messaging/invalid-registration-token',
+                    ].includes(r.error?.code || '')
+                  ) {
+                    deadTokens.push(batch[idx]);
+                  }
+                }
+              });
+            } catch (err) {
+              console.error('Batch multicast push error:', err);
+              failedCount += batch.length;
+            }
+          }
+        }
+
+        if (deadTokens.length) {
+          await tx.deviceToken.deleteMany({
+            where: { token: { in: deadTokens } },
+          });
+        }
+
         return tx.broadcast.update({
           where: { id },
           data: {
-            status: recipients.length
-              ? BroadcastStatus.SENDING
-              : BroadcastStatus.SENT,
+            status: BroadcastStatus.SENT,
             recipientCount: recipients.length,
-            sentAt: recipients.length ? null : new Date(),
+            deliveredCount,
+            failedCount,
+            sentAt: new Date(),
           },
         });
       },
       (r) => ({
         adminId,
-        action: 'QUEUE_BROADCAST',
+        action: 'DISPATCH_BROADCAST_PUSH',
         targetType: 'BROADCAST',
         targetId: r.id,
-        details: { recipientCount: r.recipientCount, status: r.status },
+        details: {
+          recipientCount: r.recipientCount,
+          deliveredCount: r.deliveredCount,
+          failedCount: r.failedCount,
+        },
       }),
     );
   }

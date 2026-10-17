@@ -9,6 +9,7 @@ interface RegisteredUser {
   displayName: string;
   email: string;
   phone: string;
+  photoUrl?: string | null;
   location: string;
   gender?: string;
   dob?: string | null;
@@ -418,9 +419,20 @@ export default function RegisteredUsersPage() {
                       {/* User & Contact */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-purple-100 text-[#5A31F4] font-bold text-xs flex items-center justify-center shrink-0 border border-purple-200">
-                            {initials}
-                          </div>
+                          {u.photoUrl ? (
+                            <img
+                              src={u.photoUrl}
+                              alt={u.displayName}
+                              className="w-9 h-9 rounded-full object-cover border border-purple-200 shadow-xs shrink-0"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-purple-100 text-[#5A31F4] font-bold text-xs flex items-center justify-center shrink-0 border border-purple-200">
+                              {initials}
+                            </div>
+                          )}
                           <div>
                             <div className="font-bold text-slate-900 flex items-center gap-1.5">
                               <span>{u.displayName}</span>

@@ -149,6 +149,17 @@ export class AdminController {
     return this.adminService.freezeAccount(id, freeze, reason, adminId);
   }
 
+  @Post('users/:id/send-push')
+  sendDirectPush(
+    @Param('id') id: string,
+    @Body('title') title: string,
+    @Body('body') body: string,
+    @Body('imageUrl') imageUrl: string,
+    @CurrentUser('id') adminId: string,
+  ) {
+    return this.adminService.sendDirectPushToUser(id, title, body, imageUrl, adminId);
+  }
+
   @Get('live-activity')
   getLiveActivity() {
     return this.adminService.getLiveActivity();

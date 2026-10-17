@@ -10,12 +10,14 @@ interface CustomerInfo {
   phone: string;
   email: string;
   role: string;
+  photoUrl?: string | null;
 }
 
 interface PremiumDetails {
   plan?: string;
   targetPropertyTitle?: string;
   targetPropertyId?: string;
+  thumbnailUrl?: string | null;
   startDate?: string;
   expiresAt?: string;
   daysRemaining?: number;
@@ -402,23 +404,37 @@ export default function TransactionsPage() {
 
                       {/* Item & Category */}
                       <td className="px-4 py-3.5">
-                        <div className="font-bold text-slate-900">{it.typeLabel}</div>
-                        {it.premiumDetails?.targetPropertyTitle && (
-                          <div className="text-[11px] text-slate-500 truncate max-w-[180px]">
-                            {it.premiumDetails.targetPropertyTitle}
+                        <div className="flex items-center gap-2.5">
+                          {it.premiumDetails?.thumbnailUrl && (
+                            <img
+                              src={it.premiumDetails.thumbnailUrl}
+                              alt={it.typeLabel}
+                              className="w-9 h-9 rounded-xl object-cover border border-slate-200 shadow-xs shrink-0"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = "none";
+                              }}
+                            />
+                          )}
+                          <div>
+                            <div className="font-bold text-slate-900">{it.typeLabel}</div>
+                            {it.premiumDetails?.targetPropertyTitle && (
+                              <div className="text-[11px] text-slate-500 truncate max-w-[180px]">
+                                {it.premiumDetails.targetPropertyTitle}
+                              </div>
+                            )}
+                            <span
+                              className={`inline-block mt-0.5 px-2 py-0.2 rounded-full text-[9px] font-extrabold uppercase ${
+                                it.category === "HOST_PRO"
+                                  ? "bg-purple-100 text-[#5A31F4]"
+                                  : it.category === "BOOST"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}
+                            >
+                              {it.category}
+                            </span>
                           </div>
-                        )}
-                        <span
-                          className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
-                            it.category === "HOST_PRO"
-                              ? "bg-purple-100 text-[#5A31F4]"
-                              : it.category === "BOOST"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-blue-100 text-blue-800"
-                          }`}
-                        >
-                          {it.category}
-                        </span>
+                        </div>
                       </td>
 
                       {/* Customer */}
@@ -426,19 +442,35 @@ export default function TransactionsPage() {
                         {it.customer?.userId ? (
                           <button
                             onClick={() => handleOpen360(it.customer.userId)}
-                            className="text-left group cursor-pointer"
+                            className="text-left group cursor-pointer flex items-center gap-2.5"
                           >
-                            <div className="font-bold text-slate-900 group-hover:text-[#5A31F4] flex items-center gap-1 transition-colors">
-                              <span>{it.customer.name || "Customer"}</span>
-                              <span className="material-symbols-outlined text-[12px] opacity-0 group-hover:opacity-100 transition-opacity">
-                                open_in_new
-                              </span>
-                            </div>
-                            <div className="text-[11px] font-mono text-slate-500">
-                              {it.customer.phone || "No phone"}
-                            </div>
-                            <div className="text-[10px] text-slate-400 truncate max-w-[160px]">
-                              {it.customer.email || "No email"}
+                            {it.customer.photoUrl ? (
+                              <img
+                                src={it.customer.photoUrl}
+                                alt={it.customer.name}
+                                className="w-8 h-8 rounded-full object-cover border border-purple-200 shadow-xs shrink-0"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-purple-100 text-[#5A31F4] font-bold text-xs flex items-center justify-center shrink-0 border border-purple-200">
+                                {(it.customer.name || "C").slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-bold text-slate-900 group-hover:text-[#5A31F4] flex items-center gap-1 transition-colors">
+                                <span>{it.customer.name || "Customer"}</span>
+                                <span className="material-symbols-outlined text-[12px] opacity-0 group-hover:opacity-100 transition-opacity">
+                                  open_in_new
+                                </span>
+                              </div>
+                              <div className="text-[11px] font-mono text-slate-500">
+                                {it.customer.phone || "No phone"}
+                              </div>
+                              <div className="text-[10px] text-slate-400 truncate max-w-[160px]">
+                                {it.customer.email || "No email"}
+                              </div>
                             </div>
                           </button>
                         ) : (

@@ -160,9 +160,20 @@ export default function GlobalSearchPalette({ isOpen, onClose }: GlobalSearchPal
                           className="p-3 rounded-2xl hover:bg-purple-50/70 border border-transparent hover:border-purple-200 cursor-pointer flex items-center justify-between transition-all"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-purple-100 text-[#5A31F4] flex items-center justify-center font-bold text-xs">
-                              {h.title.slice(0, 2).toUpperCase()}
-                            </div>
+                            {h.meta?.photoUrl ? (
+                              <img
+                                src={h.meta.photoUrl}
+                                alt={h.title}
+                                className="w-9 h-9 rounded-xl object-cover border border-purple-200 shrink-0"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <div className="w-9 h-9 rounded-xl bg-purple-100 text-[#5A31F4] flex items-center justify-center font-bold text-xs shrink-0">
+                                {h.title.slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
                             <div>
                               <strong className="text-xs text-slate-900 block flex items-center gap-1.5">
                                 <span>{h.title}</span>
@@ -201,9 +212,20 @@ export default function GlobalSearchPalette({ isOpen, onClose }: GlobalSearchPal
                           className="p-3 rounded-2xl hover:bg-slate-50 border border-transparent hover:border-slate-200 cursor-pointer flex items-center justify-between transition-all"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs">
-                              {u.title.slice(0, 2).toUpperCase()}
-                            </div>
+                            {u.meta?.photoUrl ? (
+                              <img
+                                src={u.meta.photoUrl}
+                                alt={u.title}
+                                className="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                {u.title.slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
                             <div>
                               <strong className="text-xs text-slate-900 block">{u.title}</strong>
                               <span className="text-[11px] text-slate-500">{u.subtitle}</span>
@@ -252,9 +274,25 @@ export default function GlobalSearchPalette({ isOpen, onClose }: GlobalSearchPal
                           key={p.id}
                           className="p-3 rounded-2xl bg-slate-50/50 text-xs flex items-center justify-between"
                         >
-                          <div>
-                            <strong className="text-slate-900 block">{p.title}</strong>
-                            <span className="text-slate-500 text-[11px]">{p.subtitle}</span>
+                          <div className="flex items-center gap-3">
+                            {p.meta?.thumbnailUrl ? (
+                              <img
+                                src={p.meta.thumbnailUrl}
+                                alt={p.title}
+                                className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#5A31F4] flex items-center justify-center shrink-0 border border-purple-100">
+                                <span className="material-symbols-outlined text-[18px]">home</span>
+                              </div>
+                            )}
+                            <div>
+                              <strong className="text-slate-900 block text-xs">{p.title}</strong>
+                              <span className="text-slate-500 text-[11px]">{p.subtitle}</span>
+                            </div>
                           </div>
                         </div>
                       ))}

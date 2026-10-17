@@ -131,8 +131,9 @@ export class AdminSearchService {
               city: true,
               state: true,
               pricePerNight: true,
+              images: { select: { url: true }, take: 1 },
               host: {
-                select: { id: true, displayName: true, phone: true, email: true },
+                select: { id: true, displayName: true, phone: true, email: true, photoUrl: true },
               },
             },
             orderBy: { createdAt: 'desc' },
@@ -153,8 +154,17 @@ export class AdminSearchService {
             },
             take: 15,
             include: {
-              property: { select: { id: true, title: true, city: true } },
-              guest: { select: { id: true, displayName: true, phone: true, email: true } },
+              property: {
+                select: {
+                  id: true,
+                  title: true,
+                  city: true,
+                  images: { select: { url: true }, take: 1 },
+                },
+              },
+              guest: {
+                select: { id: true, displayName: true, phone: true, email: true, photoUrl: true },
+              },
             },
             orderBy: { createdAt: 'desc' },
           })
@@ -176,6 +186,7 @@ export class AdminSearchService {
         meta: {
           phone: u.phone,
           email: u.email,
+          photoUrl: u.photoUrl,
           location: u.location,
           roles: u.roles,
           isHost,
@@ -228,9 +239,11 @@ export class AdminSearchService {
         city: p.city,
         state: p.state,
         pricePerNight: Number(p.pricePerNight),
+        thumbnailUrl: (p as any).images?.[0]?.url || null,
         hostName: p.host.displayName,
         hostPhone: p.host.phone,
         hostEmail: p.host.email,
+        hostPhotoUrl: (p.host as any)?.photoUrl || null,
       },
     }));
 
@@ -247,8 +260,10 @@ export class AdminSearchService {
         checkOut: b.checkOut.toISOString(),
         guestName: b.guest?.displayName,
         guestPhone: b.guest?.phone,
+        guestPhotoUrl: (b.guest as any)?.photoUrl || null,
         propertyTitle: b.property.title,
         propertyCity: b.property.city,
+        thumbnailUrl: (b.property as any)?.images?.[0]?.url || null,
       },
     }));
 

@@ -17,6 +17,7 @@ interface PayoutHost {
   name: string;
   phone: string;
   email: string;
+  photoUrl?: string | null;
   bankDetails?: BankDetails;
 }
 
@@ -25,6 +26,9 @@ interface PayoutItem {
   bookingId: string;
   confirmationCode: string;
   propertyTitle: string;
+  propertyThumbnail?: string | null;
+  hostPhotoUrl?: string | null;
+  guestPhotoUrl?: string | null;
   host: PayoutHost;
   grossAmount: number;
   platformFee: number;
@@ -384,42 +388,78 @@ export default function PayoutsPage() {
                   <tr key={it.id} className="hover:bg-slate-50/60 transition-colors">
                     {/* Booking & Property */}
                     <td className="px-4 py-3.5">
-                      <div className="font-bold text-slate-900 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[15px] text-[#5A31F4]">confirmation_number</span>
-                        <span>{it.confirmationCode}</span>
-                      </div>
-                      <div className="text-[11px] text-slate-600 truncate max-w-[200px] mt-0.5">
-                        {it.propertyTitle}
-                      </div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">
-                        Check-in: {new Date(it.checkInDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      <div className="flex items-center gap-3">
+                        {it.propertyThumbnail ? (
+                          <img
+                            src={it.propertyThumbnail}
+                            alt={it.propertyTitle}
+                            className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0 shadow-xs"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#5A31F4] flex items-center justify-center shrink-0 border border-purple-100">
+                            <span className="material-symbols-outlined text-[18px]">home</span>
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-900 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[15px] text-[#5A31F4]">confirmation_number</span>
+                            <span>{it.confirmationCode}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-600 truncate max-w-[190px] mt-0.5">
+                            {it.propertyTitle}
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">
+                            Check-in: {new Date(it.checkInDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </div>
+                        </div>
                       </div>
                     </td>
 
                     {/* Host & Bank Details */}
                     <td className="px-4 py-3.5">
-                      <button
-                        onClick={() => {
-                          if (it.host?.id) {
-                            setSelectedEntityId(it.host.id);
-                            setDrawerOpen(true);
-                          }
-                        }}
-                        className="text-left group cursor-pointer"
-                      >
-                        <div className="font-bold text-slate-900 group-hover:text-[#5A31F4] flex items-center gap-1">
-                          <span>{it.host?.name || "Host"}</span>
-                          <span className="material-symbols-outlined text-[12px] opacity-0 group-hover:opacity-100">open_in_new</span>
-                        </div>
-                        <div className="text-[11px] font-mono text-slate-500">
-                          {it.host?.phone || "No phone"}
-                        </div>
-                      </button>
+                      <div className="flex items-center gap-2.5">
+                        {it.hostPhotoUrl || it.host?.photoUrl ? (
+                          <img
+                            src={it.hostPhotoUrl || it.host?.photoUrl || ""}
+                            alt={it.host?.name || "Host"}
+                            className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0 shadow-xs"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-600 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
+                            {(it.host?.name || "H").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <button
+                            onClick={() => {
+                              if (it.host?.id) {
+                                setSelectedEntityId(it.host.id);
+                                setDrawerOpen(true);
+                              }
+                            }}
+                            className="text-left group cursor-pointer"
+                          >
+                            <div className="font-bold text-slate-900 group-hover:text-[#5A31F4] flex items-center gap-1">
+                              <span>{it.host?.name || "Host"}</span>
+                              <span className="material-symbols-outlined text-[12px] opacity-0 group-hover:opacity-100">open_in_new</span>
+                            </div>
+                            <div className="text-[11px] font-mono text-slate-500">
+                              {it.host?.phone || "No phone"}
+                            </div>
+                          </button>
 
-                      <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 w-fit">
-                        <span className="material-symbols-outlined text-[12px] text-emerald-600">account_balance</span>
-                        <span className="font-mono">{it.host?.bankDetails?.accountNumber || "No Bank"}</span>
-                        <span>({it.host?.bankDetails?.ifsc || "N/A"})</span>
+                          <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 w-fit">
+                            <span className="material-symbols-outlined text-[12px] text-emerald-600">account_balance</span>
+                            <span className="font-mono">{it.host?.bankDetails?.accountNumber || "No Bank"}</span>
+                            <span>({it.host?.bankDetails?.ifsc || "N/A"})</span>
+                          </div>
+                        </div>
                       </div>
                     </td>
 

@@ -32,6 +32,14 @@ export default function EntityDetail360Drawer({
   const [isFreezing, setIsFreezing] = useState<boolean>(false);
   const [freezeReason, setFreezeReason] = useState<string>("");
 
+  // Push Notification State
+  const [showPushModal, setShowPushModal] = useState<boolean>(false);
+  const [pushTitle, setPushTitle] = useState<string>("");
+  const [pushBody, setPushBody] = useState<string>("");
+  const [pushImageUrl, setPushImageUrl] = useState<string>("");
+  const [isSendingPush, setIsSendingPush] = useState<boolean>(false);
+  const [pushResult, setPushResult] = useState<string | null>(null);
+
   const getAdminConfig = () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("stayq_admin_token") : null;
     return {
@@ -114,6 +122,38 @@ export default function EntityDetail360Drawer({
     }
   };
 
+  const handleSendPush = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!entityId || !pushTitle.trim() || !pushBody.trim()) {
+      alert("Please enter both a title and message body for the push notification.");
+      return;
+    }
+    setIsSendingPush(true);
+    setPushResult(null);
+    try {
+      const res = await axios.post(
+        `/api/v1/admin/users/${entityId}/send-push`,
+        {
+          title: pushTitle.trim(),
+          body: pushBody.trim(),
+          imageUrl: pushImageUrl.trim() || undefined,
+        },
+        getAdminConfig()
+      );
+      if (res.data?.success) {
+        setPushResult(res.data.message || "Push notification sent successfully!");
+        setPushTitle("");
+        setPushBody("");
+        setPushImageUrl("");
+        setTimeout(() => setShowPushModal(false), 2000);
+      }
+    } catch (err: any) {
+      alert(err?.response?.data?.message || "Failed to dispatch push notification.");
+    } finally {
+      setIsSendingPush(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -124,9 +164,21 @@ export default function EntityDetail360Drawer({
         {/* Top Header */}
         <div className="px-6 py-4 border-b border-slate-200/80 bg-slate-50/70 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#5A31F4]/10 text-[#5A31F4] flex items-center justify-center font-bold text-sm border border-[#5A31F4]/20">
-              {data?.displayName?.slice(0, 2).toUpperCase() || "SQ"}
-            </div>
+            {data?.photoUrl ? (
+              <img
+                src={data.photoUrl}
+                alt={data?.displayName || "User"}
+                className="w-11 h-11 rounded-2xl object-cover border border-purple-200 shadow-xs"
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = "none";
+                }}
+              />
+            ) : null}
+            {!data?.photoUrl && (
+              <div className="w-11 h-11 rounded-2xl bg-[#5A31F4]/10 text-[#5A31F4] flex items-center justify-center font-bold text-sm border border-[#5A31F4]/20 shadow-xs">
+                {data?.displayName?.slice(0, 2).toUpperCase() || "SQ"}
+              </div>
+            )}
             <div>
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                 <span>{data?.displayName || "Profile Dossier"}</span>
@@ -146,6 +198,14 @@ export default function EntityDetail360Drawer({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowPushModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#5A31F4] bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-all cursor-pointer shadow-xs"
+              title="Send Direct Push Notification"
+            >
+              <span className="material-symbols-outlined text-[16px]">notifications_active</span>
+              <span className="hidden sm:inline">Send Push</span>
+            </button>
             <button
               onClick={fetchDossier}
               className="p-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-colors"
@@ -404,6 +464,32 @@ export default function EntityDetail360Drawer({
                         <span className="text-slate-400 block text-[11px]">ID Document Type</span>
                         <span className="font-bold text-slate-800">{data.kyc.govIdType}</span>
                       </div>
+                      {data.kyc.govIdDocUrl && (
+                        <div className="col-span-2 mt-2 pt-2 border-t border-slate-200">
+                          <span className="text-slate-400 block text-[11px] mb-1.5 font-bold">Uploaded Identity Proof Document</span>
+                          <div className="flex items-center gap-3">
+                            <a href={data.kyc.govIdDocUrl} target="_blank" rel="noreferrer" className="block relative group">
+                              <img
+                                src={data.kyc.govIdDocUrl}
+                                alt="Govt ID Document"
+                                className="w-24 h-16 rounded-xl object-cover border border-slate-300 shadow-xs group-hover:opacity-90 transition-opacity"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            </a>
+                            <a
+                              href={data.kyc.govIdDocUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-[#5A31F4] font-bold hover:underline flex items-center gap-1"
+                            >
+                              <span>View High-Res Document</span>
+                              <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                            </a>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -426,6 +512,38 @@ export default function EntityDetail360Drawer({
                         <span className="text-slate-400 block text-[11px]">IFSC Code</span>
                         <span className="font-mono font-bold text-slate-800">{data.kyc.ifsc}</span>
                       </div>
+                      {data.kyc.upiId && (
+                        <div className="col-span-2">
+                          <span className="text-slate-400 block text-[11px]">UPI ID</span>
+                          <span className="font-mono font-bold text-slate-800">{data.kyc.upiId}</span>
+                        </div>
+                      )}
+                      {data.kyc.passbookImageUrl && (
+                        <div className="col-span-2 mt-2 pt-2 border-t border-slate-200">
+                          <span className="text-slate-400 block text-[11px] mb-1.5 font-bold">Uploaded Bank Passbook / Cheque Document</span>
+                          <div className="flex items-center gap-3">
+                            <a href={data.kyc.passbookImageUrl} target="_blank" rel="noreferrer" className="block relative group">
+                              <img
+                                src={data.kyc.passbookImageUrl}
+                                alt="Passbook / Cheque"
+                                className="w-24 h-16 rounded-xl object-cover border border-slate-300 shadow-xs group-hover:opacity-90 transition-opacity"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            </a>
+                            <a
+                              href={data.kyc.passbookImageUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-[#5A31F4] font-bold hover:underline flex items-center gap-1"
+                            >
+                              <span>View High-Res Document</span>
+                              <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                            </a>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -464,9 +582,25 @@ export default function EntityDetail360Drawer({
                   ) : (
                     data.properties.map((p: any) => (
                       <div key={p.id} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs flex justify-between items-center">
-                        <div>
-                          <strong className="text-slate-900 block">{p.title}</strong>
-                          <span className="text-slate-500 text-[11px]">{p.type} • {p.city}</span>
+                        <div className="flex items-center gap-3">
+                          {p.thumbnailUrl ? (
+                            <img
+                              src={p.thumbnailUrl}
+                              alt={p.title}
+                              className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0 shadow-xs"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLElement).style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-purple-50 text-[#5A31F4] flex items-center justify-center shrink-0 border border-purple-100">
+                              <span className="material-symbols-outlined text-[20px]">villa</span>
+                            </div>
+                          )}
+                          <div>
+                            <strong className="text-slate-900 block">{p.title}</strong>
+                            <span className="text-slate-500 text-[11px]">{p.type} • {p.city}</span>
+                          </div>
                         </div>
                         <div className="text-right">
                           <strong className="block text-slate-900">₹{p.pricePerNight?.toLocaleString("en-IN")}/night</strong>
@@ -511,6 +645,101 @@ export default function EntityDetail360Drawer({
             </>
           ) : null}
         </div>
+
+        {/* Direct Push Modal Overlay */}
+        {showPushModal && (
+          <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-purple-100 text-[#5A31F4] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[18px]">notifications_active</span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Direct Push Notification</h4>
+                    <p className="text-[11px] text-slate-400">Sends instant real FCM push to {data?.displayName || "this user"}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPushModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+                >
+                  <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleSendPush} className="space-y-3 text-xs">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Notification Title *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Booking update / Welcome bonus"
+                    value={pushTitle}
+                    onChange={(e) => setPushTitle(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#5A31F4]/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Message Body *</label>
+                  <textarea
+                    required
+                    rows={3}
+                    placeholder="e.g. Your verification is complete! Tap to explore features."
+                    value={pushBody}
+                    onChange={(e) => setPushBody(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#5A31F4]/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Image URL (Optional Rich Banner)</label>
+                  <input
+                    type="url"
+                    placeholder="https://... image banner"
+                    value={pushImageUrl}
+                    onChange={(e) => setPushImageUrl(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#5A31F4]/20"
+                  />
+                </div>
+
+                {pushResult && (
+                  <div className="p-3 rounded-xl bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                    {pushResult}
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPushModal(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSendingPush}
+                    className="flex-1 py-2.5 rounded-xl bg-[#5A31F4] hover:bg-[#4922db] text-white font-bold shadow-md shadow-purple-500/20 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    {isSendingPush ? (
+                      <>
+                        <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                        <span>Sending...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-[16px]">send</span>
+                        <span>Send Now</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

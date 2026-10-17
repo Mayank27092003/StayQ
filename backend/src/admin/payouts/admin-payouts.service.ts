@@ -14,6 +14,9 @@ export interface EscrowPayoutItem {
   hostName: string;
   hostPhone: string;
   hostEmail: string;
+  hostPhotoUrl: string | null;
+  guestPhotoUrl: string | null;
+  propertyThumbnail: string | null;
   bankDetails: {
     bankName: string;
     beneficiaryName: string;
@@ -50,19 +53,21 @@ export class AdminPayoutsService {
             id: true,
             title: true,
             city: true,
+            images: { select: { url: true }, take: 1 },
             host: {
               select: {
                 id: true,
                 displayName: true,
                 phone: true,
                 email: true,
+                photoUrl: true,
                 payoutAccount: true,
               },
             },
           },
         },
         guest: {
-          select: { id: true, displayName: true, phone: true },
+          select: { id: true, displayName: true, phone: true, photoUrl: true },
         },
         payment: true,
       },
@@ -103,12 +108,15 @@ export class AdminPayoutsService {
         confirmationCode: b.confirmationCode,
         propertyTitle: b.property.title,
         propertyCity: b.property.city,
+        propertyThumbnail: (b.property as any).images?.[0]?.url || null,
         guestName: b.guest?.displayName || 'Guest',
         guestPhone: b.guest?.phone || '—',
+        guestPhotoUrl: (b.guest as any)?.photoUrl || null,
         hostId: b.property.host.id,
         hostName: b.property.host.displayName || 'Host Partner',
         hostPhone: b.property.host.phone || '—',
         hostEmail: b.property.host.email || '—',
+        hostPhotoUrl: b.property.host.photoUrl || null,
         bankDetails: pa ? {
           bankName: pa.bankName || 'Verified Bank',
           beneficiaryName: pa.accountHolderName || b.property.host.displayName || 'Host',

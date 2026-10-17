@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole, PropertyStatus, Prisma } from '@prisma/client';
+import { getMessaging } from 'firebase-admin/messaging';
 
 interface AuditQuery {
   limit?: number;
@@ -113,6 +114,7 @@ export class AdminService {
         displayName: true,
         email: true,
         phone: true,
+        photoUrl: true,
         location: true,
         gender: true,
         dob: true,
@@ -161,6 +163,7 @@ export class AdminService {
         displayName: u.displayName || 'Guest User',
         email: u.email || '—',
         phone: u.phone || '—',
+        photoUrl: u.photoUrl || null,
         location: u.location || 'India (Auto-detected)',
         gender: u.gender || '—',
         dob: u.dob ? u.dob.toISOString() : null,
@@ -293,13 +296,29 @@ export class AdminService {
           orderBy: { createdAt: 'desc' },
           take: 20,
           include: {
-            property: { select: { id: true, title: true, city: true, type: true } },
+            property: {
+              select: {
+                id: true,
+                title: true,
+                city: true,
+                type: true,
+                images: { select: { url: true }, take: 1 },
+              },
+            },
           },
         },
         properties: {
           orderBy: { createdAt: 'desc' },
           take: 10,
-          select: { id: true, title: true, type: true, status: true, city: true, pricePerNight: true },
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            status: true,
+            city: true,
+            pricePerNight: true,
+            images: { select: { url: true }, take: 2 },
+          },
         },
       },
     });
@@ -382,6 +401,9 @@ export class AdminService {
         kyc: {
           status: user.payoutAccount?.verified ? 'VERIFIED' : (user.payoutAccount ? 'PENDING' : 'NOT_SUBMITTED'),
           govIdType: user.payoutAccount?.govIdType || 'Aadhaar / Passport',
+          govIdDocUrl: user.payoutAccount?.govIdDocUrl || null,
+          passbookImageUrl: user.payoutAccount?.passbookImageUrl || null,
+          upiId: user.payoutAccount?.upiId || null,
           bankName: user.payoutAccount?.bankName || '—',
           beneficiaryName: user.payoutAccount?.accountHolderName || user.displayName || '—',
           accountNumberMasked: maskedBank,
@@ -409,6 +431,7 @@ export class AdminService {
           id: b.id,
           propertyTitle: b.property.title,
           propertyCity: b.property.city,
+          thumbnailUrl: (b.property as any).images?.[0]?.url || null,
           type: b.property.type,
           startDate: b.checkIn.toISOString(),
           endDate: b.checkOut.toISOString(),
@@ -437,6 +460,7 @@ export class AdminService {
           status: p.status,
           city: p.city,
           pricePerNight: Number(p.pricePerNight),
+          thumbnailUrl: (p as any).images?.[0]?.url || null,
         })),
       },
     };
@@ -564,6 +588,132 @@ export class AdminService {
       success: true,
       message: freeze ? 'Account frozen and active listings paused' : 'Account unfreezed successfully',
       status: newStatus,
+    };
+  }
+
+  // ─── DIRECT PUSH NOTIFICATION DISPATCH ───────────────────────────────────
+
+  async sendDirectPushToUser(
+    userId: string,
+    title: string,
+    body: string,
+    imageUrl?: string,
+    adminId?: string,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        deviceTokens: true,
+      },
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+
+    // Create in-app notification in DB
+    const notification = await this.prisma.notification.create({
+      data: {
+        userId,
+        type: 'SYSTEM',
+        title: title.trim(),
+        body: body.trim(),
+        data: { imageUrl: imageUrl || undefined, directAdminPush: true },
+      },
+    });
+
+    if (!user.deviceTokens.length) {
+      return {
+        success: true,
+        delivered: false,
+        tokenCount: 0,
+        message: 'Saved to in-app inbox (no active device tokens currently registered)',
+        notificationId: notification.id,
+      };
+    }
+
+    const tokens = user.deviceTokens.map((t) => t.token);
+    let successCount = 0;
+    let failureCount = 0;
+
+    try {
+      const response = await getMessaging().sendEachForMulticast({
+        tokens,
+        notification: {
+          title: title.trim(),
+          body: body.trim(),
+          imageUrl: imageUrl || undefined,
+        },
+        data: {
+          click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          type: 'SYSTEM',
+          notificationId: notification.id,
+          userId: user.firebaseUid,
+          ...(imageUrl ? { imageUrl } : {}),
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'stayq_high_importance',
+            sound: 'default',
+            imageUrl: imageUrl || undefined,
+          },
+        },
+        apns: {
+          payload: { aps: { sound: 'default', 'mutable-content': 1 } },
+          fcmOptions: imageUrl ? { imageUrl } : undefined,
+        },
+      });
+
+      const deadTokens: string[] = [];
+      response.responses.forEach((r, idx) => {
+        if (r.success) {
+          successCount++;
+        } else {
+          failureCount++;
+          if (
+            [
+              'messaging/registration-token-not-registered',
+              'messaging/invalid-registration-token',
+            ].includes(r.error?.code || '')
+          ) {
+            deadTokens.push(tokens[idx]);
+          }
+        }
+      });
+
+      if (deadTokens.length) {
+        await this.prisma.deviceToken.deleteMany({
+          where: { token: { in: deadTokens } },
+        });
+      }
+
+      await this.prisma.notification.update({
+        where: { id: notification.id },
+        data: { pushSentAt: new Date() },
+      });
+    } catch (err: any) {
+      console.error('Direct push notification failed:', err);
+    }
+
+    if (adminId) {
+      await this.prisma.adminAuditLog.create({
+        data: {
+          adminId,
+          action: 'SEND_DIRECT_PUSH',
+          targetType: 'USER',
+          targetId: userId,
+          details: { title, successCount, failureCount },
+        },
+      });
+    }
+
+    return {
+      success: true,
+      delivered: successCount > 0,
+      tokenCount: tokens.length,
+      successCount,
+      failureCount,
+      notificationId: notification.id,
+      message: `Push delivered to ${successCount} device(s) successfully!`,
     };
   }
 

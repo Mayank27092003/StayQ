@@ -37,6 +37,7 @@ export interface TransactionRecord {
     title: string;
     city: string;
     type: string;
+    thumbnailUrl?: string | null;
   } | null;
 }
 
@@ -182,7 +183,13 @@ export class AdminTransactionsService {
       }),
       this.prisma.property.findMany({
         where: { id: { in: referenceIds } },
-        select: { id: true, title: true, city: true, type: true },
+        select: {
+          id: true,
+          title: true,
+          city: true,
+          type: true,
+          images: { select: { url: true }, take: 1 },
+        },
       }),
       this.prisma.propertyBoost.findMany({
         where: { orderId: { in: orders.map((o) => o.orderId) } },
@@ -256,6 +263,7 @@ export class AdminTransactionsService {
           title: property.title,
           city: property.city,
           type: property.type,
+          thumbnailUrl: (property as any).images?.[0]?.url || null,
         } : null,
       };
     });

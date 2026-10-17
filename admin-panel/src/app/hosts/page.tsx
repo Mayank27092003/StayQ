@@ -181,9 +181,20 @@ export default function HostManagement() {
                         }}
                         className="flex items-center gap-3 cursor-pointer group/host"
                       >
-                        <div className="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center font-bold text-on-surface-variant text-xs uppercase group-hover/host:bg-purple-100 group-hover/host:text-[#5A31F4] transition-colors">
-                          {host.displayName?.[0] || host.payoutAccountName?.[0] || host.email?.[0] || "?"}
-                        </div>
+                        {host.photoUrl || host.avatarUrl ? (
+                          <img
+                            src={host.photoUrl || host.avatarUrl}
+                            alt={host.displayName}
+                            className="w-8 h-8 rounded-full object-cover border border-purple-200 shadow-xs shrink-0"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center font-bold text-on-surface-variant text-xs uppercase group-hover/host:bg-purple-100 group-hover/host:text-[#5A31F4] transition-colors">
+                            {host.displayName?.[0] || host.payoutAccountName?.[0] || host.email?.[0] || "?"}
+                          </div>
+                        )}
                         <div>
                           <div className="font-headline-md text-headline-md !text-[14px] !leading-snug group-hover/host:text-[#5A31F4] transition-colors flex items-center gap-1">
                             <span>{host.displayName || host.payoutAccountName || "Unknown"}</span>
